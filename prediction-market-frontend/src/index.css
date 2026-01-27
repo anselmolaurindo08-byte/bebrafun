@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  transition-property: color, background-color, border-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: rgb(26, 26, 26);
+  color: white;
+}
+
+button {
+  border-radius: 0.75rem;
+  font-weight: 500;
+}
+
+input,
+textarea {
+  background-color: rgb(45, 45, 45);
+  border: 1px solid rgb(45, 45, 45);
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  color: white;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgb(156, 163, 175);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgb(0, 208, 132);
+}

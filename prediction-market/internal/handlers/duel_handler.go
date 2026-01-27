@@ -1,0 +1,258 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+
+	"prediction-market/internal/auth"
+	"prediction-market/internal/models"
+	"prediction-market/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type DuelHandler struct {
+	duelService *services.DuelService
+}
+
+func NewDuelHandler(duelService *services.DuelService) *DuelHandler {
+	return &DuelHandler{
+		duelService: duelService,
+	}
+}
+
+// CreateDuel creates a new duel
+// POST /api/duels
+func (h *DuelHandler) CreateDuel(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req models.CreateDuelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	duel, err := h.duelService.CreateDuel(c.Request.Context(), playerID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, duel)
+}
+
+// GetDuel retrieves a duel by ID
+// GET /api/duels/:id
+func (h *DuelHandler) GetDuel(c *gin.Context) {
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	duel, err := h.duelService.GetDuelByID(c.Request.Context(), duelID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "duel not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, duel)
+}
+
+// GetPlayerDuels retrieves all duels for the current player
+// GET /api/duels
+func (h *DuelHandler) GetPlayerDuels(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Parse pagination parameters
+	limit := 20
+	offset := 0
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	duels, err := h.duelService.GetPlayerDuels(c.Request.Context(), playerID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get duels"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"duels": duels,
+		"total": len(duels),
+	})
+}
+
+// GetPlayerStatistics retrieves duel statistics for the current player
+// GET /api/duels/stats
+func (h *DuelHandler) GetPlayerStatistics(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	stats, err := h.duelService.GetPlayerStatistics(c.Request.Context(), playerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get statistics"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// DepositToDuel deposits tokens to a duel escrow
+// POST /api/duels/:id/deposit
+func (h *DuelHandler) DepositToDuel(c *gin.Context) {
+	_, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	var req struct {
+		Signature string `json:"signature" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Determine player number (1 or 2)
+	duel, err := h.duelService.GetDuelByID(c.Request.Context(), duelID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "duel not found"})
+		return
+	}
+
+	playerID, _ := auth.GetUserID(c)
+	var playerNumber uint8
+	if duel.Player1ID == playerID {
+		playerNumber = 1
+	} else if duel.Player2ID != nil && *duel.Player2ID == playerID {
+		playerNumber = 2
+	} else {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a participant in this duel"})
+		return
+	}
+
+	err = h.duelService.DepositToDuel(c.Request.Context(), duelID, playerNumber, req.Signature)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "deposit successful"})
+}
+
+// ResolveDuel resolves a duel (admin only)
+// POST /api/admin/duels/:id/resolve
+func (h *DuelHandler) ResolveDuel(c *gin.Context) {
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	var req struct {
+		WinnerID     string `json:"winner_id" binding:"required"`
+		WinnerAmount int64  `json:"winner_amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Attempt to parse as int first (since our internal system uses uint IDs)
+	// But the request implies string ID. If admin sends UUID string, we might have issues if we changed IDs to uint.
+	// Assume admin sends uint as string or int.
+	// Let's assume request binding supports it if we change struct, OR we parse int.
+
+	// Wait, req.WinnerID is string in handler.
+	winnerIDUint, err := strconv.ParseUint(req.WinnerID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid winner id (expected uint)"})
+		return
+	}
+	winnerID := uint(winnerIDUint)
+
+	err = h.duelService.ResolveDuel(c.Request.Context(), duelID, winnerID, req.WinnerAmount)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "duel resolved"})
+}
+
+// CancelDuel cancels a pending duel
+// POST /api/duels/:id/cancel
+func (h *DuelHandler) CancelDuel(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	err = h.duelService.CancelDuel(c.Request.Context(), duelID, playerID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "duel cancelled"})
+}
+
+// GetActiveDuels retrieves all active duels (admin only)
+// GET /api/admin/duels/active
+func (h *DuelHandler) GetActiveDuels(c *gin.Context) {
+	limit := 50
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 200 {
+			limit = l
+		}
+	}
+
+	duels, err := h.duelService.GetActiveDuels(c.Request.Context(), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get active duels"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"duels": duels,
+		"total": len(duels),
+	})
+}
