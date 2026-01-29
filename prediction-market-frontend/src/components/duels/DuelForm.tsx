@@ -41,12 +41,12 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-      <h2 className="text-2xl font-bold text-white mb-6">Create New Duel</h2>
+    <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+      <h2 className="text-2xl font-mono font-bold text-pump-white mb-6">Create New Duel</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
             Bet Amount (Tokens)
           </label>
           <input
@@ -55,23 +55,23 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
             onChange={(e) => setBetAmount(Number(e.target.value))}
             min="1"
             step="1000"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+            className="input-field w-full"
             placeholder="Enter bet amount"
             disabled={loading}
           />
-          <p className="text-xs text-gray-400 mt-1">Minimum: 1 token</p>
+          <p className="text-xs text-pump-gray font-sans mt-1">Minimum: 1 token</p>
         </div>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 rounded-lg p-3">
-            <p className="text-red-200 text-sm">{error}</p>
+          <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-3">
+            <p className="text-pump-red font-sans text-sm">{error}</p>
           </div>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg transition"
+          className="w-full bg-pump-green hover:bg-pump-lime disabled:bg-pump-gray-dark disabled:cursor-not-allowed disabled:text-pump-gray text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow"
         >
           {loading ? 'Creating Duel...' : 'Create Duel'}
         </button>

@@ -119,6 +119,30 @@ func (h *DuelHandler) GetPlayerStatistics(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// JoinDuel allows a player to join/accept a pending duel
+// POST /api/duels/:id/join
+func (h *DuelHandler) JoinDuel(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, duel)
+}
+
 // DepositToDuel deposits tokens to a duel escrow
 // POST /api/duels/:id/deposit
 func (h *DuelHandler) DepositToDuel(c *gin.Context) {

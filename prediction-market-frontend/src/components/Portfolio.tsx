@@ -55,29 +55,32 @@ export default function Portfolio({ marketId }: PortfolioProps) {
     // If not authenticated, show login prompt
     if (!isAuthenticated) {
         return (
-            <div className="bg-secondary rounded-lg p-6 border border-gray-700">
-                <h3 className="text-xl font-bold mb-4">Your Portfolio</h3>
-                <p className="text-gray-400 text-center py-8">Please login to view your portfolio</p>
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+                <h3 className="text-xl font-mono font-bold text-pump-white mb-4">Your Portfolio</h3>
+                <p className="text-pump-gray font-sans text-center py-8">Please login to view your portfolio</p>
             </div>
         );
     }
 
     if (loading) {
         return (
-            <div className="bg-secondary rounded-lg p-6 border border-gray-700">
-                <div className="text-center py-8">Loading portfolio...</div>
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+                <div className="text-center py-8">
+                    <div className="w-8 h-8 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto"></div>
+                    <p className="mt-3 text-pump-gray-light font-sans text-sm">Loading portfolio...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-secondary rounded-lg p-6 border border-gray-700">
-            <h3 className="text-xl font-bold mb-4">Your Portfolio</h3>
+        <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+            <h3 className="text-xl font-mono font-bold text-pump-white mb-5">Your Portfolio</h3>
 
             {positions.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No positions yet. Place an order to get started!</p>
+                <p className="text-pump-gray font-sans text-center py-8">No positions yet. Place an order to get started!</p>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {positions.map((position) => {
                         const qty = parseFloat(position.quantity || '0');
                         const avgPrice = parseFloat(position.average_price || '0');
@@ -86,35 +89,35 @@ export default function Portfolio({ marketId }: PortfolioProps) {
                         return (
                             <div
                                 key={position.id}
-                                className="bg-primary rounded-lg p-4 flex justify-between items-center border border-gray-700"
+                                className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 flex justify-between items-center hover:border-pump-green transition-all duration-200"
                             >
                                 <div>
-                                    <p className="font-semibold text-lg">{qty.toFixed(2)} shares</p>
-                                    <p className="text-sm text-gray-400">
-                                        Avg Price: ${avgPrice.toFixed(4)}
+                                    <p className="font-mono font-semibold text-lg text-pump-white">{qty.toFixed(2)} shares</p>
+                                    <p className="text-sm text-pump-gray-light font-sans mt-1">
+                                        Avg Price: <span className="font-mono">${avgPrice.toFixed(4)}</span>
                                     </p>
-                                    <p className="text-xs text-gray-500">
-                                        Event ID: {position.market_event_id}
+                                    <p className="text-xs text-pump-gray font-sans mt-1">
+                                        Event ID: <span className="font-mono">{position.market_event_id}</span>
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <p
-                                        className={`text-lg font-bold ${unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
+                                        className={`text-lg font-mono font-bold ${unrealizedPnl >= 0 ? 'text-pump-green' : 'text-pump-red'
                                             }`}
                                     >
                                         {unrealizedPnl >= 0 ? '+' : ''}${unrealizedPnl.toFixed(2)}
                                     </p>
-                                    <p className="text-sm text-gray-400">Unrealized PnL</p>
+                                    <p className="text-sm text-pump-gray-light font-sans mt-1">Unrealized PnL</p>
                                 </div>
                             </div>
                         );
                     })}
 
-                    <div className="border-t border-gray-700 pt-4 mt-4">
+                    <div className="border-t-2 border-pump-gray-dark pt-4 mt-4">
                         <div className="flex justify-between items-center">
-                            <p className="font-semibold text-lg">Total PnL</p>
+                            <p className="font-sans font-semibold text-lg text-pump-white">Total PnL</p>
                             <p
-                                className={`text-2xl font-bold ${parseFloat(pnl) >= 0 ? 'text-green-400' : 'text-red-400'
+                                className={`text-2xl font-mono font-bold ${parseFloat(pnl) >= 0 ? 'text-pump-green' : 'text-pump-red'
                                     }`}
                             >
                                 {parseFloat(pnl) >= 0 ? '+' : ''}${parseFloat(pnl).toFixed(2)}

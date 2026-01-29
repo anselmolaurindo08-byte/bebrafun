@@ -18,10 +18,10 @@ export const ActiveDuelPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-pump-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading duel...</p>
+          <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto mb-4"></div>
+          <p className="text-pump-gray-light font-sans">Loading duel...</p>
         </div>
       </div>
     );
@@ -29,16 +29,16 @@ export const ActiveDuelPage: React.FC = () => {
 
   if (!activeDuel) {
     return (
-      <div className="min-h-screen bg-gray-950 p-6">
+      <div className="min-h-screen bg-pump-black px-6 py-8">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => navigate('/duels')}
-            className="text-gray-400 hover:text-white mb-6 transition"
+            className="text-pump-gray-light hover:text-pump-green font-sans mb-6 transition-colors duration-200"
           >
             ← Back to Duels
           </button>
-          <div className="bg-red-900 border border-red-700 rounded-lg p-4">
-            <p className="text-red-200">Duel not found</p>
+          <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-4">
+            <p className="text-pump-red font-sans">Duel not found</p>
           </div>
         </div>
       </div>
@@ -46,11 +46,11 @@ export const ActiveDuelPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 p-6">
+    <div className="min-h-screen bg-pump-black px-6 py-8">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate('/duels')}
-          className="text-gray-400 hover:text-white mb-6 transition"
+          className="text-pump-gray-light hover:text-pump-green font-sans mb-6 transition-colors duration-200"
         >
           ← Back to Duels
         </button>
@@ -58,8 +58,8 @@ export const ActiveDuelPage: React.FC = () => {
         <DuelArena duel={activeDuel} onResolved={() => navigate('/duels')} />
 
         {error && (
-          <div className="bg-red-900 border border-red-700 rounded-lg p-4 mt-6">
-            <p className="text-red-200">{error}</p>
+          <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-4 mt-6">
+            <p className="text-pump-red font-sans">{error}</p>
           </div>
         )}
       </div>

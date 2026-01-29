@@ -203,6 +203,7 @@ func main() {
 		api.POST("/duels", duelHandler.CreateDuel)
 		api.GET("/duels", duelHandler.GetPlayerDuels)
 		api.GET("/duels/stats", duelHandler.GetPlayerStatistics)
+		api.POST("/duels/:id/join", duelHandler.JoinDuel)
 		api.POST("/duels/:id/deposit", duelHandler.DepositToDuel)
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 	}

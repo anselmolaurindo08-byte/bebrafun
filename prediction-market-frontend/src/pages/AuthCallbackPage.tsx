@@ -36,10 +36,10 @@ const AuthCallbackPage = () => {
     }, [searchParams, navigate, setToken, setUser]);
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+        <div className="flex items-center justify-center min-h-screen bg-pump-black">
             <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <h2 className="text-xl font-semibold">Authenticating...</h2>
+                <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto mb-4"></div>
+                <h2 className="text-xl font-mono font-semibold text-pump-white">Authenticating...</h2>
             </div>
         </div>
     );

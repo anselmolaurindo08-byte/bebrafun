@@ -1,71 +1,104 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
 import { DuelCard } from '../../components/duels/DuelCard';
+import AuthModal from '../../components/AuthModal';
 import type { Duel } from '../../types/duel';
 
 export const DuelsPage: React.FC = () => {
   const navigate = useNavigate();
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const [duels, setDuels] = useState<Duel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
-    fetchDuels();
-  }, []);
+    if (!isAuthenticated) return;
 
-  const fetchDuels = async () => {
-    try {
-      setLoading(true);
-      const { duels } = await duelService.getPlayerDuels();
-      setDuels(duels);
-      setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to fetch duels');
-    } finally {
-      setLoading(false);
+    const fetchDuels = async () => {
+      try {
+        setLoading(true);
+        const { duels } = await duelService.getPlayerDuels();
+        setDuels(duels);
+        setError(null);
+      } catch (err: any) {
+        console.error('Failed to fetch duels:', err);
+        setError(err.response?.data?.error || err.message || 'Failed to fetch duels');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDuels();
+  }, [isAuthenticated]);
+
+  const handleCreateDuel = () => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
     }
+    navigate('/duels/create');
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-pump-black px-6 py-8">
+      <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold text-white">Duels</h1>
+          <h1 className="text-4xl font-mono font-bold text-pump-white">Duels</h1>
           <button
-            onClick={() => navigate('/duels/create')}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition"
+            onClick={handleCreateDuel}
+            className="bg-pump-green hover:bg-pump-lime text-pump-black font-semibold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow"
           >
-            Create New Duel
+            {isAuthenticated ? '+ Create New Duel' : 'Login to Duel'}
           </button>
         </div>
 
+        {/* Info Banner for Unauthenticated Users */}
+        {!isAuthenticated && (
+          <div className="bg-pump-gray-darker border-2 border-pump-cyan/30 rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-mono font-bold text-pump-cyan mb-2">Welcome to Duels!</h2>
+            <p className="text-pump-gray-light font-sans mb-4">
+              Challenge other players in 1v1 prediction battles. Login to create and join duels.
+            </p>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="bg-pump-green hover:bg-pump-lime text-pump-black font-semibold py-2 px-6 rounded-md transition-all duration-200 hover:scale-105"
+            >
+              Login to Get Started
+            </button>
+          </div>
+        )}
+
         {loading && (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-            <p className="text-gray-400 mt-4">Loading duels...</p>
+          <div className="text-center py-16">
+            <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto"></div>
+            <p className="text-pump-gray-light font-sans mt-4">Loading duels...</p>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-900 border border-red-700 rounded-lg p-4 mb-6">
-            <p className="text-red-200">{error}</p>
+          <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-4 mb-6">
+            <p className="text-pump-red font-sans">{error}</p>
           </div>
         )}
 
-        {!loading && duels.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 mb-4">No duels yet. Create one to get started!</p>
+        {!loading && isAuthenticated && duels.length === 0 && (
+          <div className="text-center py-16 bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg">
+            <div className="text-6xl mb-4">⚔️</div>
+            <h2 className="text-2xl font-mono font-bold text-pump-white mb-2">No Duels Yet</h2>
+            <p className="text-pump-gray-light font-sans mb-6">Be the first to create a duel and challenge others!</p>
             <button
               onClick={() => navigate('/duels/create')}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition"
+              className="bg-pump-green hover:bg-pump-lime text-pump-black font-semibold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow"
             >
               Create First Duel
             </button>
           </div>
         )}
 
-        {!loading && duels.length > 0 && (
+        {!loading && isAuthenticated && duels.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {duels.map((duel) => (
               <DuelCard key={duel.id} duel={duel} />
@@ -73,6 +106,16 @@ export const DuelsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        message="Login to create and join duels"
+        onAuthComplete={() => {
+          setShowAuthModal(false);
+        }}
+      />
     </div>
   );
 };

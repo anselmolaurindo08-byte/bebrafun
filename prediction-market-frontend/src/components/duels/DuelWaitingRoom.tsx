@@ -58,26 +58,26 @@ export const DuelWaitingRoom: React.FC<DuelWaitingRoomProps> = ({
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-8 border border-gray-800 text-center">
-      <h2 className="text-3xl font-bold text-white mb-6">Waiting for Opponent...</h2>
+    <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-8 text-center">
+      <h2 className="text-3xl font-mono font-bold text-pump-white mb-6">Waiting for Opponent...</h2>
 
       <div className="mb-8">
         <div className="inline-block">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500"></div>
+          <div className="w-16 h-16 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow"></div>
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6 mb-6">
-        <p className="text-gray-300 mb-2">Your Bet</p>
-        <p className="text-3xl font-bold text-green-400">{duel.bet_amount.toLocaleString()} Tokens</p>
+      <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
+        <p className="text-pump-gray-light font-sans mb-2">Your Bet</p>
+        <p className="text-3xl font-mono font-bold text-pump-green">{duel.bet_amount.toLocaleString()} Tokens</p>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-4 mb-6">
-        <p className="text-gray-400 text-sm mb-2">Time Remaining</p>
-        <p className="text-2xl font-mono font-bold text-yellow-400">{formatTime(timeLeft)}</p>
+      <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mb-6">
+        <p className="text-pump-gray font-sans text-sm mb-2">Time Remaining</p>
+        <p className="text-2xl font-mono font-bold text-pump-yellow">{formatTime(timeLeft)}</p>
       </div>
 
-      <p className="text-gray-400 text-sm">
+      <p className="text-pump-gray font-sans text-sm">
         Searching for an opponent with the same bet amount...
       </p>
     </div>

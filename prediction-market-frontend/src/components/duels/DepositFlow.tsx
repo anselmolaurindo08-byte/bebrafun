@@ -44,26 +44,26 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-lg p-8 border border-gray-800 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-white mb-6">Deposit to Duel</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-8 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-mono font-bold text-pump-white mb-6">Deposit to Duel</h2>
 
         {step === 'confirm' && (
           <>
-            <div className="bg-gray-800 rounded-lg p-4 mb-6">
-              <p className="text-gray-400 text-sm mb-2">Amount to Deposit</p>
-              <p className="text-3xl font-bold text-green-400">{duel.bet_amount.toLocaleString()} Tokens</p>
+            <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mb-6">
+              <p className="text-pump-gray font-sans text-sm mb-2">Amount to Deposit</p>
+              <p className="text-3xl font-mono font-bold text-pump-green">{duel.bet_amount.toLocaleString()} Tokens</p>
             </div>
 
-            <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4 mb-6">
-              <p className="text-yellow-200 text-sm">
+            <div className="bg-pump-yellow/10 border-2 border-pump-yellow/30 rounded-lg p-4 mb-6">
+              <p className="text-pump-yellow font-sans text-sm">
                 ⚠️ Make sure you have enough tokens in your wallet before confirming.
               </p>
             </div>
 
             {error && (
-              <div className="bg-red-900 border border-red-700 rounded-lg p-3 mb-6">
-                <p className="text-red-200 text-sm">{error}</p>
+              <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-3 mb-6">
+                <p className="text-pump-red font-sans text-sm">{error}</p>
               </div>
             )}
 
@@ -71,14 +71,14 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
               <button
                 onClick={onCancel}
                 disabled={loading}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition"
+                className="flex-1 bg-pump-gray-dark hover:bg-pump-gray text-pump-white font-sans font-semibold py-2 px-4 rounded-md transition-colors duration-200 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeposit}
                 disabled={loading}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition"
+                className="flex-1 bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105 disabled:bg-pump-gray-dark disabled:text-pump-gray"
               >
                 {loading ? 'Processing...' : 'Confirm Deposit'}
               </button>
@@ -88,27 +88,27 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
 
         {step === 'sending' && (
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-            <p className="text-gray-300">Sending transaction...</p>
+            <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto mb-4"></div>
+            <p className="text-pump-gray-light font-sans">Sending transaction...</p>
           </div>
         )}
 
         {step === 'confirming' && (
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-            <p className="text-gray-300">Confirming on blockchain...</p>
-            {signature && <p className="text-xs text-gray-500 mt-2 break-all">{signature}</p>}
+            <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto mb-4"></div>
+            <p className="text-pump-gray-light font-sans">Confirming on blockchain...</p>
+            {signature && <p className="text-xs text-pump-gray font-mono mt-2 break-all">{signature}</p>}
           </div>
         )}
 
         {step === 'complete' && (
           <div className="text-center">
-            <div className="text-4xl mb-4">✓</div>
-            <p className="text-green-400 font-bold mb-4">Deposit Successful!</p>
-            <p className="text-gray-400 text-sm mb-6">Your tokens are now in the duel escrow.</p>
+            <div className="text-4xl text-pump-green mb-4">✓</div>
+            <p className="text-pump-green font-mono font-bold mb-4">Deposit Successful!</p>
+            <p className="text-pump-gray-light font-sans text-sm mb-6">Your tokens are now in the duel escrow.</p>
             <button
               onClick={onCancel}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition"
+              className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105"
             >
               Close
             </button>

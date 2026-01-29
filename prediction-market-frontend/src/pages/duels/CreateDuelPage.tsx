@@ -31,11 +31,11 @@ export const CreateDuelPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-6">
+    <div className="min-h-screen bg-pump-black px-6 py-8">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate('/duels')}
-          className="text-gray-400 hover:text-white mb-6 transition"
+          className="text-pump-gray-light hover:text-pump-green font-sans mb-6 transition-colors duration-200"
         >
           ← Back to Duels
         </button>
@@ -47,8 +47,8 @@ export const CreateDuelPage: React.FC = () => {
         )}
 
         {error && (
-          <div className="bg-red-900 border border-red-700 rounded-lg p-4 mt-6">
-            <p className="text-red-200">{error}</p>
+          <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-4 mt-6">
+            <p className="text-pump-red font-sans">{error}</p>
           </div>
         )}
       </div>

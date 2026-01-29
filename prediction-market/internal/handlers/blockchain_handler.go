@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,16 +35,21 @@ func (h *BlockchainHandler) ConnectWallet(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("ERROR: ConnectWallet - Failed to bind JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	log.Printf("INFO: ConnectWallet - UserID: %d, WalletAddress: %s", userID, req.WalletAddress)
 
 	wallet, err := h.blockchainService.ConnectWallet(userID, req.WalletAddress)
 	if err != nil {
+		log.Printf("ERROR: ConnectWallet - BlockchainService.ConnectWallet failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("SUCCESS: ConnectWallet - Wallet connected for user %d", userID)
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    wallet,
