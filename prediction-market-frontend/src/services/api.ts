@@ -47,6 +47,10 @@ class ApiService {
         };
     }
 
+    async getCurrentUser(): Promise<User> {
+        return this.getProfile();
+    }
+
     async getBalance(): Promise<number> {
         const response = await this.api.get<ApiResponse<{ balance: number }>>('/api/user/balance');
         return response.data.balance || 0;
@@ -344,6 +348,11 @@ class ApiService {
 
     async cancelDuel(duelId: string): Promise<void> {
         await this.api.post(`/api/duels/${duelId}/cancel`);
+    }
+
+    async joinDuel(duelId: string): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`);
+        return response.data;
     }
 
     async resolveDuel(duelId: string, winnerId: string, winnerAmount: number): Promise<void> {

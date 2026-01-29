@@ -1,101 +1,159 @@
+import { useState } from 'react';
 import { useUserStore } from '../store/userStore';
 import { useNavigate, Link } from 'react-router-dom';
 import apiService from '../services/api';
+import AuthModal from './AuthModal';
 
 export default function Header() {
-    const { user, logout } = useUserStore();
+    const { user, token, logout } = useUserStore();
     const navigate = useNavigate();
+    const [showAuthModal, setShowAuthModal] = useState(false);
+
+    const isAuthenticated = !!token && !!user?.wallet_address;
 
     const handleLogout = async () => {
         await apiService.logout();
         logout();
-        navigate('/login');
+        navigate('/');
     };
 
-    if (!user) return null;
-
     return (
-        <header className="bg-secondary border-b border-gray-700 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                {/* Left side */}
-                <div className="flex items-center gap-4">
-                    <div className="text-2xl font-bold text-accent">📊</div>
-                    <div>
-                        <h1 className="text-xl font-bold">Prediction Market</h1>
-                        <p className="text-sm text-gray-400">Season 0</p>
-                    </div>
-                </div>
-
-                {/* Center - Navigation */}
-                <div className="flex items-center gap-6">
-                    <Link to="/markets" className="text-lg font-semibold hover:text-accent transition-colors">
-                        Markets
-                    </Link>
-                    <Link to="/duels" className="text-lg font-semibold hover:text-accent transition-colors">
-                        Duels
-                    </Link>
-                    <p className="text-lg font-semibold text-accent">$PREDICT</p>
-                </div>
-
-                {/* Right side */}
-                <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-sm text-gray-400">Balance</p>
-                        <p className="text-lg font-bold text-accent">
-                            ${Number(user.virtual_balance).toFixed(2)}
-                        </p>
-                    </div>
-
-                    <div className="relative group">
-                        <button className="flex items-center gap-2 bg-secondary hover:bg-gray-600 px-4 py-2 rounded-lg">
-                            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-primary font-bold">
-                                {user.x_username.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="text-sm">@{user.x_username}</span>
-                        </button>
-
-                        {/* Dropdown menu */}
-                        <div className="absolute right-0 mt-2 w-48 bg-secondary rounded-lg shadow-lg hidden group-hover:block">
-                            <Link
-                                to="/profile"
-                                className="block px-4 py-2 text-sm hover:bg-gray-600 rounded-t-lg"
-                            >
-                                Profile
-                            </Link>
-                            <Link
-                                to="/referrals"
-                                className="block px-4 py-2 text-sm hover:bg-gray-600"
-                            >
-                                Referral System
-                            </Link>
-                            <Link
-                                to="/duels/wallet"
-                                className="block px-4 py-2 text-sm hover:bg-gray-600 text-yellow-400"
-                            >
-                                Duels Wallet
-                            </Link>
-                            <Link
-                                to="/settings"
-                                className="block px-4 py-2 text-sm hover:bg-gray-600"
-                            >
-                                Settings
-                            </Link>
-                            <Link
-                                to="/admin"
-                                className="block px-4 py-2 text-sm hover:bg-gray-600 text-purple-400"
-                            >
-                                Admin Panel
-                            </Link>
-                            <button
-                                onClick={handleLogout}
-                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-600 rounded-b-lg text-danger"
-                            >
-                                Logout
-                            </button>
+        <>
+            <header className="bg-pump-black border-b-2 border-pump-gray-dark sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+                    {/* Left side - Logo */}
+                    <Link to="/" className="flex items-center gap-3 group">
+                        <div className="text-2xl">📊</div>
+                        <div>
+                            <h1 className="text-xl font-mono font-bold text-pump-green"
+                                style={{ textShadow: '0 0 10px rgba(0, 255, 65, 0.5)' }}>
+                                PUMPSLY
+                            </h1>
+                            <p className="text-xs text-pump-gray-light font-sans">Season 0</p>
                         </div>
+                    </Link>
+
+                    {/* Center - Navigation */}
+                    <nav className="flex items-center gap-8">
+                        <Link
+                            to="/markets"
+                            className="text-sm font-sans font-medium text-pump-gray-light hover:text-pump-green transition-colors duration-200"
+                        >
+                            Markets
+                        </Link>
+                        <Link
+                            to="/duels"
+                            className="text-sm font-sans font-medium text-pump-gray-light hover:text-pump-green transition-colors duration-200"
+                        >
+                            Duels
+                        </Link>
+                        {isAuthenticated && (
+                            <>
+                                <Link
+                                    to="/contests"
+                                    className="text-sm font-sans font-medium text-pump-gray-light hover:text-pump-green transition-colors duration-200"
+                                >
+                                    Contests
+                                </Link>
+                                <Link
+                                    to="/referrals"
+                                    className="text-sm font-sans font-medium text-pump-gray-light hover:text-pump-green transition-colors duration-200"
+                                >
+                                    Referrals
+                                </Link>
+                            </>
+                        )}
+                    </nav>
+
+                    {/* Right side - Auth State Dependent */}
+                    <div className="flex items-center gap-4">
+                        {isAuthenticated ? (
+                            <>
+                                {/* Balance */}
+                                <div className="text-right px-4 py-2 bg-pump-gray-darker border-2 border-pump-gray-dark rounded-md">
+                                    <p className="text-xs text-pump-gray-light font-sans">Balance</p>
+                                    <p className="text-lg font-mono font-bold text-pump-green">
+                                        ${Number(user?.virtual_balance || 0).toFixed(2)}
+                                    </p>
+                                </div>
+
+                                {/* User Dropdown */}
+                                <div className="relative group">
+                                    <button className="flex items-center gap-2 bg-pump-gray-darker border-2 border-pump-gray-dark hover:border-pump-green px-3 py-2 rounded-md transition-all duration-200">
+                                        {user?.x_avatar_url ? (
+                                            <img
+                                                src={user.x_avatar_url}
+                                                alt={user.x_username}
+                                                className="w-8 h-8 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold text-sm">
+                                                {user?.x_username?.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                        <span className="text-sm font-sans text-pump-white">@{user?.x_username}</span>
+                                    </button>
+
+                                    {/* Dropdown menu */}
+                                    <div className="absolute right-0 mt-2 w-56 bg-pump-gray-darker border-2 border-pump-gray-dark rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                        <Link
+                                            to="/profile"
+                                            className="block px-4 py-3 text-sm font-sans text-pump-white hover:bg-pump-gray-dark hover:text-pump-green rounded-t-md transition-colors"
+                                        >
+                                            Profile
+                                        </Link>
+                                        <Link
+                                            to="/referrals"
+                                            className="block px-4 py-3 text-sm font-sans text-pump-white hover:bg-pump-gray-dark hover:text-pump-green transition-colors"
+                                        >
+                                            Referral System
+                                        </Link>
+                                        <Link
+                                            to="/duels/wallet"
+                                            className="block px-4 py-3 text-sm font-sans text-pump-yellow hover:bg-pump-gray-dark transition-colors"
+                                        >
+                                            Duels Wallet
+                                        </Link>
+                                        <Link
+                                            to="/settings"
+                                            className="block px-4 py-3 text-sm font-sans text-pump-white hover:bg-pump-gray-dark hover:text-pump-green transition-colors"
+                                        >
+                                            Settings
+                                        </Link>
+                                        <Link
+                                            to="/admin"
+                                            className="block px-4 py-3 text-sm font-sans text-pump-cyan hover:bg-pump-gray-dark transition-colors"
+                                        >
+                                            Admin Panel
+                                        </Link>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full text-left px-4 py-3 text-sm font-sans text-pump-red hover:bg-pump-gray-dark rounded-b-md transition-colors"
+                                        >
+                                            Logout
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            /* Login Button for Unauthenticated Users */
+                            <button
+                                onClick={() => setShowAuthModal(true)}
+                                className="bg-pump-green hover:bg-pump-lime text-pump-black font-bold py-2 px-6 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow font-sans text-sm"
+                            >
+                                Login
+                            </button>
+                        )}
                     </div>
                 </div>
-            </div>
-        </header>
+            </header>
+
+            {/* Auth Modal */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onAuthComplete={() => setShowAuthModal(false)}
+            />
+        </>
     );
 }

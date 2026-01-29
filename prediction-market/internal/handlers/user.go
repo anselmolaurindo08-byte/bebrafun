@@ -46,6 +46,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"x_id":            user.XID,
 			"followers_count": user.FollowersCount,
 			"virtual_balance": user.VirtualBalance,
+			"wallet_address":  user.WalletAddress,
 			"created_at":      user.CreatedAt,
 		},
 	})

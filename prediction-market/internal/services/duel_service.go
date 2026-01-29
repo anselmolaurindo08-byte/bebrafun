@@ -180,6 +180,70 @@ func (ds *DuelService) matchDuels() {
 	}
 }
 
+// JoinDuel allows a player to join/accept a pending duel
+func (ds *DuelService) JoinDuel(
+	ctx context.Context,
+	duelID uuid.UUID,
+	playerID uint,
+) (*models.Duel, error) {
+	// Get duel
+	duel, err := ds.repo.GetDuelByID(ctx, duelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	// Verify duel is in PENDING status
+	if duel.Status != models.DuelStatusPending {
+		return nil, fmt.Errorf("duel is not available to join, current status: %s", duel.Status)
+	}
+
+	// Verify player is not Player1 (can't join your own duel)
+	if duel.Player1ID == playerID {
+		return nil, errors.New("cannot join your own duel")
+	}
+
+	// Verify Player2 slot is empty
+	if duel.Player2ID != nil {
+		return nil, errors.New("duel already has a second player")
+	}
+
+	// Set Player2 and update status
+	duel.Player2ID = &playerID
+	duel.Player2Amount = &duel.BetAmount
+	duel.Status = models.DuelStatusMatched
+	now := time.Now()
+	duel.StartedAt = &now
+
+	// Save to database
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel: %w", err)
+	}
+
+	// Initialize escrow on blockchain
+	escrowTxHash, err := ds.escrowContract.InitializeEscrow(
+		ctx,
+		duel.DuelID,
+		duel.Player1ID,
+		*duel.Player2ID,
+		duel.BetAmount,
+	)
+
+	if err != nil {
+		log.Printf("Error initializing escrow: %v", err)
+		// Continue even if escrow initialization fails
+	} else {
+		// Save escrow transaction hash
+		duel.EscrowTxHash = &escrowTxHash
+		if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+			log.Printf("Error updating escrow hash: %v", err)
+		}
+	}
+
+	log.Printf("Player %d joined duel %d (created by player %d)", playerID, duel.DuelID, duel.Player1ID)
+
+	return duel, nil
+}
+
 // DepositToDuel deposits tokens to escrow for a duel
 func (ds *DuelService) DepositToDuel(
 	ctx context.Context,

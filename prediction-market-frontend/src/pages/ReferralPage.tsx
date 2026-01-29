@@ -89,44 +89,47 @@ export default function ReferralPage() {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-xl">Loading...</div>
+            <div className="flex justify-center items-center min-h-screen bg-pump-black">
+                <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow mx-auto mb-4"></div>
+                    <div className="text-xl text-pump-gray-light font-sans">Loading...</div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Referral Program</h1>
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-mono font-bold text-pump-white mb-8">Referral Program</h1>
 
             {/* Referral Code Section */}
-            <div className="bg-secondary rounded-lg p-6 border border-gray-700 mb-6">
-                <h2 className="text-2xl font-bold mb-4">Your Referral Code</h2>
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-mono font-bold text-pump-white mb-4">Your Referral Code</h2>
 
-                <div className="bg-primary rounded-lg p-4 mb-4">
-                    <p className="text-gray-400 text-sm mb-2">Share this code with friends</p>
+                <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mb-4">
+                    <p className="text-pump-gray font-sans text-sm mb-2">Share this code with friends</p>
                     <div className="flex items-center gap-2">
-                        <code className="text-2xl font-mono font-bold text-accent flex-1">
+                        <code className="text-2xl font-mono font-bold text-pump-green flex-1">
                             {referralCode?.code || '---'}
                         </code>
                         <button
                             onClick={handleCopyCode}
-                            className="bg-accent hover:bg-green-500 text-primary font-bold py-2 px-4 rounded-lg transition-colors"
+                            className="bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-2 px-4 rounded-md transition-all duration-200 hover:scale-105"
                         >
                             {copied ? 'Copied!' : 'Copy'}
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-primary rounded-lg p-4">
-                    <p className="text-gray-400 text-sm mb-2">Or share this link</p>
+                <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                    <p className="text-pump-gray font-sans text-sm mb-2">Or share this link</p>
                     <div className="flex items-center gap-2">
-                        <code className="text-sm text-gray-300 flex-1 break-all">
+                        <code className="text-sm font-mono text-pump-gray-light flex-1 break-all">
                             {referralLink || '---'}
                         </code>
                         <button
                             onClick={handleCopyLink}
-                            className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                            className="bg-pump-gray-dark hover:bg-pump-gray text-pump-white font-sans font-semibold py-2 px-4 rounded-md transition-colors duration-200"
                         >
                             Copy Link
                         </button>
@@ -135,28 +138,28 @@ export default function ReferralPage() {
             </div>
 
             {/* Rebate Tier Section */}
-            <div className="bg-secondary rounded-lg p-6 border border-gray-700 mb-6">
-                <h2 className="text-2xl font-bold mb-4">Your Rebate Tier</h2>
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-mono font-bold text-pump-white mb-4">Your Rebate Tier</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="bg-primary rounded-lg p-4">
-                        <p className="text-gray-400 text-sm mb-1">X.com Followers</p>
-                        <p className="text-2xl font-bold text-accent">
+                    <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                        <p className="text-pump-gray font-sans text-sm mb-1">X.com Followers</p>
+                        <p className="text-2xl font-mono font-bold text-pump-green">
                             {(user?.followers_count || 0).toLocaleString()}
                         </p>
                     </div>
-                    <div className="bg-primary rounded-lg p-4">
-                        <p className="text-gray-400 text-sm mb-1">Your Tier</p>
-                        <p className="text-xl font-bold text-white">{tierInfo.tier}</p>
+                    <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                        <p className="text-pump-gray font-sans text-sm mb-1">Your Tier</p>
+                        <p className="text-xl font-sans font-bold text-pump-white">{tierInfo.tier}</p>
                     </div>
-                    <div className="bg-primary rounded-lg p-4">
-                        <p className="text-gray-400 text-sm mb-1">Rebate Percentage</p>
-                        <p className="text-2xl font-bold text-accent">{tierInfo.percent}</p>
+                    <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                        <p className="text-pump-gray font-sans text-sm mb-1">Rebate Percentage</p>
+                        <p className="text-2xl font-mono font-bold text-pump-green">{tierInfo.percent}</p>
                     </div>
                 </div>
 
-                <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
-                    <p className="text-sm text-gray-300">
+                <div className="p-4 bg-pump-green/10 rounded-lg border-2 border-pump-green/20">
+                    <p className="text-sm text-pump-gray-light font-sans">
                         You earn a rebate on every trade made by users you refer. The rebate percentage
                         increases based on your X.com follower count. Grow your following to unlock higher tiers!
                     </p>
@@ -164,7 +167,7 @@ export default function ReferralPage() {
 
                 {/* Tier Table */}
                 <div className="mt-4">
-                    <h3 className="text-lg font-semibold mb-2">Rebate Tiers</h3>
+                    <h3 className="text-lg font-sans font-semibold text-pump-white mb-2">Rebate Tiers</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                         {[
                             { followers: '1K+', percent: '15%' },
@@ -177,12 +180,12 @@ export default function ReferralPage() {
                             <div
                                 key={tier.followers}
                                 className={`p-3 rounded-lg text-center ${tierInfo.percent === tier.percent
-                                        ? 'bg-accent text-primary'
-                                        : 'bg-primary'
+                                        ? 'bg-pump-green text-pump-black'
+                                        : 'bg-pump-black border-2 border-pump-gray-dark'
                                     }`}
                             >
-                                <p className="font-bold">{tier.percent}</p>
-                                <p className="text-xs">{tier.followers}</p>
+                                <p className="font-mono font-bold">{tier.percent}</p>
+                                <p className="text-xs font-sans">{tier.followers}</p>
                             </div>
                         ))}
                     </div>
@@ -191,27 +194,27 @@ export default function ReferralPage() {
 
             {/* Statistics Section */}
             {stats && (
-                <div className="bg-secondary rounded-lg p-6 border border-gray-700 mb-6">
-                    <h2 className="text-2xl font-bold mb-4">Your Statistics</h2>
+                <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
+                    <h2 className="text-2xl font-mono font-bold text-pump-white mb-4">Your Statistics</h2>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-primary rounded-lg p-4">
-                            <p className="text-gray-400 text-sm mb-1">Total Referrals</p>
-                            <p className="text-2xl font-bold text-accent">{stats.total_referrals}</p>
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                            <p className="text-pump-gray font-sans text-sm mb-1">Total Referrals</p>
+                            <p className="text-2xl font-mono font-bold text-pump-green">{stats.total_referrals}</p>
                         </div>
-                        <div className="bg-primary rounded-lg p-4">
-                            <p className="text-gray-400 text-sm mb-1">Active Referrals</p>
-                            <p className="text-2xl font-bold text-accent">{stats.active_referrals}</p>
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                            <p className="text-pump-gray font-sans text-sm mb-1">Active Referrals</p>
+                            <p className="text-2xl font-mono font-bold text-pump-green">{stats.active_referrals}</p>
                         </div>
-                        <div className="bg-primary rounded-lg p-4">
-                            <p className="text-gray-400 text-sm mb-1">Rebates Earned</p>
-                            <p className="text-2xl font-bold text-green-400">
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                            <p className="text-pump-gray font-sans text-sm mb-1">Rebates Earned</p>
+                            <p className="text-2xl font-mono font-bold text-pump-green">
                                 ${parseFloat(stats.total_rebates_earned || '0').toFixed(2)}
                             </p>
                         </div>
-                        <div className="bg-primary rounded-lg p-4">
-                            <p className="text-gray-400 text-sm mb-1">Rebates Paid</p>
-                            <p className="text-2xl font-bold text-green-400">
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                            <p className="text-pump-gray font-sans text-sm mb-1">Rebates Paid</p>
+                            <p className="text-2xl font-mono font-bold text-pump-green">
                                 ${parseFloat(stats.total_rebates_paid || '0').toFixed(2)}
                             </p>
                         </div>
@@ -220,36 +223,36 @@ export default function ReferralPage() {
             )}
 
             {/* Rebates History */}
-            <div className="bg-secondary rounded-lg p-6 border border-gray-700">
-                <h2 className="text-2xl font-bold mb-4">Rebate History</h2>
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+                <h2 className="text-2xl font-mono font-bold text-pump-white mb-4">Rebate History</h2>
 
                 {rebates.length === 0 ? (
-                    <p className="text-gray-400 text-center py-8">
+                    <p className="text-pump-gray font-sans text-center py-8">
                         No rebates yet. Share your referral code to start earning!
                     </p>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {rebates.map((rebate) => (
                             <div
                                 key={rebate.id}
-                                className="bg-primary rounded-lg p-4 flex justify-between items-center"
+                                className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 flex justify-between items-center hover:border-pump-green transition-all duration-200"
                             >
                                 <div>
-                                    <p className="font-semibold">
+                                    <p className="font-sans font-semibold text-pump-white">
                                         {parseFloat(rebate.rebate_percentage).toFixed(0)}% rebate
                                     </p>
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-pump-gray font-sans">
                                         {new Date(rebate.created_at).toLocaleDateString()}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-green-400">
+                                    <p className="font-mono font-bold text-pump-green">
                                         +${parseFloat(rebate.rebate_amount).toFixed(4)}
                                     </p>
                                     <p
-                                        className={`text-sm ${rebate.status === 'PAID'
-                                                ? 'text-green-400'
-                                                : 'text-yellow-400'
+                                        className={`text-sm font-sans ${rebate.status === 'PAID'
+                                                ? 'text-pump-green'
+                                                : 'text-pump-yellow'
                                             }`}
                                     >
                                         {rebate.status}

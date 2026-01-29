@@ -1,42 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 * {
-  transition-property: color, background-color, border-color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
+  transition: color 300ms, background-color 300ms, border-color 300ms;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  background-color: #0F1419;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background-color: rgb(26, 26, 26);
-  color: white;
 }
 
-button {
-  border-radius: 0.75rem;
-  font-weight: 500;
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-input,
-textarea {
-  background-color: rgb(45, 45, 45);
-  border: 1px solid rgb(45, 45, 45);
-  border-radius: 0.75rem;
-  padding: 0.5rem 1rem;
-  color: white;
+::-webkit-scrollbar-track {
+  background: #0F1419;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: rgb(156, 163, 175);
+::-webkit-scrollbar-thumb {
+  background: #2D3748;
+  border-radius: 4px;
 }
 
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: rgb(0, 208, 132);
+::-webkit-scrollbar-thumb:hover {
+  background: #00FF41;
+}
+
+/* Selection */
+::selection {
+  background-color: #00FF41;
+  color: #0F1419;
+}
+
+/* Focus Outline */
+:focus-visible {
+  outline: 2px solid #00FF41;
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes spin-glow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Utility Classes */
+@layer components {
+  /* Primary Button */
+  .btn-primary {
+    background-color: #00FF41;
+    color: #0F1419;
+    @apply font-semibold text-sm px-6 py-3 rounded-md border-none;
+    @apply hover:scale-105;
+    @apply active:scale-100;
+    @apply disabled:cursor-not-allowed;
+    @apply transition-all duration-200;
+  }
+
+  .btn-primary:hover {
+    background-color: #39FF14;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+  }
+
+  .btn-primary:active {
+    background-color: #00CC33;
+  }
+
+  .btn-primary:disabled {
+    background-color: #718096;
+    color: #0F1419;
+  }
+
+  /* Secondary Button */
+  .btn-secondary {
+    background-color: #1A202C;
+    color: #FFFFFF;
+    border: 2px solid #2D3748;
+    @apply font-semibold text-sm px-6 py-3 rounded-md;
+    @apply transition-all duration-200;
+  }
+
+  .btn-secondary:hover {
+    border-color: #00FF41;
+    color: #00FF41;
+  }
+
+  .btn-secondary:active {
+    background-color: #2D3748;
+    border-color: #00FF41;
+  }
+
+  .btn-secondary:disabled {
+    background-color: #718096;
+    border-color: #718096;
+    color: #0F1419;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    background-color: transparent;
+    color: #00FF41;
+    @apply font-semibold text-sm px-4 py-2;
+    @apply transition-all duration-200;
+  }
+
+  .btn-ghost:hover {
+    color: #39FF14;
+    text-decoration: underline;
+  }
+
+  .btn-ghost:active {
+    color: #00CC33;
+  }
+
+  .btn-ghost:disabled {
+    color: #718096;
+    text-decoration: none;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    background-color: #FF6B6B;
+    color: #FFFFFF;
+    @apply font-semibold text-sm px-6 py-3 rounded-md border-none;
+    @apply hover:scale-105;
+    @apply active:scale-100;
+    @apply transition-all duration-200;
+  }
+
+  .btn-danger:hover {
+    background-color: #FF5252;
+  }
+
+  .btn-danger:active {
+    background-color: #FF3838;
+  }
+
+  .btn-danger:disabled {
+    background-color: #718096;
+    color: #0F1419;
+  }
+
+  /* Input Field */
+  .input-field {
+    background-color: #1A202C;
+    border: 2px solid #2D3748;
+    color: #FFFFFF;
+    @apply px-4 py-3 rounded-md font-sans text-sm;
+    @apply transition-all duration-200;
+  }
+
+  .input-field::placeholder {
+    color: #718096;
+  }
+
+  .input-field:focus {
+    border-color: #00FF41;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+    outline: none;
+  }
+
+  .input-field:hover {
+    border-color: #2D3748;
+  }
+
+  .input-field:disabled {
+    background-color: #718096;
+    color: #0F1419;
+    cursor: not-allowed;
+  }
+
+  /* Card */
+  .card {
+    background-color: #1A202C;
+    border: 2px solid #2D3748;
+    @apply rounded-lg p-4;
+    @apply hover:scale-[1.02];
+    @apply transition-all duration-200;
+  }
+
+  .card:hover {
+    border-color: #00FF41;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+  }
+
+  /* Badge */
+  .badge {
+    @apply px-3 py-1.5 rounded-full text-xs font-semibold inline-block;
+  }
+
+  .badge-success {
+    background-color: #00FF41;
+    color: #0F1419;
+  }
+
+  .badge-pending {
+    background-color: #FFD700;
+    color: #0F1419;
+  }
+
+  .badge-closed {
+    background-color: #718096;
+    color: #FFFFFF;
+  }
+
+  .badge-error {
+    background-color: #FF6B6B;
+    color: #FFFFFF;
+  }
 }

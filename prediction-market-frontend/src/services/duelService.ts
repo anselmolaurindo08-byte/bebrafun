@@ -32,6 +32,11 @@ export const duelService = {
     await api.cancelDuel(duelId);
   },
 
+  // Join duel
+  joinDuel: async (duelId: string): Promise<Duel> => {
+    return await api.joinDuel(duelId);
+  },
+
   // Resolve duel (admin only)
   resolveDuel: async (duelId: string, winnerId: string, winnerAmount: number): Promise<void> => {
     await api.resolveDuel(duelId, winnerId, winnerAmount);
