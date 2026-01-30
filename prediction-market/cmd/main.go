@@ -113,9 +113,20 @@ func main() {
 	// Set up Gin router
 	router := gin.Default()
 
-	// CORS middleware
+	// CORS middleware - build allowed origins dynamically
+	allowedOrigins := []string{
+		"http://localhost:3000", "http://localhost:3001", "http://localhost:5173",
+		"http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:5173",
+	}
+	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
+		allowedOrigins = append(allowedOrigins, frontendURL)
+	}
+	if ngrokURL := os.Getenv("NGROK_URL"); ngrokURL != "" {
+		allowedOrigins = append(allowedOrigins, ngrokURL)
+	}
+
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:5173", "https://hudibrastic-clumpy-corrine.ngrok-free.dev"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With", "ngrok-skip-browser-warning"},
 		ExposeHeaders:    []string{"Content-Length"},

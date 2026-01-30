@@ -97,7 +97,13 @@ func Load() (*Config, error) {
 }
 
 // GetDSN returns the PostgreSQL connection string
+// Supports DATABASE_URL (Railway format) or individual DB_ variables
 func (c *Config) GetDSN() string {
+	// Railway provides DATABASE_URL in postgresql:// format
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		return databaseURL
+	}
+
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.Database.Host,

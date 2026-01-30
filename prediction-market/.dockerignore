@@ -1,0 +1,36 @@
+# Version control
+.git
+.gitignore
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+backend.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+tmp/
+
+# Documentation (not needed in image)
+*.md
+LICENSE
+
+# Anchor/Solana (not needed for backend)
+duels_escrow/
+
+# Test files
+*_test.go
