@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 type MarketParserService struct {
 	db               *gorm.DB
 	polymarketClient *polymarket.PolymarketClient
-	mu               sync.Mutex
 }
 
 const (
@@ -105,9 +105,6 @@ func (s *MarketParserService) parseAndStoreCategory(ctx context.Context, categor
 
 // storeMarket stores a Polymarket market in our database
 func (s *MarketParserService) storeMarket(pmMarket polymarket.PolymarketMarket, category string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Check if market already exists
 	var existingMarket models.Market
 	if err := s.db.Where("title = ? AND category = ?", pmMarket.Question, category).First(&existingMarket).Error; err == nil {
@@ -155,14 +152,15 @@ func (s *MarketParserService) storeMarket(pmMarket polymarket.PolymarketMarket, 
 
 // getTopMarketsByVolume sorts markets by volume and returns top N
 func (s *MarketParserService) getTopMarketsByVolume(markets []polymarket.PolymarketMarket, limit int) []polymarket.PolymarketMarket {
-	// Simple bubble sort for top markets by volume
-	for i := 0; i < len(markets); i++ {
-		for j := i + 1; j < len(markets); j++ {
-			if markets[j].GetVolumeFloat() > markets[i].GetVolumeFloat() {
-				markets[i], markets[j] = markets[j], markets[i]
-			}
-		}
+	// Pre-calculate volume floats to avoid repeated parsing
+	for i := range markets {
+		markets[i].VolumeNum = markets[i].GetVolumeFloat()
 	}
+
+	// Sort by volume descending using O(n log n) sort
+	sort.Slice(markets, func(i, j int) bool {
+		return markets[i].VolumeNum > markets[j].VolumeNum
+	})
 
 	if len(markets) > limit {
 		return markets[:limit]

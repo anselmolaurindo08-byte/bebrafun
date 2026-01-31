@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
+	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/token"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/shopspring/decimal"
 )
@@ -240,4 +242,50 @@ func (s *SolanaClient) GetTransactionStatus(ctx context.Context, txHash string) 
 		return true, 10, nil // Mock confirmations count for now
 	}
 	return false, 0, nil
+}
+
+// GetTokenAccountBalance gets the token balance for a specific owner and mint
+func (s *SolanaClient) GetTokenAccountBalance(ctx context.Context, ownerAddress string, mintAddress string) (uint64, error) {
+	owner, err := solana.PublicKeyFromBase58(ownerAddress)
+	if err != nil {
+		return 0, fmt.Errorf("invalid owner address: %w", err)
+	}
+	mint, err := solana.PublicKeyFromBase58(mintAddress)
+	if err != nil {
+		return 0, fmt.Errorf("invalid mint address: %w", err)
+	}
+
+	// Find token accounts for this mint owned by the address
+	resp, err := s.rpcClient.GetTokenAccountsByOwner(
+		ctx,
+		owner,
+		&rpc.GetTokenAccountsConfig{
+			Mint: &mint,
+		},
+		&rpc.GetTokenAccountsOpts{
+			Encoding: solana.EncodingBase64,
+		},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get token accounts: %w", err)
+	}
+
+	if len(resp.Value) == 0 {
+		return 0, nil // No account means 0 balance
+	}
+
+	// Sum up balances if multiple accounts exist (though typically there's only one for a pool)
+	var totalBalance uint64
+	for _, account := range resp.Value {
+		var tokenAccount token.Account
+		decoder := bin.NewBinDecoder(account.Account.Data.GetBinary())
+		err := tokenAccount.UnmarshalWithDecoder(decoder)
+		if err != nil {
+			log.Printf("Warning: failed to decode token account data: %v", err)
+			continue
+		}
+		totalBalance += tokenAccount.Amount
+	}
+
+	return totalBalance, nil
 }

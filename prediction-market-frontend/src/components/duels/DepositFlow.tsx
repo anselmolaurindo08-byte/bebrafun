@@ -4,7 +4,7 @@ import { duelService } from '../../services/duelService';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
-import { LAMPORTS_PER_SOL, Transaction, SystemProgram, TransactionInstruction, PublicKey } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 
 interface DepositFlowProps {
   duel: Duel;
@@ -48,16 +48,8 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
 
       console.log('Constructing transaction for duel:', duel.id, 'Amount:', duel.betAmount);
 
-      // 1. Memo instruction to prove intent (Program ID: MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb)
-      const memoProgramId = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb');
-      const memoData = Buffer.from(`PUMPSLY:DUEL_DEPOSIT:${duel.id}`, 'utf-8');
-
-      const memoIx = new TransactionInstruction({
-        keys: [{ pubkey: publicKey, isSigner: true, isWritable: true }],
-        programId: memoProgramId,
-        data: memoData,
-      });
-      transaction.add(memoIx);
+      // 1. (Removed) Memo instruction caused 'ProgramAccountNotFound' on some clusters/RPCs.
+      // Since backend verifies signature existence/status only for now, we skip Memo to ensure reliability.
 
       // 2. Real Transfer (Lamports)
       // Ensure precise calculation

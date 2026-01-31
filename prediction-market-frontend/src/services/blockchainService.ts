@@ -325,12 +325,38 @@ class BlockchainService {
       }
 
       // 6. Record Trade in Backend
+      let outputAmount = params.expectedOutputAmount;
+      let feeAmount = params.feeAmount;
+
+      if (!outputAmount || !feeAmount) {
+        // Fallback: Calculate if not provided (ensures robustness)
+        try {
+          const poolState = await this.getPoolState(params.poolId);
+          const quote = this.calculateTradeQuote(
+            poolState,
+            params.inputAmount,
+            params.tradeType,
+            params.slippageTolerance
+          );
+          outputAmount = quote.outputAmount;
+          feeAmount = quote.feeAmount;
+        } catch (e) {
+          // If calculation fails, fallback to minOutputAmount (safeguard)
+          console.warn(
+            'Failed to calculate actual output amount for trade record, using minOutputAmount',
+            e
+          );
+          outputAmount = params.minOutputAmount;
+          feeAmount = new BN(0);
+        }
+      }
+
       await apiService.recordTrade({
         pool_id: params.poolId,
         trade_type: params.tradeType,
         input_amount: params.inputAmount.toString(),
-        output_amount: params.minOutputAmount.toString(), // TODO: Use actual calculation result here?
-        fee_amount: '0', // Calculated in backend or passed from quote
+        output_amount: outputAmount.toString(),
+        fee_amount: feeAmount.toString(),
         transaction_signature: signature,
       });
 

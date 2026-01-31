@@ -313,11 +313,12 @@ func (ds *DuelService) ResolveDuel(
 		return errors.New("winner must be one of the duel players")
 	}
 
-	// TODO: Get Winner's Wallet Address from DB
-	// For now using placeholder, in real implementation retrieve from User model
-	// winnerUser, _ := ds.repo.GetUserByID(winnerID)
-	// winnerPubKey := winnerUser.WalletAddress
-	winnerPubKey := "WinnerWalletAddressPlaceholder"
+	// Get Winner's Wallet Address from DB
+	winnerUser, err := ds.repo.GetUserByID(ctx, winnerID)
+	if err != nil {
+		return fmt.Errorf("failed to get winner user: %w", err)
+	}
+	winnerPubKey := winnerUser.WalletAddress
 
 	// Trigger Blockchain Release via Server Authority
 	// This generates a signed transaction that the server submits to the network
@@ -566,7 +567,11 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	// Trigger Blockchain Release via Server Authority
 	// The client might send a hash, but we ideally want the server to perform the payout
 	// from the escrow account.
-	winnerPubKey := "WinnerWalletAddressPlaceholder" // TODO: Fetch real address from User model
+	winnerUser, err := ds.repo.GetUserByID(ctx, winnerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get winner user: %w", err)
+	}
+	winnerPubKey := winnerUser.WalletAddress
 
 	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
 	if err != nil {
