@@ -103,15 +103,16 @@ func (h *MarketHandler) CreateMarket(c *gin.Context) {
 	}
 
 	// Create market events
-	for _, outcome := range req.Outcomes {
-		event := models.MarketEvent{
+	events := make([]models.MarketEvent, len(req.Outcomes))
+	for i, outcome := range req.Outcomes {
+		events[i] = models.MarketEvent{
 			MarketID:         market.ID,
 			EventTitle:       outcome,
 			EventDescription: outcome,
 			OutcomeType:      outcome,
 		}
-		h.db.Create(&event)
 	}
+	h.db.Create(&events)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
