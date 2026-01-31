@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useUserStore } from '../store/userStore';
+import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 import apiService from '../services/api';
 
 interface OrderBookLevel {
@@ -22,7 +22,7 @@ interface TradingPanelProps {
 }
 
 export default function TradingPanel({ marketId, eventId, eventTitle }: TradingPanelProps) {
-    const { user } = useUserStore();
+    const { balance } = useBlockchainWallet();
     const [orderBook, setOrderBook] = useState<OrderBook | null>(null);
     const [orderType, setOrderType] = useState<'BUY' | 'SELL'>('BUY');
     const [quantity, setQuantity] = useState('');
@@ -141,8 +141,8 @@ export default function TradingPanel({ marketId, eventId, eventTitle }: TradingP
                                     type="button"
                                     onClick={() => setOrderType('BUY')}
                                     className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${orderType === 'BUY'
-                                            ? 'bg-pump-green text-pump-black scale-105'
-                                            : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-green'
+                                        ? 'bg-pump-green text-pump-black scale-105'
+                                        : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-green'
                                         }`}
                                 >
                                     BUY
@@ -151,8 +151,8 @@ export default function TradingPanel({ marketId, eventId, eventTitle }: TradingP
                                     type="button"
                                     onClick={() => setOrderType('SELL')}
                                     className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${orderType === 'SELL'
-                                            ? 'bg-pump-red text-pump-white scale-105'
-                                            : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-red'
+                                        ? 'bg-pump-red text-pump-white scale-105'
+                                        : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-red'
                                         }`}
                                 >
                                     SELL
@@ -199,7 +199,7 @@ export default function TradingPanel({ marketId, eventId, eventTitle }: TradingP
 
                         {/* Balance Info */}
                         <div className="text-xs text-pump-gray font-sans">
-                            <p>Available: <span className="text-pump-white font-mono">${user?.virtual_balance?.toFixed(2) || '0.00'}</span></p>
+                            <p>Available: <span className="text-pump-white font-mono">{balance?.toFixed(4) || '0.0000'} SOL</span></p>
                         </div>
 
                         {/* Submit Button */}
@@ -207,8 +207,8 @@ export default function TradingPanel({ marketId, eventId, eventTitle }: TradingP
                             type="submit"
                             disabled={loading}
                             className={`w-full font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${orderType === 'BUY'
-                                    ? 'bg-pump-green hover:bg-pump-lime text-pump-black hover:scale-105 hover:shadow-glow'
-                                    : 'bg-pump-red hover:bg-[#FF5252] text-pump-white hover:scale-105'
+                                ? 'bg-pump-green hover:bg-pump-lime text-pump-black hover:scale-105 hover:shadow-glow'
+                                : 'bg-pump-red hover:bg-[#FF5252] text-pump-white hover:scale-105'
                                 }`}
                         >
                             {loading ? 'PLACING ORDER...' : `PLACE ${orderType} ORDER`}

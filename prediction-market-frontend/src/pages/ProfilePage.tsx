@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useUserStore } from '../store/userStore';
+import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 import apiService from '../services/api';
 
 export default function ProfilePage() {
     const { user, setUser } = useUserStore();
+    const { balance } = useBlockchainWallet();
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -62,8 +64,8 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
-                        <p className="text-pump-gray font-sans text-sm mb-1">Virtual Balance</p>
-                        <p className="text-2xl font-mono font-bold text-pump-green">${user.virtual_balance.toFixed(2)}</p>
+                        <p className="text-pump-gray font-sans text-sm mb-1">SOL Balance</p>
+                        <p className="text-2xl font-mono font-bold text-pump-green">{balance?.toFixed(4) || '0.0000'} SOL</p>
                     </div>
                     {user.x_username && (
                         <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">

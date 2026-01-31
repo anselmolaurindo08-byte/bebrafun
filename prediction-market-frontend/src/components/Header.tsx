@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useUserStore } from '../store/userStore';
+import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 import { useNavigate, Link } from 'react-router-dom';
 import apiService from '../services/api';
 import AuthModal from './AuthModal';
 
 export default function Header() {
     const { user, token, logout } = useUserStore();
+    const { balance } = useBlockchainWallet();
     const navigate = useNavigate();
     const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -73,7 +75,7 @@ export default function Header() {
                                 <div className="text-right px-4 py-2 bg-pump-gray-darker border-2 border-pump-gray-dark rounded-md">
                                     <p className="text-xs text-pump-gray-light font-sans">Balance</p>
                                     <p className="text-lg font-mono font-bold text-pump-green">
-                                        ${Number(user?.virtual_balance || 0).toFixed(2)}
+                                        {balance?.toFixed(4) || '0.0000'} SOL
                                     </p>
                                 </div>
 
