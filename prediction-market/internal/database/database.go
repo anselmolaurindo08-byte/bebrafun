@@ -95,21 +95,6 @@ func AutoMigrate() error {
 	}
 
 	// Migrate duel models
-	// FORCE SCHEMA UPDATE: Drop tables to fix UUID vs UINT mismatch
-	// TODO: Remove this in production or once migrated
-	if err := DB.Exec("DROP TABLE IF EXISTS duel_queue CASCADE").Error; err != nil {
-		log.Printf("Warning: failed to drop duel_queue: %v", err)
-	}
-	if err := DB.Exec("DROP TABLE IF EXISTS duel_statistics CASCADE").Error; err != nil {
-		log.Printf("Warning: failed to drop duel_statistics: %v", err)
-	}
-	if err := DB.Exec("DROP TABLE IF EXISTS duel_transactions CASCADE").Error; err != nil {
-		log.Printf("Warning: failed to drop duel_transactions: %v", err)
-	}
-	if err := DB.Exec("DROP TABLE IF EXISTS duels CASCADE").Error; err != nil {
-		log.Printf("Warning: failed to drop duels: %v", err)
-	}
-
 	duelModels := []interface{}{
 		&models.Duel{},
 		&models.DuelTransaction{},
