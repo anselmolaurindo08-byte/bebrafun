@@ -216,6 +216,12 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 		return false, nil
 	}
 
+	// Check for execution errors (CRITICAL: A confirmed transaction might still have failed)
+	if status.Value[0].Err != nil {
+		log.Printf("Transaction %s failed with error: %v", txHash, status.Value[0].Err)
+		return false, nil
+	}
+
 	confStatus := status.Value[0].ConfirmationStatus
 	if confStatus == rpc.ConfirmationStatusConfirmed || confStatus == rpc.ConfirmationStatusFinalized {
 		return true, nil
