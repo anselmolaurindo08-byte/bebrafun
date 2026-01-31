@@ -16,7 +16,6 @@ import (
 type MarketParserService struct {
 	db               *gorm.DB
 	polymarketClient *polymarket.PolymarketClient
-	mu               sync.Mutex
 }
 
 const (
@@ -105,9 +104,6 @@ func (s *MarketParserService) parseAndStoreCategory(ctx context.Context, categor
 
 // storeMarket stores a Polymarket market in our database
 func (s *MarketParserService) storeMarket(pmMarket polymarket.PolymarketMarket, category string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Check if market already exists
 	var existingMarket models.Market
 	if err := s.db.Where("title = ? AND category = ?", pmMarket.Question, category).First(&existingMarket).Error; err == nil {
