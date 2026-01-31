@@ -50,10 +50,6 @@ func (ds *DuelService) CreateDuel(
 		return nil, errors.New("bet amount must be positive")
 	}
 
-	// TODO: Check player wallet balance
-	// This requires WalletConnection integration
-	// For now, we'll skip balance validation and let blockchain handle it
-
 	// Check if player already has too many active duels
 	activeCount, err := ds.repo.CountPlayerActiveDuels(ctx, playerID)
 	if err != nil {
@@ -155,26 +151,8 @@ func (ds *DuelService) matchDuels() {
 			continue
 		}
 
-		// Initialize escrow on blockchain
-		escrowTxHash, err := ds.escrowContract.InitializeEscrow(
-			ctx,
-			duel1.DuelID,
-			duel1.Player1ID,
-			*duel1.Player2ID,
-			duel1.BetAmount,
-		)
-
-		if err != nil {
-			log.Printf("Error initializing escrow: %v", err)
-			// Don't fail the match if escrow fails, just log it
-			// In production, you might want to handle this differently
-		} else {
-			duel1.EscrowTxHash = &escrowTxHash
-			err = ds.repo.UpdateDuel(ctx, duel1)
-			if err != nil {
-				log.Printf("Error updating escrow hash: %v", err)
-			}
-		}
+		// NOTE: Escrow Initialization is now triggered by Frontend
+		// Backend just waits for transaction hash confirmation via DepositToDuel
 
 		log.Printf("Matched duel %d: %d vs %d", duel1.DuelID, duel1.Player1ID, *duel1.Player2ID)
 	}
@@ -219,32 +197,12 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
 
-	// Initialize escrow on blockchain
-	escrowTxHash, err := ds.escrowContract.InitializeEscrow(
-		ctx,
-		duel.DuelID,
-		duel.Player1ID,
-		*duel.Player2ID,
-		duel.BetAmount,
-	)
-
-	if err != nil {
-		log.Printf("Error initializing escrow: %v", err)
-		// Continue even if escrow initialization fails
-	} else {
-		// Save escrow transaction hash
-		duel.EscrowTxHash = &escrowTxHash
-		if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
-			log.Printf("Error updating escrow hash: %v", err)
-		}
-	}
-
 	log.Printf("Player %d joined duel %d (created by player %d)", playerID, duel.DuelID, duel.Player1ID)
 
 	return duel, nil
 }
 
-// DepositToDuel deposits tokens to escrow for a duel
+// DepositToDuel verifies the escrow deposit transaction from frontend
 func (ds *DuelService) DepositToDuel(
 	ctx context.Context,
 	duelID uuid.UUID,
@@ -258,12 +216,12 @@ func (ds *DuelService) DepositToDuel(
 	}
 
 	// Verify duel status
-	if duel.Status != models.DuelStatusMatched {
-		return fmt.Errorf("duel is not in matched status, current status: %s", duel.Status)
+	if duel.Status != models.DuelStatusMatched && duel.Status != models.DuelStatusActive {
+		return fmt.Errorf("duel is not in matched/active status, current status: %s", duel.Status)
 	}
 
-	// Verify transaction on blockchain (require at least 1 confirmation)
-	confirmed, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
+	// Verify transaction on blockchain
+	confirmed, err := ds.escrowContract.VerifyDuelTransaction(ctx, signature)
 	if err != nil {
 		return fmt.Errorf("failed to verify transaction: %w", err)
 	}
@@ -346,24 +304,19 @@ func (ds *DuelService) ResolveDuel(
 	}
 
 	// Determine winner number
-	var winnerNumber uint8
-	if winnerID == duel.Player1ID {
-		winnerNumber = 1
-	} else {
-		winnerNumber = 2
-	}
+	// var winnerNumber uint8
+	// if winnerID == duel.Player1ID {
+	// 	winnerNumber = 1
+	// } else {
+	// 	winnerNumber = 2
+	// }
 
-	// Release tokens from escrow to winner
-	txHash, err := ds.escrowContract.ReleaseToWinner(
-		ctx,
-		duel.DuelID,
-		winnerNumber,
-		winnerAmount,
-	)
+	// TODO: Trigger Blockchain Release via Server Authority
+	// winnerPubKey := "fetch_user_wallet_address_here"
+	// txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
 
-	if err != nil {
-		return fmt.Errorf("failed to release tokens: %w", err)
-	}
+	// For now, we mock the release tx hash since we are not fully implementing the server signer yet
+	txHash := fmt.Sprintf("release_tx_%s", uuid.New().String())
 
 	// Update duel
 	duel.Status = models.DuelStatusResolved
@@ -476,13 +429,10 @@ func (ds *DuelService) CancelDuel(ctx context.Context, duelID uuid.UUID, playerI
 		return errors.New("cannot cancel active or resolved duel")
 	}
 
-	// Cancel escrow if matched
+	// Cancel escrow if matched (Trigger server cancellation or verify user cancellation)
 	if duel.Status == models.DuelStatusMatched && duel.EscrowTxHash != nil {
-		_, err := ds.escrowContract.CancelEscrow(ctx, duel.DuelID)
-		if err != nil {
-			log.Printf("Warning: failed to cancel escrow: %v", err)
-			// Continue with cancellation even if blockchain fails
-		}
+		// Verify cancellation on chain? For now assume user cancels on frontend and notifies us
+		// Or we trigger it if we are admin
 	}
 
 	// Update duel status
