@@ -48,9 +48,10 @@ func main() {
 	userService := services.NewUserService(database.GetDB())
 	blockchainService := services.NewBlockchainService(
 		database.GetDB(),
-		"devnet", // Use "mainnet-beta" for production
-		"",       // Token mint address (configure later)
-		"",       // Escrow contract address (configure later)
+		cfg.Solana.Network,
+		"", // Token mint address (configure later)
+		"", // Escrow contract address (configure later)
+		cfg.Solana.ServerWalletPrivateKey,
 	)
 
 	// Initialize repository
@@ -58,9 +59,10 @@ func main() {
 
 	// Initialize Solana client
 	solanaClient := blockchain.NewSolanaClient(
-		"devnet", // network
-		"",       // Token mint address (configure later)
-		"",       // Escrow contract address (configure later)
+		cfg.Solana.Network,
+		"", // Token mint address (configure later)
+		"", // Escrow contract address (configure later)
+		cfg.Solana.ServerWalletPrivateKey,
 	)
 
 	// Initialize escrow contract

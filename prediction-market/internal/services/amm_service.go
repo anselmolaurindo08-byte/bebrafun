@@ -17,6 +17,7 @@ import (
 // Now updated to reflect real on-chain AMM state primarily
 type AMMService struct {
 	db *gorm.DB
+	// solanaClient *blockchain.SolanaClient // Could be injected if needed for on-chain queries
 }
 
 // NewAMMService creates a new AMM service
@@ -64,7 +65,10 @@ func (s *AMMService) GetAllPools(ctx context.Context, limit, offset int) ([]mode
 
 // CreatePool records a new AMM pool (initialized on chain)
 func (s *AMMService) CreatePool(ctx context.Context, req *models.CreatePoolRequest) (*models.AMMPool, error) {
-	// Logic to verify on-chain initialization should go here in real implementation
+	// 1. In a real scenario, this would be called AFTER the admin/server transaction initializes the pool on-chain
+	// OR this service builds the transaction for the admin to sign.
+
+	// For now, assuming this is an admin action that sets up the DB record after/during on-chain init.
 
 	totalLiquidity := int64(math.Sqrt(float64(req.YesReserve) * float64(req.NoReserve)))
 
@@ -187,6 +191,18 @@ func (s *AMMService) VerifySwap(ctx context.Context, userAddress string, req *mo
 	// For now, assuming it's valid if we receive it (in MVP)
 	// In production: s.solanaClient.VerifyTransaction(req.TransactionSignature)
 
+	// Check if this transaction has already been indexed
+	var existingTrade models.AMMTrade
+	if err := s.db.Where("transaction_signature = ?", req.TransactionSignature).First(&existingTrade).Error; err == nil {
+		return &existingTrade, nil // Already processed
+	}
+
+	// Verify using client (mock logic for now if client not injected)
+	// if s.solanaClient != nil {
+	// 	confirmed, _ := s.solanaClient.VerifyTransaction(ctx, req.TransactionSignature, 1)
+	// 	if !confirmed { return nil, errors.New("transaction not confirmed") }
+	// }
+
 	return s.RecordTrade(ctx, userAddress, req)
 }
 
@@ -250,6 +266,9 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 		if err := s.upsertPosition(tx, poolID, userAddress, req); err != nil {
 			return fmt.Errorf("failed to update position: %w", err)
 		}
+
+		// Record price candle (simplified)
+		s.RecordPriceCandle(ctx, poolID, price, price, price, price, req.InputAmount)
 
 		return nil
 	})
@@ -376,6 +395,12 @@ func (s *AMMService) GetPriceHistory(ctx context.Context, poolID uuid.UUID, star
 
 // RecordPriceCandle records a new price candle
 func (s *AMMService) RecordPriceCandle(ctx context.Context, poolID uuid.UUID, open, high, low, close float64, volume int64) error {
+	// Note: For real trading view, we need aggregation (1m, 1h bars).
+	// This is a simplified "tick" recorder.
+
+	// Create a new candle for this trade tick
+	// In production, we should aggregate or use a dedicated TSDB (TimescaleDB)
+
 	candle := &models.PriceCandle{
 		PoolID:    poolID,
 		Timestamp: time.Now(),
@@ -386,8 +411,10 @@ func (s *AMMService) RecordPriceCandle(ctx context.Context, poolID uuid.UUID, op
 		Volume:    volume,
 	}
 
+	// Just log error, don't fail trade
 	if err := s.db.WithContext(ctx).Create(candle).Error; err != nil {
-		return fmt.Errorf("failed to record price candle: %w", err)
+		fmt.Printf("failed to record price candle: %v\n", err)
+		return err
 	}
 	return nil
 }
