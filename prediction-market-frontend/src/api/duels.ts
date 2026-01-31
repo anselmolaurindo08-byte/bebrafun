@@ -24,13 +24,12 @@ export class DuelApiService {
       },
     });
 
-    // Add auth token and ngrok header to requests
+    // Add auth token to requests
     this.api.interceptors.request.use((config) => {
       const token = localStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      config.headers['ngrok-skip-browser-warning'] = 'true';
       return config;
     });
   }
