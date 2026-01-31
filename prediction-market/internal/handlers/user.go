@@ -45,33 +45,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"x_username":      user.XUsername,
 			"x_id":            user.XID,
 			"followers_count": user.FollowersCount,
-			"virtual_balance": user.VirtualBalance,
 			"wallet_address":  user.WalletAddress,
 			"created_at":      user.CreatedAt,
 		},
-	})
-}
-
-// GetBalance returns the current user's virtual balance
-func (h *UserHandler) GetBalance(c *gin.Context) {
-	userID, exists := auth.GetUserID(c)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
-		})
-		return
-	}
-
-	balance, err := h.userService.GetUserBalance(userID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "User not found",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"balance": balance,
 	})
 }
 
