@@ -133,16 +133,19 @@ func (s *MarketParserService) storeMarket(pmMarket polymarket.PolymarketMarket, 
 
 	// Create market events (outcomes)
 	outcomes := pmMarket.ParseOutcomes()
-	for _, outcome := range outcomes {
-		event := models.MarketEvent{
-			MarketID:         market.ID,
-			EventTitle:       outcome,
-			EventDescription: fmt.Sprintf("Outcome: %s", outcome),
-			OutcomeType:      "binary",
+	if len(outcomes) > 0 {
+		marketEvents := make([]models.MarketEvent, 0, len(outcomes))
+		for _, outcome := range outcomes {
+			marketEvents = append(marketEvents, models.MarketEvent{
+				MarketID:         market.ID,
+				EventTitle:       outcome,
+				EventDescription: fmt.Sprintf("Outcome: %s", outcome),
+				OutcomeType:      "binary",
+			})
 		}
 
-		if err := s.db.Create(&event).Error; err != nil {
-			log.Printf("Failed to create market event: %v", err)
+		if err := s.db.Create(&marketEvents).Error; err != nil {
+			log.Printf("Failed to create market events: %v", err)
 		}
 	}
 
