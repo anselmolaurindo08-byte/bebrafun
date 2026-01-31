@@ -152,6 +152,8 @@ export function useBlockchainTrade(poolId: string) {
             inputAmount,
             tradeType,
             minOutputAmount: quote.minimumReceived,
+            expectedOutputAmount: quote.outputAmount,
+            feeAmount: quote.feeAmount,
             slippageTolerance,
             userWallet: publicKey,
           },
