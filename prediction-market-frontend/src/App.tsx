@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useUserStore } from './store/userStore';
+import { SolanaWalletProvider } from './contexts/WalletProvider';
 import Header from './components/Header';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
@@ -17,7 +18,6 @@ import DuelsWalletPage from './pages/DuelsWalletPage';
 import { DuelsPage } from './pages/duels/DuelsPage';
 import { CreateDuelPage } from './pages/duels/CreateDuelPage';
 import { ActiveDuelPage } from './pages/duels/ActiveDuelPage';
-import AuthCallbackPage from './pages/AuthCallbackPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -27,121 +27,115 @@ function App() {
     loadFromStorage();
   }, [loadFromStorage]);
 
-  // Simple test to see if React is rendering
   console.log('App component rendering', { isAuthenticated });
 
   return (
-    <Router>
-      <Header />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/markets" element={<MarketsPage />} />
-        <Route path="/markets/:id" element={<MarketDetailPage />} />
-        <Route
-          path="/markets/propose"
-          element={
-            <ProtectedRoute>
-              <ProposeMarketPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/contests"
-          element={
-            <ProtectedRoute>
-              <AdminContests />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute>
-              <AdminUsers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/markets"
-          element={
-            <ProtectedRoute>
-              <AdminMarketsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/referrals"
-          element={
-            <ProtectedRoute>
-              <ReferralPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/duels/wallet"
-          element={
-            <ProtectedRoute>
-              <DuelsWalletPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/duels"
-          element={
-            <ProtectedRoute>
-              <DuelsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/duels/create"
-          element={
-            <ProtectedRoute>
-              <CreateDuelPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/duels/:id"
-          element={
-            <ProtectedRoute>
-              <ActiveDuelPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />
-          }
-        />
-        <Route path="/oauth-callback" element={<AuthCallbackPage />} />
-      </Routes>
-    </Router>
+    <SolanaWalletProvider>
+      <Router>
+        <Header />
+        <Routes>
+          {/* Public Routes - No authentication required */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/markets" element={<MarketsPage />} />
+          <Route path="/markets/:id" element={<MarketDetailPage />} />
+          <Route path="/duels" element={<DuelsPage />} />
+          <Route path="/duels/:id" element={<ActiveDuelPage />} />
+
+
+          {/* Protected Routes - Require authentication */}
+          <Route
+            path="/markets/propose"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <ProposeMarketPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/duels/create"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <CreateDuelPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/duels/wallet"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <DuelsWalletPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/referrals"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <ReferralPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Routes - Require authentication */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/contests"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminContests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/markets"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <AdminMarketsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Root Route */}
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? <Navigate to="/home" replace /> : <Navigate to="/markets" replace />
+            }
+          />
+        </Routes>
+      </Router>
+    </SolanaWalletProvider>
   );
 }
 

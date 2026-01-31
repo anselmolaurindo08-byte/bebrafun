@@ -25,19 +25,17 @@ func main() {
 	}
 
 	// Read migration file
-	sqlBytes, err := os.ReadFile("migrations/004_trading_system.sql")
+	sqlBytes, err := os.ReadFile("migrations/007_add_x_avatar_url.sql")
 	if err != nil {
 		log.Fatalf("Failed to read migration file: %v", err)
 	}
 
 	// Execute migration
-	log.Println("Applying migration: 004_trading_system.sql")
+	log.Println("Applying migration: 007_add_x_avatar_url.sql")
 	if err := db.Exec(string(sqlBytes)).Error; err != nil {
 		log.Fatalf("Failed to apply migration: %v", err)
 	}
 
 	log.Println("✅ Migration applied successfully!")
-	fmt.Println("✅ Trading system tables created")
-	fmt.Println("✅ Indexes created")
-	fmt.Println("✅ Users table updated")
+	fmt.Println("✅ x_avatar_url column added to users table")
 }

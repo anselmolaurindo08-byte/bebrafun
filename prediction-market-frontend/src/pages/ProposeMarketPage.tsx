@@ -35,39 +35,42 @@ export default function ProposeMarketPage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Propose a Market</h1>
+        <div className="max-w-2xl mx-auto px-6 py-8">
+            <h1 className="text-3xl font-mono font-bold text-pump-white mb-8">Propose a Market</h1>
 
-            <form onSubmit={handleSubmit} className="bg-secondary rounded-lg p-6 border border-gray-700">
+            <form onSubmit={handleSubmit} className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
                 <div className="mb-6">
-                    <label className="block text-sm font-semibold mb-2">Market Title</label>
+                    <label className="block text-sm font-sans font-semibold text-pump-gray-light mb-2">Market Title</label>
                     <input
                         type="text"
                         name="title"
                         value={formData.title}
                         onChange={handleChange}
                         placeholder="e.g., Will Bitcoin reach $100,000 by end of 2024?"
+                        className="input-field w-full"
                         required
                     />
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-sm font-semibold mb-2">Description</label>
+                    <label className="block text-sm font-sans font-semibold text-pump-gray-light mb-2">Description</label>
                     <textarea
                         name="description"
                         value={formData.description}
                         onChange={handleChange}
                         placeholder="Provide more details about the market..."
+                        className="input-field w-full"
                         rows={4}
                     />
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-sm font-semibold mb-2">Category</label>
+                    <label className="block text-sm font-sans font-semibold text-pump-gray-light mb-2">Category</label>
                     <select
                         name="category"
                         value={formData.category}
                         onChange={handleChange}
+                        className="input-field w-full"
                     >
                         {categories.map((cat) => (
                             <option key={cat} value={cat}>
@@ -80,7 +83,7 @@ export default function ProposeMarketPage() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-accent hover:bg-green-500 text-primary font-bold py-3 px-4 rounded-lg disabled:opacity-50 transition-colors"
+                    className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:bg-pump-gray-dark disabled:text-pump-gray transition-all duration-200 hover:scale-105 hover:shadow-glow"
                 >
                     {loading ? 'Submitting...' : 'Submit Proposal'}
                 </button>

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"prediction-market/internal/auth"
@@ -117,6 +118,30 @@ func (h *DuelHandler) GetPlayerStatistics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// JoinDuel allows a player to join/accept a pending duel
+// POST /api/duels/:id/join
+func (h *DuelHandler) JoinDuel(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, duel)
 }
 
 // DepositToDuel deposits tokens to a duel escrow
@@ -254,5 +279,228 @@ func (h *DuelHandler) GetActiveDuels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"duels": duels,
 		"total": len(duels),
+	})
+}
+
+// ============================================================================
+// Enhanced Duel Handler Methods
+// ============================================================================
+
+// GetAvailableDuels retrieves pending duels available for joining
+// GET /api/duels/available
+func (h *DuelHandler) GetAvailableDuels(c *gin.Context) {
+	limit := 20
+	offset := 0
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	duels, total, err := h.duelService.GetAvailableDuels(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get available duels"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"duels": duels,
+			"total": total,
+		},
+	})
+}
+
+// GetUserDuels retrieves all duels for a specific user
+// GET /api/duels/user/:userId
+func (h *DuelHandler) GetUserDuels(c *gin.Context) {
+	userIDStr := c.Param("userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	limit := 20
+	offset := 0
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	duels, total, err := h.duelService.GetUserDuels(c.Request.Context(), uint(userID), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user duels"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"duels": duels,
+			"total": total,
+		},
+	})
+}
+
+// ConfirmTransaction records a transaction confirmation
+// POST /api/duels/confirm-transaction
+func (h *DuelHandler) ConfirmTransaction(c *gin.Context) {
+	var req models.ConfirmTransactionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	duelID, err := uuid.Parse(req.DuelID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	confirmation, err := h.duelService.RecordTransactionConfirmation(
+		c.Request.Context(),
+		duelID,
+		req.TransactionHash,
+		0,       // Initial confirmations
+		"pending",
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to confirm transaction"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    confirmation,
+	})
+}
+
+// CheckConfirmations checks the confirmation status of a transaction
+// GET /api/duels/confirmations/:transactionHash
+func (h *DuelHandler) CheckConfirmations(c *gin.Context) {
+	txHash := c.Param("transactionHash")
+	if txHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "transaction hash required"})
+		return
+	}
+
+	record, err := h.duelService.GetTransactionConfirmation(c.Request.Context(), txHash)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data": gin.H{
+				"confirmations": 0,
+				"status":        "pending",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"confirmations": record.Confirmations,
+			"status":        record.Status,
+		},
+	})
+}
+
+// GetDuelResult retrieves the result of a resolved duel
+// GET /api/duels/:id/result
+func (h *DuelHandler) GetDuelResult(c *gin.Context) {
+	duelID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	result, err := h.duelService.GetDuelResult(c.Request.Context(), duelID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "duel result not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
+}
+
+// ResolveDuelWithPrice resolves a duel using price data
+// POST /api/duels/resolve
+func (h *DuelHandler) ResolveDuelWithPrice(c *gin.Context) {
+	var req models.ResolveDuelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	duelID, err := uuid.Parse(req.DuelID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
+		return
+	}
+
+	winnerIDUint, err := strconv.ParseUint(req.WinnerID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid winner id"})
+		return
+	}
+
+	result, err := h.duelService.ResolveDuelWithPrice(
+		c.Request.Context(),
+		duelID,
+		uint(winnerIDUint),
+		req.ExitPrice,
+		req.TransactionHash,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
+}
+
+// ShareOnX generates a share URL for Twitter/X
+// POST /api/duels/share/x
+func (h *DuelHandler) ShareOnX(c *gin.Context) {
+	var req models.ShareRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	shareURL, tweetText := h.duelService.GenerateShareURL(
+		req.AmountWon,
+		req.Currency,
+		req.LoserUsername,
+		req.ReferralCode,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"shareUrl":  url.QueryEscape(shareURL),
+			"tweetText": tweetText,
+		},
 	})
 }

@@ -1,11 +1,11 @@
 # Prediction Market - Backend
 
-A prediction market platform built with Go, PostgreSQL, and X.com (Twitter) OAuth authentication.
+A prediction market platform built with Go, PostgreSQL, and Solana wallet authentication.
 
 ## Features
 
-- **X.com OAuth Authentication**: Login exclusively through Twitter/X.com
-- **Referral System**: Multi-level referral system with rebates based on follower count (15%-50%)
+- **Solana Wallet Authentication**: Login with Phantom, Solflare, or any Solana wallet
+- **Referral System**: Multi-level referral system with invite codes
 - **Virtual Currency**: Season 0 operates with virtual dollars
 - **Invite Codes**: Each user receives 5 invite codes upon registration
 - **Market Categories**: Politics, Sports, Crypto, Solana
@@ -14,7 +14,7 @@ A prediction market platform built with Go, PostgreSQL, and X.com (Twitter) OAut
 
 - **Backend**: Go (Golang)
 - **Database**: PostgreSQL
-- **Authentication**: X.com OAuth 2.0 + JWT
+- **Authentication**: Solana Wallet + JWT
 - **Web Framework**: Gin
 - **ORM**: GORM
 
@@ -22,7 +22,7 @@ A prediction market platform built with Go, PostgreSQL, and X.com (Twitter) OAut
 
 - Go 1.21 or higher
 - PostgreSQL 14 or higher
-- Twitter Developer Account (for OAuth credentials)
+- Solana wallet (Phantom, Solflare, etc.) for testing
 
 ## Setup Instructions
 
@@ -48,10 +48,13 @@ CREATE DATABASE prediction_market;
 \q
 ```
 
-Optionally, run the SQL migration manually:
+Run migrations:
 
 ```bash
+# Run all migrations in order
 psql -U postgres -d prediction_market -f migrations/001_initial_schema.sql
+# ... run other migrations as needed
+psql -U postgres -d prediction_market -f migrations/010_remove_twitter_oauth.sql
 ```
 
 Note: The application will auto-migrate using GORM on startup, so manual migration is optional.
@@ -74,11 +77,6 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 DB_NAME=prediction_market
 
-# X.com OAuth Configuration
-TWITTER_CONSUMER_KEY=your_twitter_consumer_key
-TWITTER_CONSUMER_SECRET=your_twitter_consumer_secret
-TWITTER_CALLBACK_URL=http://localhost:8080/auth/callback
-
 # Server Configuration
 SERVER_PORT=8080
 JWT_SECRET=your_secret_key_change_this_in_production
@@ -86,21 +84,16 @@ JWT_SECRET=your_secret_key_change_this_in_production
 # Application Settings
 INITIAL_VIRTUAL_BALANCE=1000.00
 INVITE_CODES_PER_USER=5
+
+# Solana Configuration
+SOLANA_NETWORK=devnet
+SOLANA_RPC_URL=https://api.devnet.solana.com
+
+# Frontend Configuration (for CORS)
+FRONTEND_URL=http://localhost:3000
 ```
 
-### 4. Get Twitter OAuth Credentials
-
-1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
-2. Create a new app or use an existing one
-3. Navigate to "Keys and tokens"
-4. Copy your **API Key** (Consumer Key) and **API Secret Key** (Consumer Secret)
-5. In "User authentication settings", set:
-   - **Callback URL**: `http://localhost:8080/auth/callback`
-   - **Website URL**: `http://localhost:8080`
-6. Enable "Request email from users" if needed
-7. Save your credentials in `.env`
-
-### 5. Run the Application
+### 4. Run the Application
 
 ```bash
 go run cmd/main.go
@@ -115,9 +108,9 @@ The server will start on `http://localhost:8080`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check |
-| GET | `/auth/login` | Redirect to X.com OAuth |
-| GET | `/auth/callback` | OAuth callback handler |
-| GET | `/auth/logout` | Logout user |
+| POST | `/auth/wallet` | Wallet-based login/signup |
+| POST | `/auth/logout` | Logout user |
+| GET | `/auth/me` | Get current authenticated user |
 
 ### Protected Endpoints (Require JWT Token)
 
@@ -148,16 +141,34 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "time": "2026-01-26T15:42:00Z"
+  "time": "2026-01-31T14:00:00Z"
 }
 ```
 
-### 2. Login Flow
+### 2. Wallet Login Flow
 
-1. Open browser and navigate to: `http://localhost:8080/auth/login`
-2. You'll be redirected to X.com for authorization
-3. After authorization, you'll be redirected back with a JWT token
-4. Save the token for subsequent requests
+**Request**:
+```bash
+curl -X POST http://localhost:8080/auth/wallet \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_address": "YourSolanaWalletAddressHere",
+    "invite_code": "optional_invite_code"
+  }'
+```
+
+**Response**:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "wallet_address": "YourSolanaWalletAddressHere",
+    "virtual_balance": 1000.00,
+    "created_at": "2026-01-31T14:00:00Z"
+  }
+}
+```
 
 ### 3. Test Protected Endpoints
 
@@ -178,15 +189,22 @@ curl -H "Authorization: Bearer <your_token>" http://localhost:8080/api/user/refe
 ### 4. Test Referral System
 
 1. Login as first user and get invite codes
-2. Use one of the invite codes: `http://localhost:8080/auth/login?invite_code=<code>`
-3. Login as second user
-4. Check referrals for first user to see the relationship
+2. Use invite code when creating second user:
+   ```bash
+   curl -X POST http://localhost:8080/auth/wallet \
+     -H "Content-Type: application/json" \
+     -d '{
+       "wallet_address": "SecondWalletAddress",
+       "invite_code": "ABC123"
+     }'
+   ```
+3. Check referrals for first user to see the relationship
 
 ## Database Schema
 
 The application uses 8 main tables:
 
-- **users**: User accounts with X.com data
+- **users**: User accounts with wallet addresses
 - **invite_codes**: Referral invite codes
 - **referrals**: Referral relationships
 - **markets**: Prediction markets
@@ -194,20 +212,6 @@ The application uses 8 main tables:
 - **orders**: User betting orders
 - **transactions**: Virtual currency transactions
 - **user_proposals**: User-submitted market proposals
-
-## Referral Rebate Tiers
-
-Rebate percentage is calculated based on X.com follower count:
-
-| Followers | Rebate % |
-|-----------|----------|
-| 100,000+ | 50% |
-| 50,000+ | 40% |
-| 25,000+ | 30% |
-| 10,000+ | 25% |
-| 5,000+ | 20% |
-| 1,000+ | 15% |
-| < 1,000 | 10% |
 
 ## Project Structure
 
@@ -223,6 +227,8 @@ prediction-market/
 │   ├── auth/                   # Authentication utilities
 │   └── config/                 # Configuration management
 ├── migrations/                 # SQL migrations
+├── scripts/                    # Utility scripts
+│   └── migrate.go             # Database migration runner
 ├── .env.example                # Environment variables template
 ├── .gitignore
 ├── go.mod
@@ -242,7 +248,11 @@ prediction-market/
 GORM auto-migration runs on startup. For manual migrations:
 
 ```bash
-psql -U postgres -d prediction_market -f migrations/001_initial_schema.sql
+# Run specific migration
+psql -U postgres -d prediction_market -f migrations/010_remove_twitter_oauth.sql
+
+# Or use the Go migration script
+go run scripts/migrate.go
 ```
 
 ## Troubleshooting
@@ -253,25 +263,43 @@ psql -U postgres -d prediction_market -f migrations/001_initial_schema.sql
 - Check credentials in `.env`
 - Verify database exists: `psql -U postgres -l`
 
-### OAuth Issues
+### Wallet Authentication Issues
 
-- Verify Twitter OAuth credentials are correct
-- Check callback URL matches Twitter app settings
-- Ensure app has proper permissions in Twitter Developer Portal
+- Ensure wallet address is valid Solana base58 format (32-44 characters)
+- Check JWT_SECRET is set in `.env`
+- Verify frontend is sending correct wallet address
 
 ### Port Already in Use
 
 Change `SERVER_PORT` in `.env` to a different port.
 
+## Deployment
+
+### Railway Deployment
+
+1. Create new Railway project
+2. Add PostgreSQL database
+3. Set environment variables:
+   - `DATABASE_URL` (auto-set by Railway)
+   - `JWT_SECRET`
+   - `FRONTEND_URL`
+   - `SOLANA_RPC_URL`
+4. Deploy from GitHub repository
+
+Railway will automatically:
+- Detect Go application
+- Run `go build`
+- Start the server
+
 ## Next Steps
 
-This completes **Step 1.1** of the implementation plan. Next steps:
+This completes the authentication refactoring. Next steps:
 
-- **Step 1.2**: Frontend basics (React + TypeScript + TailwindCSS)
-- **Step 1.3**: Market parsing and management
-- **Step 1.4**: Core Prediction Market logic
-- **Step 1.5**: Viral and social mechanics
-- **Step 1.6**: Admin panel and launch
+- **Frontend Integration**: Connect React app with wallet authentication
+- **Market Management**: Implement market creation and trading
+- **Real Token Integration**: Move from virtual to real Solana tokens
+- **Admin Panel**: Complete admin dashboard
+- **Production Launch**: Deploy to mainnet
 
 ## License
 

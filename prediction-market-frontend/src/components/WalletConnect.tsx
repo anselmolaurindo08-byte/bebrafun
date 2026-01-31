@@ -89,30 +89,30 @@ export default function WalletConnect() {
   };
 
   return (
-    <div className="bg-secondary rounded-lg p-6 border border-gray-700">
+    <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Wallet Connection</h2>
+        <h2 className="text-xl font-mono font-bold text-pump-white">Wallet Connection</h2>
         {walletData?.wallet_connected && (
-          <span className="text-xs bg-green-600 px-2 py-1 rounded">Connected</span>
+          <span className="text-xs bg-pump-green text-pump-black font-sans font-semibold px-2 py-1 rounded">Connected</span>
         )}
       </div>
 
       {error && (
-        <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-4">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-3 mb-4">
+          <p className="text-pump-red font-sans text-sm">{error}</p>
         </div>
       )}
 
       {walletData?.wallet_connected ? (
         <div className="space-y-4">
           {/* Wallet Address */}
-          <div className="bg-primary rounded-lg p-4">
-            <p className="text-gray-400 text-sm mb-1">Wallet Address</p>
+          <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+            <p className="text-pump-gray font-sans text-sm mb-1">Wallet Address</p>
             <div className="flex items-center justify-between">
-              <p className="font-mono text-accent">{shortenAddress(walletData.wallet_address || '')}</p>
+              <p className="font-mono text-pump-green">{shortenAddress(walletData.wallet_address || '')}</p>
               <button
                 onClick={() => navigator.clipboard.writeText(walletData.wallet_address || '')}
-                className="text-gray-400 hover:text-white text-sm"
+                className="text-pump-gray-light hover:text-pump-white font-sans text-sm transition-colors duration-200"
               >
                 Copy
               </button>
@@ -121,32 +121,32 @@ export default function WalletConnect() {
 
           {/* Balances */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-primary rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">Wallet Balance</p>
-              <p className="text-2xl font-bold text-white">
+            <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+              <p className="text-pump-gray font-sans text-sm mb-1">Wallet Balance</p>
+              <p className="text-2xl font-mono font-bold text-pump-white">
                 {formatBalance(walletData.wallet_balance)}
               </p>
-              <p className="text-xs text-gray-500">{walletData.token_symbol}</p>
+              <p className="text-xs text-pump-gray font-sans">{walletData.token_symbol}</p>
             </div>
-            <div className="bg-primary rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">In Escrow</p>
-              <p className="text-2xl font-bold text-yellow-400">
+            <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+              <p className="text-pump-gray font-sans text-sm mb-1">In Escrow</p>
+              <p className="text-2xl font-mono font-bold text-pump-yellow">
                 {formatBalance(walletData.escrow_balance)}
               </p>
-              <p className="text-xs text-gray-500">Locked in duels</p>
+              <p className="text-xs text-pump-gray font-sans">Locked in duels</p>
             </div>
-            <div className="bg-primary rounded-lg p-4">
-              <p className="text-gray-400 text-sm mb-1">Available</p>
-              <p className="text-2xl font-bold text-accent">
+            <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+              <p className="text-pump-gray font-sans text-sm mb-1">Available</p>
+              <p className="text-2xl font-mono font-bold text-pump-green">
                 {formatBalance(walletData.available_balance)}
               </p>
-              <p className="text-xs text-gray-500">For new duels</p>
+              <p className="text-xs text-pump-gray font-sans">For new duels</p>
             </div>
           </div>
 
           {/* Last Updated */}
           {walletData.last_updated && (
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-pump-gray font-sans text-center">
               Last updated: {new Date(walletData.last_updated).toLocaleString()}
             </p>
           )}
@@ -156,14 +156,14 @@ export default function WalletConnect() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex-1 bg-accent hover:bg-green-500 text-primary font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+              className="flex-1 bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-2 px-4 rounded-md disabled:opacity-50 disabled:bg-pump-gray-dark disabled:text-pump-gray transition-all duration-200"
             >
               {refreshing ? 'Refreshing...' : 'Refresh Balance'}
             </button>
             <button
               onClick={handleDisconnect}
               disabled={loading}
-              className="bg-red-600 hover:bg-red-700 font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+              className="bg-pump-red hover:bg-[#FF5252] text-pump-white font-sans font-semibold py-2 px-4 rounded-md disabled:opacity-50 transition-all duration-200"
             >
               Disconnect
             </button>
@@ -171,31 +171,31 @@ export default function WalletConnect() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-gray-400 text-sm">
+          <p className="text-pump-gray font-sans text-sm">
             Connect your Solana wallet to participate in duels with $PREDICT tokens.
           </p>
 
           <div>
-            <label className="block text-sm font-semibold mb-2">Wallet Address</label>
+            <label className="block text-sm font-sans font-semibold text-pump-gray-light mb-2">Wallet Address</label>
             <input
               type="text"
               placeholder="Enter your Solana wallet address"
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
-              className="w-full bg-primary border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-accent"
+              className="input-field w-full"
             />
           </div>
 
           <button
             onClick={handleConnect}
             disabled={loading || !walletAddress.trim()}
-            className="w-full bg-accent hover:bg-green-500 text-primary font-bold py-3 px-4 rounded-lg disabled:opacity-50"
+            className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:bg-pump-gray-dark disabled:text-pump-gray transition-all duration-200 hover:scale-105 hover:shadow-glow"
           >
             {loading ? 'Connecting...' : 'Connect Wallet'}
           </button>
 
-          <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3">
-            <p className="text-blue-400 text-sm">
+          <div className="bg-pump-cyan/10 border-2 border-pump-cyan/30 rounded-lg p-3">
+            <p className="text-pump-cyan font-sans text-sm">
               For testing, you can use any valid Solana devnet address.
             </p>
           </div>

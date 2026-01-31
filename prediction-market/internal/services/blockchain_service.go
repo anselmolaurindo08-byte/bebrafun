@@ -36,10 +36,41 @@ func (s *BlockchainService) ConnectWallet(userID uint, walletAddress string) (*m
 		return nil, fmt.Errorf("invalid wallet address format")
 	}
 
-	// Check if user already has a wallet
+	// Check if user already has a wallet - if yes, update it
 	var existing models.WalletConnection
-	if err := s.db.Where("user_id = ?", userID).First(&existing).Error; err == nil {
-		return nil, fmt.Errorf("user already has a connected wallet")
+	userHasWallet := s.db.Where("user_id = ?", userID).First(&existing).Error == nil
+
+	if userHasWallet {
+		// User already has a wallet - update it with new address
+		log.Printf("User %d already has wallet %s, updating to %s", userID, existing.WalletAddress, walletAddress)
+
+		// Get new balance
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		balance, err := s.solanaClient.GetTokenBalance(ctx, walletAddress)
+		if err != nil {
+			log.Printf("Warning: Could not fetch balance: %v", err)
+			balance = decimal.Zero
+		}
+
+		now := time.Now()
+		existing.WalletAddress = walletAddress
+		existing.TokenBalance = balance
+		existing.LastBalanceUpdate = &now
+		existing.ConnectedAt = now
+
+		if err := s.db.Save(&existing).Error; err != nil {
+			return nil, fmt.Errorf("failed to update wallet connection: %w", err)
+		}
+
+		// Update wallet_address in users table
+		if err := s.db.Model(&models.User{}).Where("id = ?", userID).Update("wallet_address", walletAddress).Error; err != nil {
+			log.Printf("Warning: Failed to update user wallet_address: %v", err)
+		}
+
+		log.Printf("Wallet updated for user %d: %s (balance: %s PREDICT)", userID, walletAddress, balance)
+		return &existing, nil
 	}
 
 	// Check if wallet is already used by another user
@@ -73,6 +104,11 @@ func (s *BlockchainService) ConnectWallet(userID uint, walletAddress string) (*m
 		return nil, fmt.Errorf("failed to create wallet connection: %w", err)
 	}
 
+	// Also update wallet_address in users table for dual authentication
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Update("wallet_address", walletAddress).Error; err != nil {
+		log.Printf("Warning: Failed to update user wallet_address: %v", err)
+	}
+
 	log.Printf("Wallet connected for user %d: %s (balance: %s PREDICT)", userID, walletAddress, balance)
 	return &wallet, nil
 }
@@ -101,6 +137,11 @@ func (s *BlockchainService) DisconnectWallet(userID uint) error {
 
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("no wallet found for user")
+	}
+
+	// Also clear wallet_address from users table
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Update("wallet_address", nil).Error; err != nil {
+		log.Printf("Warning: Failed to clear user wallet_address: %v", err)
 	}
 
 	log.Printf("Wallet disconnected for user %d", userID)

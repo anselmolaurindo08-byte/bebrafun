@@ -16,13 +16,13 @@ func InitJWT(secret string) {
 
 // Claims represents the JWT claims
 type Claims struct {
-	UserID    uint   `json:"user_id"`
-	XUsername string `json:"x_username"`
+	UserID        uint   `json:"user_id"`
+	WalletAddress string `json:"wallet_address"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken generates a new JWT token for a user
-func GenerateToken(userID uint, xUsername string) (string, error) {
+func GenerateToken(userID uint, walletAddress string) (string, error) {
 	if len(jwtSecret) == 0 {
 		return "", fmt.Errorf("JWT secret not initialized")
 	}
@@ -30,8 +30,8 @@ func GenerateToken(userID uint, xUsername string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &Claims{
-		UserID:    userID,
-		XUsername: xUsername,
+		UserID:        userID,
+		WalletAddress: walletAddress,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

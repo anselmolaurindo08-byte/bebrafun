@@ -20,21 +20,28 @@ class ApiService {
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
-            // Bypass ngrok warning
-            config.headers['ngrok-skip-browser-warning'] = 'true';
             return config;
         });
     }
 
     // Auth endpoints
-    async login(): Promise<void> {
-        window.location.href = `${API_URL}/auth/login`;
+    async walletLogin(walletAddress: string, inviteCode?: string): Promise<{ token: string; user: User }> {
+        const response = await this.api.post<{ token: string; user: User }>('/auth/wallet', {
+            wallet_address: walletAddress,
+            invite_code: inviteCode,
+        });
+        return response.data;
     }
 
     async logout(): Promise<void> {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        await this.api.get('/auth/logout');
+        await this.api.post('/auth/logout');
+    }
+
+    async getMe(): Promise<User> {
+        const response = await this.api.get<{ user: User }>('/auth/me');
+        return response.data.user;
     }
 
     // User endpoints
@@ -45,6 +52,10 @@ class ApiService {
             ...user,
             virtual_balance: Number(user.virtual_balance)
         };
+    }
+
+    async getCurrentUser(): Promise<User> {
+        return this.getProfile();
     }
 
     async getBalance(): Promise<number> {
@@ -344,6 +355,11 @@ class ApiService {
 
     async cancelDuel(duelId: string): Promise<void> {
         await this.api.post(`/api/duels/${duelId}/cancel`);
+    }
+
+    async joinDuel(duelId: string): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`);
+        return response.data;
     }
 
     async resolveDuel(duelId: string, winnerId: string, winnerAmount: number): Promise<void> {

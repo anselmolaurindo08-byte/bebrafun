@@ -9,8 +9,10 @@ import (
 // User represents a user in the system
 type User struct {
 	ID             uint            `gorm:"primaryKey" json:"id"`
-	XUsername      string          `gorm:"uniqueIndex;not null" json:"x_username"`
-	XID            string          `gorm:"uniqueIndex;not null" json:"x_id"`
+	WalletAddress  string          `gorm:"uniqueIndex;not null" json:"wallet_address"`
+	XUsername      *string         `gorm:"uniqueIndex" json:"x_username,omitempty"`
+	XID            *string         `gorm:"uniqueIndex" json:"x_id,omitempty"`
+	XAvatarURL     *string         `json:"x_avatar_url,omitempty"`
 	FollowersCount int             `gorm:"default:0" json:"followers_count"`
 	VirtualBalance decimal.Decimal `gorm:"type:decimal(18,8);default:1000.00" json:"virtual_balance"`
 	ReferrerID     *uint           `gorm:"index" json:"referrer_id,omitempty"`

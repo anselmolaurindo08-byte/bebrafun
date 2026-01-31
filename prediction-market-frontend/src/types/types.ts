@@ -1,8 +1,10 @@
 export interface User {
     id: number;
-    x_username: string;
-    x_id: string;
-    followers_count: number;
+    wallet_address: string;
+    x_username?: string;
+    x_id?: string;
+    x_avatar_url?: string;
+    followers_count?: number;
     virtual_balance: number;
     referrer_id?: number;
     created_at: string;
