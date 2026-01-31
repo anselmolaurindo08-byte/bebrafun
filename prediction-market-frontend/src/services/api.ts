@@ -20,21 +20,28 @@ class ApiService {
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
-            // Bypass ngrok warning
-            config.headers['ngrok-skip-browser-warning'] = 'true';
             return config;
         });
     }
 
     // Auth endpoints
-    async login(): Promise<void> {
-        window.location.href = `${API_URL}/auth/login`;
+    async walletLogin(walletAddress: string, inviteCode?: string): Promise<{ token: string; user: User }> {
+        const response = await this.api.post<{ token: string; user: User }>('/auth/wallet', {
+            wallet_address: walletAddress,
+            invite_code: inviteCode,
+        });
+        return response.data;
     }
 
     async logout(): Promise<void> {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        await this.api.get('/auth/logout');
+        await this.api.post('/auth/logout');
+    }
+
+    async getMe(): Promise<User> {
+        const response = await this.api.get<{ user: User }>('/auth/me');
+        return response.data.user;
     }
 
     // User endpoints

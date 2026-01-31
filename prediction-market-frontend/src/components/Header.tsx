@@ -80,18 +80,12 @@ export default function Header() {
                                 {/* User Dropdown */}
                                 <div className="relative group">
                                     <button className="flex items-center gap-2 bg-pump-gray-darker border-2 border-pump-gray-dark hover:border-pump-green px-3 py-2 rounded-md transition-all duration-200">
-                                        {user?.x_avatar_url ? (
-                                            <img
-                                                src={user.x_avatar_url}
-                                                alt={user.x_username}
-                                                className="w-8 h-8 rounded-full"
-                                            />
-                                        ) : (
-                                            <div className="w-8 h-8 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold text-sm">
-                                                {user?.x_username?.charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
-                                        <span className="text-sm font-sans text-pump-white">@{user?.x_username}</span>
+                                        <div className="w-8 h-8 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold text-sm">
+                                            {user?.wallet_address?.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <span className="text-sm font-mono text-pump-white">
+                                            {user?.wallet_address?.substring(0, 4)}...{user?.wallet_address?.substring(user.wallet_address.length - 4)}
+                                        </span>
                                     </button>
 
                                     {/* Dropdown menu */}
@@ -152,7 +146,6 @@ export default function Header() {
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
-                onAuthComplete={() => setShowAuthModal(false)}
             />
         </>
     );

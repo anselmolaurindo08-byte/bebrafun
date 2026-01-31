@@ -507,15 +507,252 @@ func (ds *DuelService) ExpirePendingDuels(ctx context.Context) error {
 	return ds.repo.ExpirePendingDuels(ctx)
 }
 
-// Helper functions
-func parseUint(s *string) *uint {
-	if s == nil {
-		return nil
-	}
-	// TODO: Add proper parsing if needed, but for now we expect *uint in request
-	return nil
+// ============================================================================
+// Enhanced Duel Service Methods
+// ============================================================================
+
+// GetAvailableDuels retrieves pending duels available for joining
+func (ds *DuelService) GetAvailableDuels(
+	ctx context.Context,
+	limit, offset int,
+) ([]*models.Duel, int64, error) {
+	return ds.repo.GetAvailableDuels(ctx, limit, offset)
 }
 
+// GetUserDuels retrieves all duels for a specific user with pagination
+func (ds *DuelService) GetUserDuels(
+	ctx context.Context,
+	userID uint,
+	limit, offset int,
+) ([]*models.Duel, int64, error) {
+	return ds.repo.GetUserDuels(ctx, userID, limit, offset)
+}
+
+// RecordTransactionConfirmation records or updates a transaction confirmation
+func (ds *DuelService) RecordTransactionConfirmation(
+	ctx context.Context,
+	duelID uuid.UUID,
+	txHash string,
+	confirmations int16,
+	status string,
+) (*models.TransactionConfirmationRecord, error) {
+	record := &models.TransactionConfirmationRecord{
+		ID:              uuid.New(),
+		DuelID:          duelID,
+		TransactionHash: txHash,
+		Confirmations:   confirmations,
+		Status:          status,
+		Timestamp:       time.Now().UnixMilli(),
+	}
+
+	result, err := ds.repo.UpsertTransactionConfirmation(ctx, record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record confirmation: %w", err)
+	}
+
+	// If confirmed with enough confirmations, update duel status
+	if confirmations >= 6 {
+		duel, err := ds.repo.GetDuelByID(ctx, duelID)
+		if err == nil && duel.Status == models.DuelStatusConfirmingTransaction {
+			duel.Status = models.DuelStatusCountdown
+			duel.Confirmations = confirmations
+			if updateErr := ds.repo.UpdateDuel(ctx, duel); updateErr != nil {
+				log.Printf("Error updating duel status to COUNTDOWN: %v", updateErr)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// GetTransactionConfirmation retrieves confirmation status by transaction hash
+func (ds *DuelService) GetTransactionConfirmation(
+	ctx context.Context,
+	txHash string,
+) (*models.TransactionConfirmationRecord, error) {
+	return ds.repo.GetTransactionConfirmation(ctx, txHash)
+}
+
+// ResolveDuelWithPrice resolves a duel using price data and creates a result record
+func (ds *DuelService) ResolveDuelWithPrice(
+	ctx context.Context,
+	duelID uuid.UUID,
+	winnerID uint,
+	exitPrice float64,
+	txHash string,
+) (*models.DuelResult, error) {
+	duel, err := ds.repo.GetDuelByID(ctx, duelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	if duel.Status != models.DuelStatusActive && duel.Status != models.DuelStatusFinished {
+		return nil, fmt.Errorf("duel is not active/finished, current status: %s", duel.Status)
+	}
+
+	// Determine loser
+	var loserID uint
+	if winnerID == duel.Player1ID {
+		if duel.Player2ID == nil {
+			return nil, errors.New("duel has no second player")
+		}
+		loserID = *duel.Player2ID
+	} else if duel.Player2ID != nil && winnerID == *duel.Player2ID {
+		loserID = duel.Player1ID
+	} else {
+		return nil, errors.New("winner must be one of the duel players")
+	}
+
+	// Calculate price data
+	entryPrice := float64(0)
+	if duel.PriceAtStart != nil {
+		entryPrice = *duel.PriceAtStart
+	}
+	priceChange := exitPrice - entryPrice
+	priceChangePercent := float64(0)
+	if entryPrice > 0 {
+		priceChangePercent = (priceChange / entryPrice) * 100
+	}
+
+	// Determine direction
+	direction := int16(0)
+	if duel.Direction != nil {
+		direction = *duel.Direction
+	}
+
+	// Determine if prediction was correct
+	wasCorrect := winnerID == duel.Player1ID
+
+	// Calculate duration
+	durationSeconds := int64(0)
+	if duel.StartedAt != nil {
+		durationSeconds = int64(time.Since(*duel.StartedAt).Seconds())
+	}
+
+	// Lookup usernames
+	winnerUsername := ""
+	loserUsername := ""
+	var winnerAvatar, loserAvatar *string
+
+	if winnerID == duel.Player1ID {
+		winnerUsername = duel.Player1Username
+		winnerAvatar = duel.Player1Avatar
+		if duel.Player2Username != nil {
+			loserUsername = *duel.Player2Username
+		}
+		loserAvatar = duel.Player2Avatar
+	} else {
+		loserUsername = duel.Player1Username
+		loserAvatar = duel.Player1Avatar
+		if duel.Player2Username != nil {
+			winnerUsername = *duel.Player2Username
+		}
+		winnerAvatar = duel.Player2Avatar
+	}
+
+	// Update duel
+	duel.Status = models.DuelStatusResolved
+	duel.WinnerID = &winnerID
+	duel.PriceAtEnd = &exitPrice
+	duel.TransactionHash = &txHash
+	duel.ResolvedAt = timePtr(time.Now())
+
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel: %w", err)
+	}
+
+	// Create result record
+	amountWon := float64(duel.BetAmount * 2)
+	duelResult := &models.DuelResult{
+		ID:                 uuid.New(),
+		DuelID:             duel.ID,
+		WinnerID:           winnerID,
+		LoserID:            loserID,
+		WinnerUsername:     winnerUsername,
+		LoserUsername:      loserUsername,
+		WinnerAvatar:       winnerAvatar,
+		LoserAvatar:        loserAvatar,
+		AmountWon:          amountWon,
+		Currency:           duel.Currency,
+		EntryPrice:         entryPrice,
+		ExitPrice:          exitPrice,
+		PriceChange:        priceChange,
+		PriceChangePercent: priceChangePercent,
+		Direction:          direction,
+		WasCorrect:         wasCorrect,
+		DurationSeconds:    durationSeconds,
+	}
+
+	if err := ds.repo.CreateDuelResult(ctx, duelResult); err != nil {
+		return nil, fmt.Errorf("failed to create duel result: %w", err)
+	}
+
+	// Update statistics
+	if err := ds.updatePlayerStatistics(ctx, duel, winnerID); err != nil {
+		log.Printf("Error updating statistics after resolve: %v", err)
+	}
+
+	log.Printf("Duel %s resolved with price. Winner: %d, ExitPrice: %.4f", duelID, winnerID, exitPrice)
+
+	return duelResult, nil
+}
+
+// GetDuelResult retrieves the result of a resolved duel
+func (ds *DuelService) GetDuelResult(ctx context.Context, duelID uuid.UUID) (*models.DuelResult, error) {
+	return ds.repo.GetDuelResult(ctx, duelID)
+}
+
+// RecordPriceCandle records a price candle for a duel
+func (ds *DuelService) RecordPriceCandle(
+	ctx context.Context,
+	duelID uuid.UUID,
+	timestamp int64,
+	open, high, low, close, volume float64,
+) error {
+	candle := &models.DuelPriceCandle{
+		ID:     uuid.New(),
+		DuelID: duelID,
+		Time:   timestamp,
+		Open:   open,
+		High:   high,
+		Low:    low,
+		Close:  close,
+		Volume: volume,
+	}
+	return ds.repo.CreateDuelPriceCandle(ctx, candle)
+}
+
+// GetPriceCandles retrieves all price candles for a duel
+func (ds *DuelService) GetPriceCandles(ctx context.Context, duelID uuid.UUID) ([]*models.DuelPriceCandle, error) {
+	return ds.repo.GetDuelPriceCandles(ctx, duelID)
+}
+
+// GenerateShareURL creates a Twitter share URL for a duel result
+func (ds *DuelService) GenerateShareURL(
+	amountWon float64,
+	currency int16,
+	loserUsername string,
+	referralCode string,
+) (string, string) {
+	currencyLabel := "SOL"
+	if currency == 1 {
+		currencyLabel = "$PUMP"
+	}
+
+	tweetText := fmt.Sprintf(
+		"I just won %.2f %s against @%s in a duel on @pumpfun! 🎉 Join me: %s",
+		amountWon, currencyLabel, loserUsername, referralCode,
+	)
+
+	shareURL := fmt.Sprintf(
+		"https://twitter.com/intent/tweet?text=%s",
+		tweetText,
+	)
+
+	return shareURL, tweetText
+}
+
+// Helper functions
 func timePtr(t time.Time) *time.Time {
 	return &t
 }

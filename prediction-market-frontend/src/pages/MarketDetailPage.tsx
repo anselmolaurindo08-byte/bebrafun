@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
+import blockchainService from '../services/blockchainService';
 import TradingPanel from '../components/TradingPanel';
+import AMMTradingPanel from '../components/AMMTradingPanel';
 import Portfolio from '../components/Portfolio';
 import type { Market } from '../types/types';
 
 export default function MarketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [market, setMarket] = useState<Market | null>(null);
+    const [ammPoolId, setAmmPoolId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchMarket();
+        fetchAmmPool();
     }, [id]);
 
     const fetchMarket = async () => {
@@ -22,6 +26,15 @@ export default function MarketDetailPage() {
             console.error('Failed to fetch market:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchAmmPool = async () => {
+        try {
+            const pool = await blockchainService.getPoolByMarketId(id!);
+            setAmmPoolId(pool.poolId);
+        } catch {
+            // No AMM pool for this market — that's fine
         }
     };
 
@@ -81,7 +94,18 @@ export default function MarketDetailPage() {
             {/* Portfolio */}
             <Portfolio marketId={parseInt(id!)} />
 
-            {/* Trading Panels */}
+            {/* AMM Trading Panel */}
+            {ammPoolId && (
+                <div className="mt-8 space-y-6">
+                    <h2 className="text-2xl font-mono font-bold text-pump-white">AMM Trading</h2>
+                    <AMMTradingPanel
+                        poolId={ammPoolId}
+                        eventTitle={market.title}
+                    />
+                </div>
+            )}
+
+            {/* Order Book Trading Panels */}
             {market.events && market.events.length > 0 && (
                 <div className="mt-8 space-y-6">
                     <h2 className="text-2xl font-mono font-bold text-pump-white">Trade Outcomes</h2>

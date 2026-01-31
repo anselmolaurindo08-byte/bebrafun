@@ -124,6 +124,20 @@ func AutoMigrate() error {
 		}
 	}
 
+	// Migrate AMM models
+	ammModels := []interface{}{
+		&models.AMMPool{},
+		&models.PriceCandle{},
+		&models.AMMPosition{},
+		&models.AMMTrade{},
+	}
+
+	for _, model := range ammModels {
+		if err := DB.AutoMigrate(model); err != nil {
+			log.Printf("Warning: migration issue for %T: %v", model, err)
+		}
+	}
+
 	log.Println("Database migrations completed successfully")
 	return nil
 }

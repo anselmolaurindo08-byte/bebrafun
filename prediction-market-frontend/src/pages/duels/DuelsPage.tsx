@@ -111,10 +111,6 @@ export const DuelsPage: React.FC = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        message="Login to create and join duels"
-        onAuthComplete={() => {
-          setShowAuthModal(false);
-        }}
       />
     </div>
   );

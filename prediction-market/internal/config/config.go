@@ -10,7 +10,6 @@ import (
 // Config holds all application configuration
 type Config struct {
 	Database   DatabaseConfig
-	Twitter    TwitterConfig
 	Server     ServerConfig
 	App        AppConfig
 	Polymarket PolymarketConfig
@@ -23,13 +22,6 @@ type DatabaseConfig struct {
 	User     string
 	Password string
 	DBName   string
-}
-
-// TwitterConfig holds Twitter/X.com OAuth settings
-type TwitterConfig struct {
-	ConsumerKey    string
-	ConsumerSecret string
-	CallbackURL    string
 }
 
 // ServerConfig holds server settings
@@ -64,11 +56,6 @@ func Load() (*Config, error) {
 			Password: getEnv("DB_PASSWORD", ""),
 			DBName:   getEnv("DB_NAME", "prediction_market"),
 		},
-		Twitter: TwitterConfig{
-			ConsumerKey:    getEnv("TWITTER_CONSUMER_KEY", ""),
-			ConsumerSecret: getEnv("TWITTER_CONSUMER_SECRET", ""),
-			CallbackURL:    getEnv("TWITTER_CALLBACK_URL", "http://localhost:8080/auth/callback"),
-		},
 		Server: ServerConfig{
 			Port: getEnv("SERVER_PORT", "8080"),
 		},
@@ -87,10 +74,6 @@ func Load() (*Config, error) {
 	// Validate required fields
 	if config.App.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
-	}
-
-	if config.Twitter.ConsumerKey == "" || config.Twitter.ConsumerSecret == "" {
-		return nil, fmt.Errorf("Twitter OAuth credentials are required")
 	}
 
 	return config, nil

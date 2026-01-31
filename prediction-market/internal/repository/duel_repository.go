@@ -281,3 +281,134 @@ func (r *Repository) ExpirePendingDuels(ctx context.Context) error {
 		Where("status = ? AND expires_at < NOW()", models.DuelStatusPending).
 		Update("status", models.DuelStatusExpired).Error
 }
+
+// ============================================================================
+// Enhanced Duel Repository Methods
+// ============================================================================
+
+// GetAvailableDuels retrieves pending duels that haven't expired
+func (r *Repository) GetAvailableDuels(ctx context.Context, limit, offset int) ([]*models.Duel, int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).Model(&models.Duel{}).
+		Where("status = ? AND (expires_at IS NULL OR expires_at > NOW())", models.DuelStatusPending).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var duels []*models.Duel
+	err = r.db.WithContext(ctx).
+		Where("status = ? AND (expires_at IS NULL OR expires_at > NOW())", models.DuelStatusPending).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&duels).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return duels, total, nil
+}
+
+// GetUserDuels retrieves all duels for a user with total count
+func (r *Repository) GetUserDuels(ctx context.Context, userID uint, limit, offset int) ([]*models.Duel, int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).Model(&models.Duel{}).
+		Where("player1_id = ? OR player2_id = ?", userID, userID).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var duels []*models.Duel
+	err = r.db.WithContext(ctx).
+		Where("player1_id = ? OR player2_id = ?", userID, userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&duels).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return duels, total, nil
+}
+
+// UpsertTransactionConfirmation inserts or updates a transaction confirmation record
+func (r *Repository) UpsertTransactionConfirmation(
+	ctx context.Context,
+	record *models.TransactionConfirmationRecord,
+) (*models.TransactionConfirmationRecord, error) {
+	// Try to find existing by transaction hash
+	var existing models.TransactionConfirmationRecord
+	err := r.db.WithContext(ctx).
+		Where("transaction_hash = ?", record.TransactionHash).
+		First(&existing).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Create new
+		if err := r.db.WithContext(ctx).Create(record).Error; err != nil {
+			return nil, err
+		}
+		return record, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Update existing
+	existing.Confirmations = record.Confirmations
+	existing.Status = record.Status
+	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
+		return nil, err
+	}
+	return &existing, nil
+}
+
+// GetTransactionConfirmation retrieves a confirmation by transaction hash
+func (r *Repository) GetTransactionConfirmation(
+	ctx context.Context,
+	txHash string,
+) (*models.TransactionConfirmationRecord, error) {
+	var record models.TransactionConfirmationRecord
+	err := r.db.WithContext(ctx).
+		Where("transaction_hash = ?", txHash).
+		First(&record).Error
+	if err != nil {
+		return nil, err
+	}
+	return &record, nil
+}
+
+// CreateDuelResult creates a duel result record
+func (r *Repository) CreateDuelResult(ctx context.Context, result *models.DuelResult) error {
+	return r.db.WithContext(ctx).Create(result).Error
+}
+
+// GetDuelResult retrieves the result for a duel
+func (r *Repository) GetDuelResult(ctx context.Context, duelID uuid.UUID) (*models.DuelResult, error) {
+	var result models.DuelResult
+	err := r.db.WithContext(ctx).Where("duel_id = ?", duelID).First(&result).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CreateDuelPriceCandle records a price candle for a duel
+func (r *Repository) CreateDuelPriceCandle(ctx context.Context, candle *models.DuelPriceCandle) error {
+	return r.db.WithContext(ctx).Create(candle).Error
+}
+
+// GetDuelPriceCandles retrieves all price candles for a duel
+func (r *Repository) GetDuelPriceCandles(ctx context.Context, duelID uuid.UUID) ([]*models.DuelPriceCandle, error) {
+	var candles []*models.DuelPriceCandle
+	err := r.db.WithContext(ctx).
+		Where("duel_id = ?", duelID).
+		Order("time ASC").
+		Find(&candles).Error
+	if err != nil {
+		return nil, err
+	}
+	return candles, nil
+}

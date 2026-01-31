@@ -34,7 +34,6 @@ export default function LoginPage() {
                         <AuthModal
                             isOpen={true}
                             onClose={() => navigate('/')}
-                            onAuthComplete={() => navigate('/')}
                         />
                     </div>
                 </div>
