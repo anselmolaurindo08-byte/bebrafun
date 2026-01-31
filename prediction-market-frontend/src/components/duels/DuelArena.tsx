@@ -105,12 +105,15 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       {/* Players */}
       <div className="grid grid-cols-2 gap-6 mb-8">
         {/* Player 1 */}
-        <div className="bg-pump-black rounded-lg p-6 border-2 border-pump-green">
+        <div className={`bg-pump-black rounded-lg p-6 border-2 ${isPlayer1 ? 'border-pump-green shadow-[0_0_15px_rgba(0,255,65,0.2)]' : 'border-pump-gray-dark'}`}>
           <div className="text-center mb-4">
             <div className="w-16 h-16 bg-pump-gray-dark rounded-full mx-auto mb-2 flex items-center justify-center text-2xl">
               👤
             </div>
-            <p className="text-pump-white font-sans font-bold">{duel.player1Username || 'Player 1'}</p>
+            <p className="text-pump-white font-sans font-bold">
+              {duel.player1Username || 'Player 1'}
+              {isPlayer1 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
+            </p>
             <p className="text-xs text-pump-green mt-1">{duel.predictedOutcome === 'UP' ? '▲ HIGHER' : '▼ LOWER'}</p>
           </div>
           <div className="text-center">
@@ -126,12 +129,15 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
 
         {/* Player 2 */}
         {duel.player2Id ? (
-          <div className="bg-pump-black rounded-lg p-6 border-2 border-pump-gray-dark">
+          <div className={`bg-pump-black rounded-lg p-6 border-2 ${isPlayer2 ? 'border-pump-green shadow-[0_0_15px_rgba(0,255,65,0.2)]' : 'border-pump-gray-dark'}`}>
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-pump-gray-dark rounded-full mx-auto mb-2 flex items-center justify-center text-2xl">
                 👤
               </div>
-              <p className="text-pump-white font-sans font-bold">{duel.player2Username || 'Player 2'}</p>
+              <p className="text-pump-white font-sans font-bold">
+                {duel.player2Username || 'Player 2'}
+                {isPlayer2 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
+              </p>
               <p className="text-xs text-pump-red mt-1">{duel.predictedOutcome === 'UP' ? '▼ LOWER' : '▲ HIGHER'}</p>
             </div>
             <div className="text-center">
