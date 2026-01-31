@@ -63,13 +63,16 @@ func (ds *DuelService) CreateDuel(
 	// Generate duel ID
 	duelID := time.Now().UnixNano()
 
+	// Convert float to int64 based on currency decimals (simplified for SOL)
+	betAmountInt := int64(req.BetAmount * 1e9) // Assuming SOL (9 decimals)
+
 	// Create duel in database
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
 		Player1ID:        playerID,
-		BetAmount:        req.BetAmount,
-		Player1Amount:    req.BetAmount,
+		BetAmount:        betAmountInt,
+		Player1Amount:    betAmountInt,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
@@ -88,7 +91,7 @@ func (ds *DuelService) CreateDuel(
 	queueItem := &models.DuelQueue{
 		ID:               uuid.New(),
 		PlayerID:         playerID,
-		BetAmount:        req.BetAmount,
+		BetAmount:        betAmountInt,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
