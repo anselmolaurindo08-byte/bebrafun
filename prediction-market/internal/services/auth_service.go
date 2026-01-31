@@ -23,20 +23,17 @@ func NewAuthService(db *gorm.DB) *AuthService {
 	return &AuthService{db: db}
 }
 
-// ProcessOAuthCallback processes the OAuth callback and creates/updates user
-func (s *AuthService) ProcessOAuthCallback(xID, xUsername string, followersCount int, inviteCode string) (*models.User, error) {
+// ProcessWalletLogin finds or creates a user by wallet address
+func (s *AuthService) ProcessWalletLogin(walletAddress string, inviteCode string) (*models.User, error) {
 	var user models.User
 
-	// Check if user already exists
-	result := s.db.Where("x_id = ?", xID).First(&user)
+	result := s.db.Where("wallet_address = ?", walletAddress).First(&user)
 
 	if result.Error == gorm.ErrRecordNotFound {
-		// New user - create account
+		// New user — create account
 		user = models.User{
-			XID:            xID,
-			XUsername:      xUsername,
-			FollowersCount: followersCount,
-			VirtualBalance: decimal.NewFromFloat(1000.00), // Initial balance
+			WalletAddress:  walletAddress,
+			VirtualBalance: decimal.NewFromFloat(1000.00),
 		}
 
 		// Handle referral if invite code provided
@@ -47,7 +44,6 @@ func (s *AuthService) ProcessOAuthCallback(xID, xUsername string, followersCount
 			}
 		}
 
-		// Create user
 		if err := s.db.Create(&user).Error; err != nil {
 			return nil, fmt.Errorf("failed to create user: %w", err)
 		}
@@ -63,7 +59,6 @@ func (s *AuthService) ProcessOAuthCallback(xID, xUsername string, followersCount
 				log.Printf("Warning: failed to create referral for user %d: %v", user.ID, err)
 			}
 
-			// Mark invite code as used
 			if inviteCode != "" {
 				now := time.Now()
 				s.db.Model(&models.InviteCode{}).
@@ -84,18 +79,22 @@ func (s *AuthService) ProcessOAuthCallback(xID, xUsername string, followersCount
 		}
 		s.db.Create(&transaction)
 
-		log.Printf("New user created: %s (ID: %d)", xUsername, user.ID)
+		log.Printf("New user created: wallet=%s (ID: %d)", walletAddress, user.ID)
 	} else if result.Error != nil {
 		return nil, fmt.Errorf("database error: %w", result.Error)
 	} else {
-		// Existing user - update followers count
-		user.FollowersCount = followersCount
-		if err := s.db.Save(&user).Error; err != nil {
-			return nil, fmt.Errorf("failed to update user: %w", err)
-		}
-		log.Printf("User logged in: %s (ID: %d)", xUsername, user.ID)
+		log.Printf("User logged in: wallet=%s (ID: %d)", walletAddress, user.ID)
 	}
 
+	return &user, nil
+}
+
+// GetUserByID retrieves a user by their ID
+func (s *AuthService) GetUserByID(userID uint) (*models.User, error) {
+	var user models.User
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 
@@ -130,7 +129,6 @@ func (s *AuthService) createReferral(referrerID, referredUserID uint) error {
 
 	return s.db.Create(&referral).Error
 }
-
 
 // generateRandomCode generates a random alphanumeric code
 func generateRandomCode(length int) (string, error) {

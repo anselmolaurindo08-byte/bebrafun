@@ -47,7 +47,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// Set user information in context
 		c.Set("user_id", claims.UserID)
-		c.Set("x_username", claims.XUsername)
+		c.Set("wallet_address", claims.WalletAddress)
 
 		c.Next()
 	}
@@ -64,13 +64,13 @@ func GetUserID(c *gin.Context) (uint, bool) {
 	return id, ok
 }
 
-// GetUsername retrieves the username from the context
-func GetUsername(c *gin.Context) (string, bool) {
-	username, exists := c.Get("x_username")
+// GetWalletAddress retrieves the wallet address from the context
+func GetWalletAddress(c *gin.Context) (string, bool) {
+	addr, exists := c.Get("wallet_address")
 	if !exists {
 		return "", false
 	}
 
-	name, ok := username.(string)
-	return name, ok
+	address, ok := addr.(string)
+	return address, ok
 }

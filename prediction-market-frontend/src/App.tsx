@@ -18,7 +18,6 @@ import DuelsWalletPage from './pages/DuelsWalletPage';
 import { DuelsPage } from './pages/duels/DuelsPage';
 import { CreateDuelPage } from './pages/duels/CreateDuelPage';
 import { ActiveDuelPage } from './pages/duels/ActiveDuelPage';
-import AuthCallbackPage from './pages/AuthCallbackPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -41,7 +40,7 @@ function App() {
           <Route path="/markets/:id" element={<MarketDetailPage />} />
           <Route path="/duels" element={<DuelsPage />} />
           <Route path="/duels/:id" element={<ActiveDuelPage />} />
-          <Route path="/oauth-callback" element={<AuthCallbackPage />} />
+
 
           {/* Protected Routes - Require authentication */}
           <Route

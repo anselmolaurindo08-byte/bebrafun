@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { duelService } from '../../services/duelService';
+import { DuelCurrency } from '../../types/duel';
 import type { CreateDuelRequest } from '../../types/duel';
 
 interface DuelFormProps {
@@ -26,7 +27,8 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       setError(null);
 
       const request: CreateDuelRequest = {
-        bet_amount: betAmount,
+        betAmount,
+        currency: DuelCurrency.SOL,
       };
 
       const duel = await duelService.createDuel(request);

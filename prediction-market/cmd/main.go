@@ -11,8 +11,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/sessions"
-	"github.com/markbates/goth/gothic"
 
 	"prediction-market/internal/auth"
 	"prediction-market/internal/blockchain"
@@ -44,22 +42,6 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	// Initialize Twitter OAuth provider
-	handlers.InitTwitterProvider(
-		cfg.Twitter.ConsumerKey,
-		cfg.Twitter.ConsumerSecret,
-		cfg.Twitter.CallbackURL,
-	)
-
-	// Set up session store for gothic
-	store := sessions.NewCookieStore([]byte(cfg.App.JWTSecret))
-	store.MaxAge(86400 * 30) // 30 days
-	store.Options.Path = "/"
-	store.Options.HttpOnly = true
-	store.Options.Secure = false // false for ngrok/http, true for production https
-	store.Options.SameSite = http.SameSiteLaxMode
-	gothic.Store = store
-
 	// Initialize services
 	authService := services.NewAuthService(database.GetDB())
 	userService := services.NewUserService(database.GetDB())
@@ -90,8 +72,11 @@ func main() {
 	// Initialize duel service
 	duelService := services.NewDuelService(repo, escrowContract, solanaClient)
 
+	// Initialize AMM service
+	ammService := services.NewAMMService(database.GetDB())
+
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService, cfg.Twitter.ConsumerKey, cfg.Twitter.ConsumerSecret)
+	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	marketHandler := handlers.NewMarketHandler(database.GetDB())
 	tradingHandler := handlers.NewTradingHandler(database.GetDB())
@@ -99,6 +84,7 @@ func main() {
 	adminHandler := handlers.NewAdminHandler(database.GetDB())
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
 	duelHandler := handlers.NewDuelHandler(duelService)
+	ammHandler := handlers.NewAMMHandler(ammService)
 
 	// Start market parser job (runs every 6 hours)
 	parserJob := jobs.NewMarketParserJob(
@@ -114,10 +100,18 @@ func main() {
 	router := gin.Default()
 
 	// CORS middleware
+	allowedOrigins := []string{
+		"http://localhost:3000", "http://localhost:3001", "http://localhost:5173",
+		"http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:5173",
+	}
+	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
+		allowedOrigins = append(allowedOrigins, frontendURL)
+	}
+
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:5173", "https://hudibrastic-clumpy-corrine.ngrok-free.dev"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With", "ngrok-skip-browser-warning"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -134,9 +128,15 @@ func main() {
 	// Authentication routes (public)
 	authRoutes := router.Group("/auth")
 	{
-		authRoutes.GET("/login", authHandler.Login)
-		authRoutes.GET("/callback", authHandler.Callback)
-		authRoutes.GET("/logout", authHandler.Logout)
+		authRoutes.POST("/wallet", authHandler.WalletLogin)
+		authRoutes.POST("/logout", authHandler.Logout)
+	}
+
+	// Authenticated /auth/me route
+	authProtected := router.Group("/auth")
+	authProtected.Use(auth.AuthMiddleware())
+	{
+		authProtected.GET("/me", authHandler.GetMe)
 	}
 
 	// Public market routes
@@ -203,9 +203,31 @@ func main() {
 		api.POST("/duels", duelHandler.CreateDuel)
 		api.GET("/duels", duelHandler.GetPlayerDuels)
 		api.GET("/duels/stats", duelHandler.GetPlayerStatistics)
+		api.GET("/duels/available", duelHandler.GetAvailableDuels)
+		api.GET("/duels/user/:userId", duelHandler.GetUserDuels)
+		api.POST("/duels/confirm-transaction", duelHandler.ConfirmTransaction)
+		api.GET("/duels/confirmations/:transactionHash", duelHandler.CheckConfirmations)
+		api.POST("/duels/resolve", duelHandler.ResolveDuelWithPrice)
+		api.POST("/duels/share/x", duelHandler.ShareOnX)
 		api.POST("/duels/:id/join", duelHandler.JoinDuel)
 		api.POST("/duels/:id/deposit", duelHandler.DepositToDuel)
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
+		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
+
+		// AMM endpoints (protected)
+		amm := api.Group("/amm")
+		{
+			amm.GET("/pools", ammHandler.GetAllPools)
+			amm.GET("/pools/:id", ammHandler.GetPool)
+			amm.GET("/pools/market/:market_id", ammHandler.GetPoolByMarket)
+			amm.POST("/pools", ammHandler.CreatePool)
+			amm.GET("/quote", ammHandler.GetTradeQuote)
+			amm.POST("/trades", ammHandler.RecordTrade)
+			amm.GET("/trades/:pool_id", ammHandler.GetTradeHistory)
+			amm.GET("/positions/:pool_id/:user_address", ammHandler.GetUserPosition)
+			amm.GET("/positions/user/:user_address", ammHandler.GetUserPositions)
+			amm.GET("/prices/:pool_id", ammHandler.GetPriceHistory)
+		}
 	}
 
 	// Public duel routes
@@ -257,7 +279,7 @@ func main() {
 	go func() {
 		log.Printf("Server starting on port %s", cfg.Server.Port)
 		log.Printf("Health check: http://localhost:%s/health", cfg.Server.Port)
-		log.Printf("Login URL: http://localhost:%s/auth/login", cfg.Server.Port)
+		log.Printf("Wallet auth: POST http://localhost:%s/auth/wallet", cfg.Server.Port)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)

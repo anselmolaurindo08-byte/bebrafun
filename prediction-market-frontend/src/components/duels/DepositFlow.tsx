@@ -52,7 +52,7 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
           <>
             <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mb-6">
               <p className="text-pump-gray font-sans text-sm mb-2">Amount to Deposit</p>
-              <p className="text-3xl font-mono font-bold text-pump-green">{duel.bet_amount.toLocaleString()} Tokens</p>
+              <p className="text-3xl font-mono font-bold text-pump-green">{duel.betAmount.toLocaleString()} Tokens</p>
             </div>
 
             <div className="bg-pump-yellow/10 border-2 border-pump-yellow/30 rounded-lg p-4 mb-6">

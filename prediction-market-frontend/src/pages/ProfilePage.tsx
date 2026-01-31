@@ -50,11 +50,13 @@ export default function ProfilePage() {
             <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="w-16 h-16 bg-pump-green rounded-full flex items-center justify-center text-pump-black text-2xl font-mono font-bold">
-                        {user.x_username.charAt(0).toUpperCase()}
+                        {user.wallet_address.substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                        <h2 className="text-2xl font-mono font-bold text-pump-white">@{user.x_username}</h2>
-                        <p className="text-pump-gray font-sans">X.com ID: {user.x_id}</p>
+                        <h2 className="text-2xl font-mono font-bold text-pump-white">
+                            {user.wallet_address.substring(0, 8)}...{user.wallet_address.substring(user.wallet_address.length - 6)}
+                        </h2>
+                        <p className="text-pump-gray font-sans">Wallet Address</p>
                     </div>
                 </div>
 
@@ -63,10 +65,15 @@ export default function ProfilePage() {
                         <p className="text-pump-gray font-sans text-sm mb-1">Virtual Balance</p>
                         <p className="text-2xl font-mono font-bold text-pump-green">${user.virtual_balance.toFixed(2)}</p>
                     </div>
-                    <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
-                        <p className="text-pump-gray font-sans text-sm mb-1">X.com Followers</p>
-                        <p className="text-2xl font-mono font-bold text-pump-green">{user.followers_count.toLocaleString()}</p>
-                    </div>
+                    {user.x_username && (
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                            <p className="text-pump-gray font-sans text-sm mb-1">X.com Account</p>
+                            <p className="text-lg font-mono font-bold text-pump-green">@{user.x_username}</p>
+                            {user.followers_count !== undefined && (
+                                <p className="text-xs text-pump-gray font-sans mt-1">{user.followers_count.toLocaleString()} followers</p>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -1,49 +1,103 @@
 import api from './api';
-import type { Duel, DuelStatistics, CreateDuelRequest, DepositRequest } from '../types/duel';
+import type {
+  Duel,
+  DuelStatistics,
+  CreateDuelRequest,
+  DepositRequest,
+} from '../types/duel';
+
+// Map snake_case API response to camelCase Duel
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapDuel(raw: any): Duel {
+  return {
+    id: raw.id ?? raw.ID ?? '',
+    duelId: raw.duel_id ?? raw.duelId ?? 0,
+    player1Id: raw.player_1_id ?? raw.player1Id ?? '',
+    player1Username: raw.player_1_username ?? raw.player1Username ?? '',
+    player1Avatar: raw.player_1_avatar ?? raw.player1Avatar,
+    player2Id: raw.player_2_id ?? raw.player2Id,
+    player2Username: raw.player_2_username ?? raw.player2Username,
+    player2Avatar: raw.player_2_avatar ?? raw.player2Avatar,
+    betAmount: raw.bet_amount ?? raw.betAmount ?? 0,
+    currency: raw.currency ?? 0,
+    player1Amount: raw.player_1_amount ?? raw.player1Amount ?? 0,
+    player2Amount: raw.player_2_amount ?? raw.player2Amount,
+    status: raw.status ?? 0,
+    winnerId: raw.winner_id ?? raw.winnerId,
+    priceAtStart: raw.price_at_start ?? raw.priceAtStart,
+    priceAtEnd: raw.price_at_end ?? raw.priceAtEnd,
+    direction: raw.direction,
+    createdAt: raw.created_at ?? raw.createdAt ?? '',
+    startedAt: raw.started_at ?? raw.startedAt,
+    resolvedAt: raw.resolved_at ?? raw.resolvedAt,
+    expiresAt: raw.expires_at ?? raw.expiresAt,
+    transactionHash: raw.transaction_hash ?? raw.transactionHash,
+    confirmations: raw.confirmations,
+  };
+}
 
 export const duelService = {
-  // Create a new duel
   createDuel: async (request: CreateDuelRequest): Promise<Duel> => {
-    return await api.createDuel(request);
+    const raw = await api.createDuel({
+      bet_amount: request.betAmount,
+      market_id: request.marketId,
+      event_id: request.eventId,
+      predicted_outcome: request.predictedOutcome,
+    });
+    return mapDuel(raw);
   },
 
-  // Get duel by ID
   getDuel: async (duelId: string): Promise<Duel> => {
-    return await api.getDuel(duelId);
+    const raw = await api.getDuel(duelId);
+    return mapDuel(raw);
   },
 
-  // Get player's duels
-  getPlayerDuels: async (limit = 20, offset = 0): Promise<{ duels: Duel[]; total: number }> => {
-    return await api.getPlayerDuels(limit, offset);
+  getPlayerDuels: async (
+    limit = 20,
+    offset = 0,
+  ): Promise<{ duels: Duel[]; total: number }> => {
+    const result = await api.getPlayerDuels(limit, offset);
+    return {
+      duels: (result.duels || []).map(mapDuel),
+      total: result.total,
+    };
   },
 
-  // Get player statistics
   getPlayerStatistics: async (): Promise<DuelStatistics> => {
     return await api.getPlayerStatistics();
   },
 
-  // Deposit to duel (send transaction signature)
-  depositToDuel: async (duelId: string, request: DepositRequest): Promise<void> => {
+  depositToDuel: async (
+    duelId: string,
+    request: DepositRequest,
+  ): Promise<void> => {
     await api.depositToDuel(duelId, request);
   },
 
-  // Cancel duel
   cancelDuel: async (duelId: string): Promise<void> => {
     await api.cancelDuel(duelId);
   },
 
-  // Join duel
   joinDuel: async (duelId: string): Promise<Duel> => {
-    return await api.joinDuel(duelId);
+    const raw = await api.joinDuel(duelId);
+    return mapDuel(raw);
   },
 
-  // Resolve duel (admin only)
-  resolveDuel: async (duelId: string, winnerId: string, winnerAmount: number): Promise<void> => {
+  resolveDuel: async (
+    duelId: string,
+    winnerId: string,
+    winnerAmount: number,
+  ): Promise<void> => {
     await api.resolveDuel(duelId, winnerId, winnerAmount);
   },
 
-  // Get active duels (admin only)
-  getActiveDuels: async (limit = 50): Promise<{ duels: Duel[]; total: number }> => {
-    return await api.getActiveDuels(limit);
+  getActiveDuels: async (
+    limit = 50,
+  ): Promise<{ duels: Duel[]; total: number }> => {
+    const result = await api.getActiveDuels(limit);
+    return {
+      duels: (result.duels || []).map(mapDuel),
+      total: result.total,
+    };
   },
 };

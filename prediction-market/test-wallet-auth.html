@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Auth Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background: #1a1a1a;
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        button {
+            background: #00ff41;
+            color: #0a0a0a;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        button:hover {
+            background: #00cc33;
+            box-shadow: 0 0 20px #00ff41;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .output {
+            background: #000;
+            border: 1px solid #00ff41;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .success {
+            color: #00ff41;
+        }
+
+        .error {
+            color: #ff4444;
+        }
+
+        .info {
+            color: #44aaff;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Wallet Authentication Test</h1>
+
+        <div>
+            <label>Backend URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:8080" />
+        </div>
+
+        <div>
+            <label>Wallet Address (Solana):</label>
+            <input type="text" id="walletAddress" placeholder="Enter your Solana wallet address" />
+        </div>
+
+        <div>
+            <label>Invite Code (Optional):</label>
+            <input type="text" id="inviteCode" placeholder="Leave empty if you don't have one" />
+        </div>
+
+        <button onclick="testHealthCheck()">1. Test Health Check</button>
+        <button onclick="testWalletLogin()">2. Test Wallet Login</button>
+        <button onclick="testGetProfile()" id="profileBtn" disabled>3. Test Get Profile (requires login)</button>
+        <button onclick="testLogout()" id="logoutBtn" disabled>4. Test Logout</button>
+
+        <div class="output" id="output">Ready to test...</div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            output.innerHTML += `<span class="${color}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        async function testHealthCheck() {
+            clearLog();
+            log('Testing health check...', 'info');
+
+            const apiUrl = document.getElementById('apiUrl').value;
+
+            try {
+                const response = await fetch(`${apiUrl}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('✅ Health check passed!', 'success');
+                    log(JSON.stringify(data, null, 2), 'success');
+                } else {
+                    log('❌ Health check failed!', 'error');
+                    log(JSON.stringify(data, null, 2), 'error');
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testWalletLogin() {
+            clearLog();
+            log('Testing wallet login...', 'info');
+
+            const apiUrl = document.getElementById('apiUrl').value;
+            const walletAddress = document.getElementById('walletAddress').value;
+            const inviteCode = document.getElementById('inviteCode').value;
+
+            if (!walletAddress) {
+                log('❌ Please enter a wallet address!', 'error');
+                return;
+            }
+
+            try {
+                const payload = {
+                    wallet_address: walletAddress,
+                    invite_code: inviteCode || undefined
+                };
+
+                log('Sending request with payload:', 'info');
+                log(JSON.stringify(payload, null, 2), 'info');
+
+                const response = await fetch(`${apiUrl}/auth/wallet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token;
+                    log('✅ Login successful!', 'success');
+                    log('Token: ' + authToken.substring(0, 50) + '...', 'success');
+                    log('User data:', 'success');
+                    log(JSON.stringify(data.user, null, 2), 'success');
+
+                    // Enable protected endpoint buttons
+                    document.getElementById('profileBtn').disabled = false;
+                    document.getElementById('logoutBtn').disabled = false;
+                } else {
+                    log('❌ Login failed!', 'error');
+                    log(JSON.stringify(data, null, 2), 'error');
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testGetProfile() {
+            clearLog();
+            log('Testing get profile...', 'info');
+
+            if (!authToken) {
+                log('❌ Please login first!', 'error');
+                return;
+            }
+
+            const apiUrl = document.getElementById('apiUrl').value;
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log('✅ Profile retrieved successfully!', 'success');
+                    log(JSON.stringify(data, null, 2), 'success');
+                } else {
+                    log('❌ Failed to get profile!', 'error');
+                    log(JSON.stringify(data, null, 2), 'error');
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testLogout() {
+            clearLog();
+            log('Testing logout...', 'info');
+
+            if (!authToken) {
+                log('❌ Not logged in!', 'error');
+                return;
+            }
+
+            const apiUrl = document.getElementById('apiUrl').value;
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    log('✅ Logout successful!', 'success');
+                    authToken = null;
+                    document.getElementById('profileBtn').disabled = true;
+                    document.getElementById('logoutBtn').disabled = true;
+                } else {
+                    const data = await response.json();
+                    log('❌ Logout failed!', 'error');
+                    log(JSON.stringify(data, null, 2), 'error');
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
