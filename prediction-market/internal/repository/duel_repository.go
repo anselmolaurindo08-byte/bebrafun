@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct {
@@ -188,32 +189,41 @@ func (r *Repository) IncrementDuelStats(
 	wonIncr int64,
 	lostIncr int64,
 ) error {
-	// Get or create stats
-	stats, err := r.GetDuelStatistics(ctx, userID)
-	if err != nil {
-		return err
+	// Prepare the upsert struct with initial values (for the INSERT case)
+	initialStats := models.DuelStatistics{
+		UserID:       userID,
+		TotalDuels:   duelsIncr,
+		Wins:         winsIncr,
+		Losses:       lossesIncr,
+		TotalWagered: wageredIncr,
+		TotalWon:     wonIncr,
+		TotalLost:    lostIncr,
 	}
 
-	// Update counters
-	stats.TotalDuels += duelsIncr
-	stats.Wins += winsIncr
-	stats.Losses += lossesIncr
-	stats.TotalWagered += wageredIncr
-	stats.TotalWon += wonIncr
-	stats.TotalLost += lostIncr
-
-	// Calculate win rate
-	if stats.TotalDuels > 0 {
-		stats.WinRate = float64(stats.Wins) / float64(stats.TotalDuels) * 100
+	// Calculate initial derived stats
+	if initialStats.TotalDuels > 0 {
+		initialStats.WinRate = float64(initialStats.Wins) / float64(initialStats.TotalDuels) * 100
+		initialStats.AvgBet = initialStats.TotalWagered / initialStats.TotalDuels
 	}
 
-	// Calculate average bet
-	if stats.TotalDuels > 0 {
-		stats.AvgBet = stats.TotalWagered / stats.TotalDuels
-	}
-
-	// Save
-	return r.db.WithContext(ctx).Save(stats).Error
+	// Perform Upsert with atomic update for counters
+	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"total_duels":   gorm.Expr("duel_statistics.total_duels + ?", duelsIncr),
+			"wins":          gorm.Expr("duel_statistics.wins + ?", winsIncr),
+			"losses":        gorm.Expr("duel_statistics.losses + ?", lossesIncr),
+			"total_wagered": gorm.Expr("duel_statistics.total_wagered + ?", wageredIncr),
+			"total_won":     gorm.Expr("duel_statistics.total_won + ?", wonIncr),
+			"total_lost":    gorm.Expr("duel_statistics.total_lost + ?", lostIncr),
+			// Calculate derived fields atomically using the NEW values of counters
+			// Note: referencing the column name here (e.g. duel_statistics.total_duels) usually refers to the OLD value in Postgres ON CONFLICT DO UPDATE.
+			// So we must repeat the increment logic in the calculation.
+			"win_rate": gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN (CAST((duel_statistics.wins + ?) AS NUMERIC) / (duel_statistics.total_duels + ?) * 100) ELSE 0 END", duelsIncr, winsIncr, duelsIncr),
+			"avg_bet":  gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN ((duel_statistics.total_wagered + ?) / (duel_statistics.total_duels + ?)) ELSE 0 END", duelsIncr, wageredIncr, duelsIncr),
+			"updated_at": gorm.Expr("CURRENT_TIMESTAMP"),
+		}),
+	}).Create(&initialStats).Error
 }
 
 // GetUserByID retrieves a user by ID
