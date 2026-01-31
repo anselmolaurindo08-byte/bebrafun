@@ -13,6 +13,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/shopspring/decimal v1.4.0
 	gorm.io/driver/postgres v1.6.0
+	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
 )
 
@@ -75,5 +76,4 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
-	gorm.io/driver/sqlite v1.6.0 // indirect
 )
