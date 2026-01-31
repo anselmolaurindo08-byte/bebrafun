@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -111,7 +112,12 @@ func main() {
 	}
 	// Add additional frontend URL from environment if provided
 	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
-		allowedOrigins = append(allowedOrigins, frontendURL)
+		// Validate that the URL has proper protocol
+		if strings.HasPrefix(frontendURL, "http://") || strings.HasPrefix(frontendURL, "https://") {
+			allowedOrigins = append(allowedOrigins, frontendURL)
+		} else {
+			log.Printf("Warning: FRONTEND_URL '%s' does not have http:// or https:// prefix, skipping", frontendURL)
+		}
 	}
 
 	router.Use(cors.New(cors.Config{
