@@ -1,6 +1,6 @@
 module prediction-market
 
-go 1.25.5
+go 1.23.0
 
 require (
 	github.com/gagliardetto/solana-go v1.14.0
