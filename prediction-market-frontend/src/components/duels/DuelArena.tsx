@@ -18,8 +18,8 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
   const [error, setError] = useState<string | null>(null);
 
   const currentUserId = user?.id?.toString();
-  const isPlayer1 = currentUserId === duel.player1Id;
-  const isPlayer2 = currentUserId === duel.player2Id;
+  const isPlayer1 = currentUserId === String(duel.player1Id);
+  const isPlayer2 = currentUserId === String(duel.player2Id);
   const isParticipant = isPlayer1 || isPlayer2;
   const canJoin = !isParticipant && duel.status === DuelStatus.PENDING && !duel.player2Id;
 

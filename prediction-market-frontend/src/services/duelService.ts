@@ -43,6 +43,7 @@ export const duelService = {
       market_id: request.marketId,
       event_id: request.eventId,
       predicted_outcome: request.predictedOutcome,
+      currency: request.currency,
     });
     return mapDuel(raw);
   },

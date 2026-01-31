@@ -64,7 +64,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         {/* Token Selection */}
         <div>
           <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
-            Select Token
+            Select Price Feed (Asset to Predict)
           </label>
           <div className="flex gap-2">
             <button
@@ -126,7 +126,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         {/* Amount */}
         <div>
           <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
-            Bet Amount
+            Bet Amount (in SOL)
           </label>
           <div className="relative">
             <input
@@ -140,12 +140,12 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
               disabled={loading}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-pump-gray font-mono">
-              {selectedToken}
+              SOL
             </span>
           </div>
           {balance !== null && (
             <p className="text-xs text-pump-gray font-sans mt-2 text-right">
-              Balance: <span className="text-pump-white cursor-pointer hover:underline" onClick={() => setBetAmount(balance.toString())}>{balance.toFixed(4)} {selectedToken}</span>
+              Balance: <span className="text-pump-white cursor-pointer hover:underline" onClick={() => setBetAmount(balance.toString())}>{balance.toFixed(4)} SOL</span>
             </p>
           )}
         </div>
