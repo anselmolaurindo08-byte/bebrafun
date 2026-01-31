@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 )
@@ -23,217 +22,31 @@ func NewEscrowContract(client *SolanaClient, programID, tokenMintPubkey string) 
 	}
 }
 
-// InitializeEscrow initializes a new escrow account for a duel
-func (e *EscrowContract) InitializeEscrow(
-	ctx context.Context,
+// InitializeEscrow prepares instructions for frontend to initialize escrow
+func (e *EscrowContract) GetInitializeEscrowInstruction(
 	duelID int64,
-	player1ID uint,
-	player2ID uint,
+	player1PubKey string,
 	amount int64,
-) (string, error) {
-	log.Printf("Initializing escrow for duel %d: amount=%d", duelID, amount)
-
-	// In a real implementation, this would:
-	// 1. Create escrow PDA (Program Derived Address)
-	// 2. Call the smart contract's initialize_escrow instruction
-	// 3. Return the transaction signature
-
-	// For now, we'll simulate the transaction
-	params := map[string]interface{}{
-		"duel_id":  duelID,
-		"player_1": fmt.Sprintf("%d", player1ID),
-		"player_2": fmt.Sprintf("%d", player2ID),
-		"amount":   amount,
-		"program":  e.programID,
-		"token":    e.tokenMintPubkey,
-	}
-
-	// Build transaction
-	tx, err := e.buildTransaction(ctx, "initialize_escrow", params)
-	if err != nil {
-		return "", fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	// Send transaction
-	signature, err := e.sendTransaction(ctx, tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	log.Printf("Escrow initialized for duel %d: signature=%s", duelID, signature)
-	return signature, nil
-}
-
-// DepositToEscrow deposits tokens to an escrow account
-func (e *EscrowContract) DepositToEscrow(
-	ctx context.Context,
-	duelID int64,
-	playerNumber uint8,
-	amount int64,
-	fromWallet string,
-) (string, error) {
-	log.Printf("Depositing to escrow: duel=%d, player=%d, amount=%d", duelID, playerNumber, amount)
-
-	params := map[string]interface{}{
-		"duel_id":       duelID,
-		"player_number": playerNumber,
-		"amount":        amount,
-		"from_wallet":   fromWallet,
-		"program":       e.programID,
-		"token":         e.tokenMintPubkey,
-	}
-
-	tx, err := e.buildTransaction(ctx, "deposit_to_escrow", params)
-	if err != nil {
-		return "", fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	signature, err := e.sendTransaction(ctx, tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	log.Printf("Deposit successful: signature=%s", signature)
-	return signature, nil
-}
-
-// ReleaseToWinner releases escrowed tokens to the winner
-func (e *EscrowContract) ReleaseToWinner(
-	ctx context.Context,
-	duelID int64,
-	winnerNumber uint8,
-	amount int64,
-) (string, error) {
-	log.Printf("Releasing escrow to winner: duel=%d, winner=%d, amount=%d", duelID, winnerNumber, amount)
-
-	params := map[string]interface{}{
-		"duel_id":       duelID,
-		"winner_number": winnerNumber,
-		"amount":        amount,
-		"program":       e.programID,
-		"token":         e.tokenMintPubkey,
-	}
-
-	tx, err := e.buildTransaction(ctx, "release_to_winner", params)
-	if err != nil {
-		return "", fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	signature, err := e.sendTransaction(ctx, tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	log.Printf("Escrow released to winner: signature=%s", signature)
-	return signature, nil
-}
-
-// CancelEscrow cancels an escrow and returns funds to both players
-func (e *EscrowContract) CancelEscrow(ctx context.Context, duelID int64) (string, error) {
-	log.Printf("Cancelling escrow for duel %d", duelID)
-
-	params := map[string]interface{}{
-		"duel_id": duelID,
-		"program": e.programID,
-	}
-
-	tx, err := e.buildTransaction(ctx, "cancel_escrow", params)
-	if err != nil {
-		return "", fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	signature, err := e.sendTransaction(ctx, tx)
-	if err != nil {
-		return "", fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	log.Printf("Escrow cancelled: signature=%s", signature)
-	return signature, nil
-}
-
-// GetEscrowAccount retrieves escrow account data
-func (e *EscrowContract) GetEscrowAccount(ctx context.Context, duelID int64) (map[string]interface{}, error) {
-	// Derive escrow PDA
-	escrowPDA := e.deriveEscrowPDA(duelID)
-
-	// Get account info from blockchain
-	params := []interface{}{
-		escrowPDA,
-		map[string]string{
-			"encoding": "jsonParsed",
+) (map[string]interface{}, error) {
+	// Returns parameters needed by frontend to build instruction
+	return map[string]interface{}{
+		"programId":   e.programID,
+		"instruction": "initialize_duel_escrow",
+		"duelId":      duelID,
+		"amount":      amount,
+		"accounts": map[string]string{
+			"playerOne": player1PubKey,
+			"tokenMint": e.tokenMintPubkey,
 		},
-	}
-
-	resp, err := e.client.rpcCall(ctx, "getAccountInfo", params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account info: %w", err)
-	}
-
-	// Parse result
-	var accountInfo map[string]interface{}
-	if err := json.Unmarshal(resp.Result, &accountInfo); err != nil {
-		return nil, fmt.Errorf("failed to parse account info: %w", err)
-	}
-
-	return accountInfo, nil
+	}, nil
 }
 
-// buildTransaction builds a transaction for the given instruction
-func (e *EscrowContract) buildTransaction(
-	ctx context.Context,
-	instruction string,
-	params map[string]interface{},
-) (string, error) {
-	// In a real implementation, this would:
-	// 1. Fetch recent blockhash
-	// 2. Create transaction with instruction data
-	// 3. Serialize transaction
-	// 4. Return serialized transaction
-
-	// For now, return a mock transaction
-	txData := map[string]interface{}{
-		"instruction": instruction,
-		"params":      params,
-		"program":     e.programID,
-	}
-
-	serialized, err := json.Marshal(txData)
-	if err != nil {
-		return "", err
-	}
-
-	return string(serialized), nil
-}
-
-// sendTransaction sends a transaction to the blockchain
-func (e *EscrowContract) sendTransaction(ctx context.Context, tx string) (string, error) {
-	// In a real implementation, this would:
-	// 1. Sign the transaction
-	// 2. Send via sendTransaction RPC
-	// 3. Wait for confirmation
-	// 4. Return signature
-
-	// For now, generate a mock signature
-	signature := fmt.Sprintf("mock_signature_%d", len(tx))
-
-	log.Printf("Transaction sent: %s", signature)
-	return signature, nil
-}
-
-// deriveEscrowPDA derives the Program Derived Address for an escrow account
-func (e *EscrowContract) deriveEscrowPDA(duelID int64) string {
-	// In a real implementation, this would use proper PDA derivation
-	// For now, return a mock address
-	return fmt.Sprintf("escrow_pda_%d", duelID)
-}
-
-// VerifyEscrowDeposit verifies that a deposit transaction was successful
-func (e *EscrowContract) VerifyEscrowDeposit(
+// VerifyDuelTransaction verifies any duel-related transaction on-chain
+func (e *EscrowContract) VerifyDuelTransaction(
 	ctx context.Context,
 	signature string,
-	expectedAmount int64,
 ) (bool, error) {
-	// Verify transaction using Solana client (require at least 1 confirmation)
+	// Check if confirmed
 	confirmed, err := e.client.VerifyTransaction(ctx, signature, 1)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify transaction: %w", err)
@@ -243,8 +56,51 @@ func (e *EscrowContract) VerifyEscrowDeposit(
 		return false, nil
 	}
 
-	// In a real implementation, we would also parse the transaction
-	// and verify the amount and recipient match expected values
+	// Ideally, we parse the transaction logs here to ensure it called our program
+	// and executed the correct instruction (e.g., "Program log: Instruction: InitializeDuelEscrow")
+	// For MVP, confirmation existence is the first gate.
 
 	return true, nil
+}
+
+// ReleaseToWinner builds the transaction for server-side signing to release funds
+// Note: This requires the server to hold the authority keypair (if server is authority)
+// OR this is just an instruction builder if we want a user to trigger it (but user shouldn't trigger release ideally)
+// Assuming server authority for now.
+func (e *EscrowContract) ReleaseToWinner(
+	ctx context.Context,
+	duelID int64,
+	winnerPubKey string,
+) (string, error) {
+	// In a real implementation:
+	// 1. Construct Transaction with "resolve_duel" instruction
+	// 2. Sign with Server Keypair (loaded from env/vault)
+	// 3. Send and Confirm
+
+	log.Printf("[MOCK-REAL] Server releasing duel %d funds to %s", duelID, winnerPubKey)
+	// We return a mock signature because we haven't implemented server-side signing yet
+	// But this is where the `solana-go` SDK logic would go.
+	return "server_release_signature_placeholder", nil
+}
+
+// CancelEscrow builds transaction for server-side cancellation
+func (e *EscrowContract) CancelEscrow(ctx context.Context, duelID int64) (string, error) {
+    log.Printf("[MOCK-REAL] Server cancelling duel %d", duelID)
+	return "server_cancel_signature_placeholder", nil
+}
+
+// GetEscrowAccountState reads the on-chain state of a duel
+func (e *EscrowContract) GetEscrowAccountState(ctx context.Context, duelID int64) (map[string]interface{}, error) {
+	// Derive PDA
+	// In real code: pda, _ := publickey.FindProgramAddress(...)
+	pda := fmt.Sprintf("pda_duel_%d", duelID) // Placeholder
+
+	// Fetch Account Info
+	// e.client.rpcCall("getAccountInfo", ...)
+	// Deserialize data using Anchor layout
+
+	log.Printf("Fetching state for %s", pda)
+	return map[string]interface{}{
+		"state": "Active", // Mock response
+	}, nil
 }
