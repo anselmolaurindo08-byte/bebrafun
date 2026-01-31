@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
@@ -11,11 +11,29 @@ interface DuelArenaProps {
   onResolved: () => void;
 }
 
-export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
+export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResolved }) => {
   const { user } = useUserStore();
+  // Removed unused hook usage
+  // const { fetchDuel } = useDuel();
+  const [duel, setDuel] = useState<Duel>(initialDuel);
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Poll for duel updates
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        if (!duel.id) return;
+        const updatedDuel = await duelService.getDuel(duel.id);
+        setDuel(updatedDuel);
+      } catch (err) {
+        console.error("Failed to poll duel updates", err);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [duel.id]);
 
   const currentUserId = user?.id?.toString();
   const isPlayer1 = currentUserId === String(duel.player1Id);
