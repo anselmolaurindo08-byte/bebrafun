@@ -194,7 +194,7 @@ class ApiService {
     }
 
     async getActiveDuels(limit = 50): Promise<{ duels: any[]; total: number }> {
-        const response = await this.api.get<any>('/api/admin/duels/active', { params: { limit } });
+        const response = await this.api.get<any>('/api/duels/active', { params: { limit } });
         return response.data;
     }
 

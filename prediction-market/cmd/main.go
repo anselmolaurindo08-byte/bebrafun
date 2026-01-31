@@ -214,6 +214,7 @@ func main() {
 		api.POST("/duels/:id/deposit", duelHandler.DepositToDuel)
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
+		api.GET("/duels/active", duelHandler.GetActiveDuels)
 
 		// AMM endpoints (protected)
 		amm := api.Group("/amm")
@@ -256,7 +257,7 @@ func main() {
 
 		// Duel management
 		admin.POST("/duels/:id/resolve", duelHandler.ResolveDuel)
-		admin.GET("/duels/active", duelHandler.GetActiveDuels)
+		// admin.GET("/duels/active", duelHandler.GetActiveDuels) // Moved to general API
 	}
 
 	// Create HTTP server
