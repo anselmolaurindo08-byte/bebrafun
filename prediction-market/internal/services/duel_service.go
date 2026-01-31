@@ -303,20 +303,20 @@ func (ds *DuelService) ResolveDuel(
 		return errors.New("winner must be one of the duel players")
 	}
 
-	// Determine winner number
-	// var winnerNumber uint8
-	// if winnerID == duel.Player1ID {
-	// 	winnerNumber = 1
-	// } else {
-	// 	winnerNumber = 2
-	// }
+	// TODO: Get Winner's Wallet Address from DB
+	// For now using placeholder, in real implementation retrieve from User model
+	// winnerUser, _ := ds.repo.GetUserByID(winnerID)
+	// winnerPubKey := winnerUser.WalletAddress
+	winnerPubKey := "WinnerWalletAddressPlaceholder"
 
-	// TODO: Trigger Blockchain Release via Server Authority
-	// winnerPubKey := "fetch_user_wallet_address_here"
-	// txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
-
-	// For now, we mock the release tx hash since we are not fully implementing the server signer yet
-	txHash := fmt.Sprintf("release_tx_%s", uuid.New().String())
+	// Trigger Blockchain Release via Server Authority
+	// This generates a signed transaction that the server submits to the network
+	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
+	if err != nil {
+		log.Printf("Error signing release transaction: %v", err)
+		// We might want to retry or mark for manual intervention
+		return fmt.Errorf("failed to release funds on-chain: %w", err)
+	}
 
 	// Update duel
 	duel.Status = models.DuelStatusResolved
@@ -353,7 +353,7 @@ func (ds *DuelService) ResolveDuel(
 		log.Printf("Error updating statistics: %v", err)
 	}
 
-	log.Printf("Duel %d resolved. Winner: %d, Amount: %d", duel.DuelID, winnerID, winnerAmount)
+	log.Printf("Duel %d resolved. Winner: %d, Amount: %d, Tx: %s", duel.DuelID, winnerID, winnerAmount, txHash)
 
 	return nil
 }

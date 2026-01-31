@@ -11,18 +11,31 @@ pub mod prediction_market {
     // DUELS INSTRUCTIONS
     // =================================================================
 
-    pub fn initialize_duel_escrow(
-        ctx: Context<InitializeDuelEscrow>,
+    pub fn initialize_duel(
+        ctx: Context<InitializeDuel>,
         duel_id: u64,
         amount: u64,
     ) -> Result<()> {
         let escrow = &mut ctx.accounts.escrow_account;
         escrow.duel_id = duel_id;
         escrow.player_one = ctx.accounts.player_one.key();
-        escrow.player_two = Pubkey::default(); // Optional for now
         escrow.amount = amount;
-        escrow.bump = *ctx.bumps.get("escrow_account").unwrap();
         escrow.state = DuelState::WaitingForOpponent;
+        escrow.bump = *ctx.bumps.get("escrow_account").unwrap();
+
+        // Transfer Player 1's stake to vault
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.player_one_token_account.to_account_info(),
+                    to: ctx.accounts.escrow_vault.to_account_info(),
+                    authority: ctx.accounts.player_one.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+
         Ok(())
     }
 
@@ -30,16 +43,15 @@ pub mod prediction_market {
         let escrow = &mut ctx.accounts.escrow_account;
         require!(escrow.state == DuelState::WaitingForOpponent, DuelError::InvalidState);
 
-        // Deposit Player 2's tokens into escrow vault
-        let transfer_ix = Transfer {
-            from: ctx.accounts.player_two_token_account.to_account_info(),
-            to: ctx.accounts.escrow_vault.to_account_info(),
-            authority: ctx.accounts.player_two.to_account_info(),
-        };
+        // Transfer Player 2's stake to vault
         token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                transfer_ix,
+                Transfer {
+                    from: ctx.accounts.player_two_token_account.to_account_info(),
+                    to: ctx.accounts.escrow_vault.to_account_info(),
+                    authority: ctx.accounts.player_two.to_account_info(),
+                },
             ),
             escrow.amount,
         )?;
@@ -49,15 +61,6 @@ pub mod prediction_market {
         Ok(())
     }
 
-    // Usually, the first deposit happens in a separate instruction or combined if PDA allows
-    // But for simplicity in this flow:
-    // 1. P1 calls initialize_duel_escrow AND transfers tokens to vault in same TX (need to add transfer logic there)
-
-    // Let's patch initialize_duel_escrow to accept deposit immediately
-    /*
-      We will overwrite the logic for `initialize_duel_escrow` below to include transfer.
-    */
-
     pub fn resolve_duel(
         ctx: Context<ResolveDuel>,
         winner: Pubkey
@@ -65,12 +68,13 @@ pub mod prediction_market {
         let escrow = &mut ctx.accounts.escrow_account;
         require!(escrow.state == DuelState::Active, DuelError::InvalidState);
 
-        // In a real app, only an oracle/authority can call this
-        require!(ctx.accounts.authority.key() == escrow.player_one || ctx.accounts.authority.key() == escrow.player_two, DuelError::Unauthorized); // Temporary: players resolve? No, needs admin/oracle
-        // Better: require!(ctx.accounts.authority.key() == ADMIN_KEY, DuelError::Unauthorized);
+        // Verify winner is a participant
+        require!(winner == escrow.player_one || winner == escrow.player_two, DuelError::InvalidWinner);
 
-        let total_amount = escrow.amount * 2;
+        // Calculate total amount (2x stake)
+        let total_amount = ctx.accounts.escrow_vault.amount;
 
+        // PDA Signer seeds
         let seeds = &[
             b"duel_escrow",
             &escrow.duel_id.to_le_bytes(),
@@ -78,16 +82,15 @@ pub mod prediction_market {
         ];
         let signer = &[&seeds[..]];
 
-        let transfer_ix = Transfer {
-            from: ctx.accounts.escrow_vault.to_account_info(),
-            to: ctx.accounts.winner_token_account.to_account_info(),
-            authority: ctx.accounts.escrow_account.to_account_info(),
-        };
-
+        // Transfer total vault balance to winner
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
-                transfer_ix,
+                Transfer {
+                    from: ctx.accounts.escrow_vault.to_account_info(),
+                    to: ctx.accounts.winner_token_account.to_account_info(),
+                    authority: ctx.accounts.escrow_account.to_account_info(),
+                },
                 signer,
             ),
             total_amount,
@@ -97,23 +100,93 @@ pub mod prediction_market {
         Ok(())
     }
 
+    pub fn cancel_duel(ctx: Context<CancelDuel>) -> Result<()> {
+        let escrow = &mut ctx.accounts.escrow_account;
+        require!(escrow.state == DuelState::WaitingForOpponent, DuelError::InvalidState);
+        require!(ctx.accounts.player_one.key() == escrow.player_one, DuelError::Unauthorized);
+
+        let amount = ctx.accounts.escrow_vault.amount;
+
+        let seeds = &[
+            b"duel_escrow",
+            &escrow.duel_id.to_le_bytes(),
+            &[escrow.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        // Refund Player 1
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.escrow_vault.to_account_info(),
+                    to: ctx.accounts.player_one_token_account.to_account_info(),
+                    authority: ctx.accounts.escrow_account.to_account_info(),
+                },
+                signer,
+            ),
+            amount,
+        )?;
+
+        escrow.state = DuelState::Cancelled;
+        Ok(())
+    }
+
     // =================================================================
     // AMM MARKET INSTRUCTIONS
     // =================================================================
 
-    pub fn initialize_market_pool(
-        ctx: Context<InitializeMarketPool>,
+    pub fn initialize_pool(
+        ctx: Context<InitializePool>,
         market_id: u64,
         fee_basis_points: u16,
     ) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
         pool.market_id = market_id;
         pool.authority = ctx.accounts.authority.key();
-        pool.yes_mint = ctx.accounts.yes_mint.key();
-        pool.no_mint = ctx.accounts.no_mint.key();
-        pool.collateral_mint = ctx.accounts.collateral_mint.key();
+        pool.yes_reserve = 0;
+        pool.no_reserve = 0;
         pool.fee_basis_points = fee_basis_points;
         pool.bump = *ctx.bumps.get("pool").unwrap();
+        Ok(())
+    }
+
+    pub fn add_liquidity(
+        ctx: Context<AddLiquidity>,
+        yes_amount: u64,
+        no_amount: u64,
+    ) -> Result<()> {
+        let pool = &mut ctx.accounts.pool;
+
+        // Transfer YES tokens to pool vault
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_yes_account.to_account_info(),
+                    to: ctx.accounts.pool_yes_vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            yes_amount,
+        )?;
+
+        // Transfer NO tokens to pool vault
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_no_account.to_account_info(),
+                    to: ctx.accounts.pool_no_vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            no_amount,
+        )?;
+
+        pool.yes_reserve += yes_amount;
+        pool.no_reserve += no_amount;
+
         Ok(())
     }
 
@@ -121,30 +194,110 @@ pub mod prediction_market {
         ctx: Context<Swap>,
         amount_in: u64,
         min_amount_out: u64,
-        is_buy_yes: bool, // true = buy YES (sell Collateral), false = buy NO... wait.
-        // Simplified AMM: usually you trade Collateral (USDC/SOL) for YES or NO tokens.
+        is_buy_yes: bool, // true = swap NO for YES (buy YES), false = swap YES for NO (buy NO)
     ) -> Result<()> {
-        // AMM Logic here (Constant Product or similar)
-        // Validation...
-        // Transfer In...
-        // Calculate Out...
-        // Transfer Out...
+        let pool = &mut ctx.accounts.pool;
+
+        let (input_reserve, output_reserve) = if is_buy_yes {
+            (pool.no_reserve, pool.yes_reserve)
+        } else {
+            (pool.yes_reserve, pool.no_reserve)
+        };
+
+        // Calculate fee
+        let fee_amount = (amount_in as u128 * pool.fee_basis_points as u128 / 10000) as u64;
+        let amount_in_after_fee = amount_in - fee_amount;
+
+        // Constant Product Formula: x * y = k
+        // (x + dx) * (y - dy) = x * y
+        // dy = y - (x * y) / (x + dx)
+        let numerator = (amount_in_after_fee as u128) * (output_reserve as u128);
+        let denominator = (input_reserve as u128) + (amount_in_after_fee as u128);
+        let amount_out = (numerator / denominator) as u64;
+
+        require!(amount_out >= min_amount_out, AMMError::SlippageExceeded);
+
+        // Update reserves
+        if is_buy_yes {
+            pool.no_reserve += amount_in;
+            pool.yes_reserve -= amount_out;
+        } else {
+            pool.yes_reserve += amount_in;
+            pool.no_reserve -= amount_out;
+        }
+
+        // Execute transfers
+        // 1. Transfer Input from User to Pool
+        let (user_input_account, pool_input_vault) = if is_buy_yes {
+            (&ctx.accounts.user_no_account, &ctx.accounts.pool_no_vault)
+        } else {
+            (&ctx.accounts.user_yes_account, &ctx.accounts.pool_yes_vault)
+        };
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: user_input_account.to_account_info(),
+                    to: pool_input_vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            amount_in,
+        )?;
+
+        // 2. Transfer Output from Pool to User
+        let (pool_output_vault, user_output_account) = if is_buy_yes {
+            (&ctx.accounts.pool_yes_vault, &ctx.accounts.user_yes_account)
+        } else {
+            (&ctx.accounts.pool_no_vault, &ctx.accounts.user_no_account)
+        };
+
+        let seeds = &[
+            b"market_pool",
+            &pool.market_id.to_le_bytes(),
+            &[pool.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: pool_output_vault.to_account_info(),
+                    to: user_output_account.to_account_info(),
+                    authority: ctx.accounts.pool.to_account_info(),
+                },
+                signer,
+            ),
+            amount_out,
+        )?;
+
         Ok(())
     }
 }
 
 // =================================================================
-// DUELS STATE & CONTEXTS
+// DUELS CONTEXTS
 // =================================================================
 
 #[derive(Accounts)]
-#[instruction(duel_id: u64, amount: u64)]
-pub struct InitializeDuelEscrow<'info> {
-    #[account(init, seeds = [b"duel_escrow", duel_id.to_le_bytes().as_ref()], bump, payer = player_one, space = 8 + 8 + 32 + 32 + 8 + 1 + 1)]
+#[instruction(duel_id: u64)]
+pub struct InitializeDuel<'info> {
+    #[account(
+        init,
+        seeds = [b"duel_escrow", duel_id.to_le_bytes().as_ref()],
+        bump,
+        payer = player_one,
+        space = 8 + 8 + 32 + 32 + 8 + 1 + 1
+    )]
     pub escrow_account: Account<'info, DuelEscrow>,
 
     #[account(mut)]
     pub player_one: Signer<'info>,
+
+    #[account(mut)]
+    pub player_one_token_account: Account<'info, TokenAccount>,
 
     #[account(
         init,
@@ -157,9 +310,6 @@ pub struct InitializeDuelEscrow<'info> {
     pub escrow_vault: Account<'info, TokenAccount>,
 
     pub token_mint: Account<'info, token::Mint>,
-
-    #[account(mut)]
-    pub player_one_token_account: Account<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -194,7 +344,24 @@ pub struct ResolveDuel<'info> {
     #[account(mut)]
     pub winner_token_account: Account<'info, TokenAccount>,
 
-    pub authority: Signer<'info>, // Admin or Oracle
+    pub authority: Signer<'info>, // Server Wallet
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct CancelDuel<'info> {
+    #[account(mut)]
+    pub escrow_account: Account<'info, DuelEscrow>,
+
+    #[account(mut)]
+    pub player_one: Signer<'info>,
+
+    #[account(mut)]
+    pub player_one_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub escrow_vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -223,24 +390,51 @@ pub enum DuelError {
     InvalidState,
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("Invalid winner")]
+    InvalidWinner,
 }
 
 // =================================================================
-// AMM STATE & CONTEXTS
+// AMM CONTEXTS
 // =================================================================
 
 #[derive(Accounts)]
 #[instruction(market_id: u64)]
-pub struct InitializeMarketPool<'info> {
-    #[account(init, seeds = [b"market_pool", market_id.to_le_bytes().as_ref()], bump, payer = authority, space = 8 + 200)]
+pub struct InitializePool<'info> {
+    #[account(
+        init,
+        seeds = [b"market_pool", market_id.to_le_bytes().as_ref()],
+        bump,
+        payer = authority,
+        space = 8 + 8 + 32 + 8 + 8 + 2 + 1
+    )]
     pub pool: Account<'info, MarketPool>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
+    #[account(
+        init,
+        payer = authority,
+        seeds = [b"pool_yes_vault", market_id.to_le_bytes().as_ref()],
+        bump,
+        token::mint = yes_mint,
+        token::authority = pool
+    )]
+    pub pool_yes_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        init,
+        payer = authority,
+        seeds = [b"pool_no_vault", market_id.to_le_bytes().as_ref()],
+        bump,
+        token::mint = no_mint,
+        token::authority = pool
+    )]
+    pub pool_no_vault: Account<'info, TokenAccount>,
+
     pub yes_mint: Account<'info, token::Mint>,
     pub no_mint: Account<'info, token::Mint>,
-    pub collateral_mint: Account<'info, token::Mint>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -248,20 +442,59 @@ pub struct InitializeMarketPool<'info> {
 }
 
 #[derive(Accounts)]
+pub struct AddLiquidity<'info> {
+    #[account(mut)]
+    pub pool: Account<'info, MarketPool>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(mut)]
+    pub user_yes_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_no_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub pool_yes_vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_no_vault: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
 pub struct Swap<'info> {
     #[account(mut)]
     pub pool: Account<'info, MarketPool>,
-    // ... other accounts needed for swap
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(mut)]
+    pub user_yes_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_no_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub pool_yes_vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_no_vault: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
 }
 
 #[account]
 pub struct MarketPool {
     pub market_id: u64,
     pub authority: Pubkey,
-    pub yes_mint: Pubkey,
-    pub no_mint: Pubkey,
-    pub collateral_mint: Pubkey,
+    pub yes_reserve: u64,
+    pub no_reserve: u64,
     pub fee_basis_points: u16,
     pub bump: u8,
-    // Add reserves tracking if not using token accounts directly
+}
+
+#[error_code]
+pub enum AMMError {
+    #[msg("Slippage exceeded")]
+    SlippageExceeded,
 }
