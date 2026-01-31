@@ -277,12 +277,15 @@ func (ds *DuelService) DepositToDuel(
 	if len(deposits) == 2 {
 		// Both players have deposited, update duel status to active
 		duel.Status = models.DuelStatusActive
+		now := time.Now()
+		duel.StartedAt = &now
+
 		err = ds.repo.UpdateDuel(ctx, duel)
 		if err != nil {
 			return fmt.Errorf("failed to update duel status: %w", err)
 		}
 
-		log.Printf("Duel %d is now active - both players deposited", duel.DuelID)
+		log.Printf("Duel %d is now active - both players deposited. StartedAt: %v", duel.DuelID, now)
 	} else {
 		log.Printf("Duel %d waiting for deposits: %d/2", duel.DuelID, len(deposits))
 	}

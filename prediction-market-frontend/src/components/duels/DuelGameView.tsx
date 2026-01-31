@@ -21,7 +21,16 @@ interface GameResult {
 
 export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) => {
   const [data, setData] = useState<PriceData[]>([]);
-  const [timeLeft, setTimeLeft] = useState(60);
+
+  // Calculate remaining time based on server start time
+  const getInitialTimeLeft = () => {
+    if (!duel.startedAt) return 60;
+    const startTime = new Date(duel.startedAt).getTime();
+    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    return Math.max(0, 60 - elapsedSeconds);
+  };
+
+  const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft());
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   // Initialize start price from duel if available, otherwise 0 until first tick
   const [startPrice, setStartPrice] = useState<number>(duel.priceAtStart || 0);
@@ -141,9 +150,16 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     try {
         console.log(`Resolving Duel ${duel.id}. Winner: ${winnerId}, Start: ${priceStart}, End: ${priceEnd}`);
 
+        // Ensure winnerId is a valid string representation of the ID
+        const winnerIdStr = String(winnerId);
+        if (!winnerIdStr || winnerIdStr === "undefined" || winnerIdStr === "0") {
+             console.error("Invalid winner ID detected:", winnerId);
+             throw new Error("Cannot resolve duel: Invalid winner ID");
+        }
+
         await duelService.resolveDuelWithPrice(
             duel.id,
-            winnerId,
+            winnerIdStr,
             priceEnd,
             "CLIENT_RESOLUTION_V1"
         );
