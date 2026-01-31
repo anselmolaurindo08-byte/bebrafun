@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
 import { LAMPORTS_PER_SOL, Transaction, SystemProgram, TransactionInstruction, PublicKey } from '@solana/web3.js';
 
@@ -124,13 +125,20 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
               >
                 CANCEL
               </button>
-              <button
-                onClick={handleDeposit}
-                disabled={loading}
-                className="flex-1 bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-4 rounded-md transition-all hover:scale-105 hover:shadow-glow"
-              >
-                {loading ? 'WAITING...' : 'CONFIRM'}
-              </button>
+
+              {!publicKey ? (
+                <div className="flex-1">
+                  <WalletMultiButton className="!w-full !bg-pump-green hover:!bg-pump-lime !text-pump-black !font-sans !font-bold !py-3 !px-4 !rounded-md !transition-all hover:!scale-105 hover:!shadow-glow !h-[52px] !flex !justify-center" />
+                </div>
+              ) : (
+                <button
+                  onClick={handleDeposit}
+                  disabled={loading}
+                  className="flex-1 bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-4 rounded-md transition-all hover:scale-105 hover:shadow-glow"
+                >
+                  {loading ? 'WAITING...' : 'CONFIRM'}
+                </button>
+              )}
             </div>
           </>
         )}
