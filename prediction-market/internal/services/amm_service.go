@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"prediction-market/internal/blockchain"
 	"prediction-market/internal/models"
 
 	"github.com/google/uuid"
@@ -16,13 +17,13 @@ import (
 // AMMService handles AMM pool operations and trade calculations
 // Now updated to reflect real on-chain AMM state primarily
 type AMMService struct {
-	db *gorm.DB
-	// solanaClient *blockchain.SolanaClient // Could be injected if needed for on-chain queries
+	db           *gorm.DB
+	solanaClient *blockchain.SolanaClient
 }
 
 // NewAMMService creates a new AMM service
-func NewAMMService(db *gorm.DB) *AMMService {
-	return &AMMService{db: db}
+func NewAMMService(db *gorm.DB, solanaClient *blockchain.SolanaClient) *AMMService {
+	return &AMMService{db: db, solanaClient: solanaClient}
 }
 
 // ============================================================================
@@ -35,8 +36,22 @@ func (s *AMMService) GetPool(ctx context.Context, poolID uuid.UUID) (*models.AMM
 	if err := s.db.WithContext(ctx).First(&pool, "id = ?", poolID).Error; err != nil {
 		return nil, fmt.Errorf("pool not found: %w", err)
 	}
-	// TODO: Fetch real reserve data from Blockchain here if needed for high precision
-	// e.g., s.solanaClient.GetPoolReserves(...)
+
+	// Fetch real reserve data from Blockchain
+	if s.solanaClient != nil {
+		if yesBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.YesMint); err == nil {
+			pool.YesReserve = int64(yesBal)
+		} else {
+			fmt.Printf("Warning: Failed to fetch Yes reserve for pool %s: %v\n", pool.ID, err)
+		}
+
+		if noBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.NoMint); err == nil {
+			pool.NoReserve = int64(noBal)
+		} else {
+			fmt.Printf("Warning: Failed to fetch No reserve for pool %s: %v\n", pool.ID, err)
+		}
+	}
+
 	return &pool, nil
 }
 
@@ -46,6 +61,22 @@ func (s *AMMService) GetPoolByMarketID(ctx context.Context, marketID uint) (*mod
 	if err := s.db.WithContext(ctx).First(&pool, "market_id = ? AND status = ?", marketID, models.PoolStatusActive).Error; err != nil {
 		return nil, fmt.Errorf("pool not found for market %d: %w", marketID, err)
 	}
+
+	// Fetch real reserve data from Blockchain
+	if s.solanaClient != nil {
+		if yesBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.YesMint); err == nil {
+			pool.YesReserve = int64(yesBal)
+		} else {
+			fmt.Printf("Warning: Failed to fetch Yes reserve for pool %s: %v\n", pool.ID, err)
+		}
+
+		if noBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.NoMint); err == nil {
+			pool.NoReserve = int64(noBal)
+		} else {
+			fmt.Printf("Warning: Failed to fetch No reserve for pool %s: %v\n", pool.ID, err)
+		}
+	}
+
 	return &pool, nil
 }
 
