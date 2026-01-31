@@ -78,7 +78,7 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
       // 3. Send Transaction
       // Note: sendTransaction will sign the transaction with the wallet
       const txSignature = await sendTransaction(transaction, connection, {
-        skipPreflight: false, // Set to false to see simulation errors if any
+        skipPreflight: true, // Skip preflight to avoid strict simulation errors (unreliable on devnet sometimes)
         preflightCommitment: 'confirmed',
       });
 
@@ -101,8 +101,16 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
       }, 1000);
 
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to deposit');
+      console.error("Deposit failed", err);
+      // Log detailed error information if available
+      if (err.logs) {
+        console.error("Transaction Logs:", err.logs);
+        setError(`Transaction failed: ${err.message}. Check console for logs.`);
+      } else if (err.name === "WalletSendTransactionError") {
+        setError(`Wallet Error: ${err.message}. Please try again.`);
+      } else {
+        setError(err.message || 'Failed to deposit');
+      }
       setStep('confirm');
     } finally {
       setLoading(false);
