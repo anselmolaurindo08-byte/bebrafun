@@ -36,7 +36,7 @@ import apiService from './api';
  */
 class BlockchainService {
   private connection: Connection;
-  private confirmationTarget: number = 6;
+  private confirmationTarget: number = 1; // Lowered target for faster UI feedback (Confirmed is sufficient)
 
   constructor() {
     const rpcUrl =
@@ -360,7 +360,11 @@ class BlockchainService {
       while (confirmations < this.confirmationTarget && maxRetries > 0) {
         const status = await this.connection.getSignatureStatus(signature);
 
-        if (status.value?.confirmationStatus === 'finalized') {
+        // Accept 'confirmed' or 'finalized' as success
+        if (
+          status.value?.confirmationStatus === 'finalized' ||
+          status.value?.confirmationStatus === 'confirmed'
+        ) {
           confirmations = this.confirmationTarget;
           break;
         }
