@@ -539,7 +539,7 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	duelID uuid.UUID,
 	winnerID uint,
 	exitPrice float64,
-	txHash string,
+	clientTxHash string,
 ) (*models.DuelResult, error) {
 	duel, err := ds.repo.GetDuelByID(ctx, duelID)
 	if err != nil {
@@ -561,6 +561,22 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		loserID = duel.Player1ID
 	} else {
 		return nil, errors.New("winner must be one of the duel players")
+	}
+
+	// Trigger Blockchain Release via Server Authority
+	// The client might send a hash, but we ideally want the server to perform the payout
+	// from the escrow account.
+	winnerPubKey := "WinnerWalletAddressPlaceholder" // TODO: Fetch real address from User model
+
+	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
+	if err != nil {
+		log.Printf("Error releasing funds: %v", err)
+		// Fallback to client hash if server release fails (e.g. simulation mode)
+		if clientTxHash != "" {
+			txHash = clientTxHash
+		} else {
+			return nil, fmt.Errorf("failed to release funds on-chain: %w", err)
+		}
 	}
 
 	// Calculate price data
