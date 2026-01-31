@@ -101,6 +101,20 @@ export const duelService = {
     await api.resolveDuel(duelId, winnerId, winnerAmount);
   },
 
+  resolveDuelWithPrice: async (
+    duelId: string,
+    winnerId: string,
+    exitPrice: number,
+    transactionHash: string,
+  ): Promise<void> => {
+    await api.resolveDuelWithPrice({
+      duelId,
+      winnerId,
+      exitPrice,
+      transactionHash,
+    });
+  },
+
   getActiveDuels: async (
     limit = 50,
   ): Promise<{ duels: Duel[]; total: number }> => {

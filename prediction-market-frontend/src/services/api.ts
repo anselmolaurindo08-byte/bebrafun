@@ -193,6 +193,16 @@ class ApiService {
         });
     }
 
+    async resolveDuelWithPrice(data: {
+        duelId: string;
+        winnerId: string;
+        exitPrice: number;
+        transactionHash: string;
+    }): Promise<any> {
+        const response = await this.api.post('/api/duels/resolve', data);
+        return response.data;
+    }
+
     async getActiveDuels(limit = 50): Promise<{ duels: any[]; total: number }> {
         const response = await this.api.get<any>('/api/duels/status/active', { params: { limit } });
         return response.data;
