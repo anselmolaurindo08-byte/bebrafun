@@ -66,6 +66,12 @@ func (ds *DuelService) CreateDuel(
 	// Convert float to int64 based on currency decimals (simplified for SOL)
 	betAmountInt := int64(req.BetAmount * 1e9) // Assuming SOL (9 decimals)
 
+	// Map string currency to int16
+	var currencyCode int16 = 0 // Default to SOL
+	if req.Currency == "PUMP" {
+		currencyCode = 1
+	}
+
 	// Create duel in database
 	duel := &models.Duel{
 		ID:               uuid.New(),
@@ -73,6 +79,7 @@ func (ds *DuelService) CreateDuel(
 		Player1ID:        playerID,
 		BetAmount:        betAmountInt,
 		Player1Amount:    betAmountInt,
+		Currency:         currencyCode,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
