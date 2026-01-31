@@ -4,6 +4,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { CheckCircle } from 'lucide-react';
 import { useUserStore } from '../store/userStore';
 import apiService from '../services/api';
+import bs58 from 'bs58';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -11,7 +12,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-    const { publicKey, connected } = useWallet();
+    const { publicKey, signMessage, connected } = useWallet();
     const { user, setUser, setToken } = useUserStore();
     const [inviteCode, setInviteCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -23,12 +24,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             return;
         }
 
+        if (!signMessage) {
+            setError('Wallet does not support message signing');
+            return;
+        }
+
         setIsLoading(true);
         setError('');
 
         try {
+            const message = new TextEncoder().encode('Sign this message to authenticate with PUMPSLY');
+            const signatureBytes = await signMessage(message);
+            const signature = bs58.encode(signatureBytes);
             const walletAddress = publicKey.toString();
-            const response = await apiService.walletLogin(walletAddress, inviteCode || undefined);
+
+            const response = await apiService.walletLogin(walletAddress, signature, inviteCode || undefined);
 
             // Store token and user
             localStorage.setItem('token', response.token);
@@ -39,7 +49,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             onClose();
         } catch (err: any) {
             console.error('Wallet auth failed:', err);
-            setError(err.response?.data?.error || 'Authentication failed');
+            setError(err.response?.data?.error || err.message || 'Authentication failed');
         } finally {
             setIsLoading(false);
         }
@@ -122,7 +132,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             disabled={isLoading}
                             className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 hover:shadow-glow"
                         >
-                            {isLoading ? 'AUTHENTICATING...' : 'SIGN IN'}
+                            {isLoading ? 'SIGN MESSAGE TO AUTHENTICATE' : 'SIGN IN'}
                         </button>
                     )}
 
