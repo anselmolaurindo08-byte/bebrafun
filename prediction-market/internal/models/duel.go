@@ -52,6 +52,8 @@ type Duel struct {
 	Currency         int16      `gorm:"not null;default:0" json:"currency"` // 0: SOL, 1: PUMP
 	Player1Amount    int64      `gorm:"not null" json:"player_1_amount"`
 	Player2Amount    *int64     `json:"player_2_amount"`
+	Player1Deposited bool       `gorm:"default:false" json:"player_1_deposited"`
+	Player2Deposited bool       `gorm:"default:false" json:"player_2_deposited"`
 	MarketID         *uint      `gorm:"index" json:"market_id"`
 	EventID          *uint      `gorm:"index" json:"event_id"`
 	PredictedOutcome *string    `gorm:"size:255" json:"predicted_outcome"`
@@ -199,24 +201,27 @@ type CreateDuelRequest struct {
 
 // DuelResponse represents a duel in API responses
 type DuelResponse struct {
-	ID            string     `json:"id"`
-	DuelID        int64      `json:"duel_id"`
-	Player1       UserInfo   `json:"player_1"`
-	Player2       *UserInfo  `json:"player_2"`
-	BetAmount     int64      `json:"bet_amount"`
-	Currency      int16      `json:"currency"`
-	Player1Amount int64      `json:"player_1_amount"`
-	Player2Amount *int64     `json:"player_2_amount"`
-	Status        string     `json:"status"`
-	Winner        *UserInfo  `json:"winner"`
-	PriceAtStart  *float64   `json:"price_at_start"`
-	PriceAtEnd    *float64   `json:"price_at_end"`
-	Direction     *int16     `json:"direction"`
-	Confirmations int16      `json:"confirmations"`
-	CreatedAt     time.Time  `json:"created_at"`
-	StartedAt     *time.Time `json:"started_at"`
-	ResolvedAt    *time.Time `json:"resolved_at"`
-	ExpiresAt     *time.Time `json:"expires_at"`
+	ID               string     `json:"id"`
+	DuelID           int64      `json:"duel_id"`
+	Player1          UserInfo   `json:"player_1"`
+	Player2          *UserInfo  `json:"player_2"`
+	BetAmount        int64      `json:"bet_amount"`
+	Currency         int16      `json:"currency"`
+	Player1Amount    int64      `json:"player_1_amount"`
+	Player2Amount    *int64     `json:"player_2_amount"`
+	Player1Deposited bool       `json:"player_1_deposited"`
+	Player2Deposited bool       `json:"player_2_deposited"`
+	Status           string     `json:"status"`
+	Winner           *UserInfo  `json:"winner"`
+	PriceAtStart     *float64   `json:"price_at_start"`
+	PriceAtEnd       *float64   `json:"price_at_end"`
+	Direction        *int16     `json:"direction"`
+	PredictedOutcome *string    `json:"predicted_outcome"`
+	Confirmations    int16      `json:"confirmations"`
+	CreatedAt        time.Time  `json:"created_at"`
+	StartedAt        *time.Time `json:"started_at"`
+	ResolvedAt       *time.Time `json:"resolved_at"`
+	ExpiresAt        *time.Time `json:"expires_at"`
 }
 
 type UserInfo struct {
