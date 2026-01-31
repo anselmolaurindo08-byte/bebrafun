@@ -80,14 +80,14 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
             </button>
             <button
               type="button"
-              onClick={() => setSelectedToken(DuelCurrency.USDC)}
+              onClick={() => setSelectedToken(DuelCurrency.PUMP)}
               className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${
-                selectedToken === DuelCurrency.USDC
-                  ? 'bg-blue-600 text-white border-2 border-blue-600'
-                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-blue-600'
+                selectedToken === DuelCurrency.PUMP
+                  ? 'bg-pump-green text-pump-black border-2 border-pump-green'
+                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
               }`}
             >
-              USDC (Devnet)
+              PUMP (Virtual)
             </button>
           </div>
         </div>

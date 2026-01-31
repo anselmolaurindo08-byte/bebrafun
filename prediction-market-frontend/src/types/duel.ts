@@ -15,7 +15,7 @@ export interface Duel {
   eventId?: number;
   status: DuelStatus;
   winnerId?: string;
-  currency: DuelCurrency;
+  currency: DuelCurrency | number; // Can be string enum or int from backend
   createdAt: string;
   startedAt?: string;
   resolvedAt?: string;

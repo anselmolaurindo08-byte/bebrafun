@@ -36,7 +36,9 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
   const handleDepositComplete = (_signature: string) => {
     // Ideally refetch duel to check backend confirmation status
     setShowDepositFlow(false);
-    window.location.reload(); // Refresh to see updated status
+    // Removed window.location.reload() to prevent loop
+    // Instead we should rely on state update or explicit refetch
+    // onResolved(); // or similar if available
   };
 
   const handleJoinDuel = async () => {
