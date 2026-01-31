@@ -38,7 +38,6 @@ func AutoMigrate() error {
 		&models.InviteCode{},
 		&models.Market{},
 		&models.MarketEvent{},
-		&models.Order{},
 		&models.Transaction{},
 		&models.UserProposal{},
 	}

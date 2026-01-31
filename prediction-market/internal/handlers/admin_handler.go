@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"prediction-market/internal/models"
 	"prediction-market/internal/services"
@@ -67,12 +66,13 @@ func (h *AdminHandler) GetDashboard(c *gin.Context) {
 	var totalUsers int64
 	var totalMarkets int64
 	var totalTrades int64
-	var activeContests int64
+	// var activeContests int64
 
 	h.db.Model(&models.User{}).Count(&totalUsers)
 	h.db.Model(&models.Market{}).Count(&totalMarkets)
-	h.db.Model(&models.Trade{}).Count(&totalTrades)
-	h.db.Model(&models.Contest{}).Where("status = ?", "ACTIVE").Count(&activeContests)
+	// h.db.Model(&models.Trade{}).Count(&totalTrades) // Trade model removed
+	h.db.Model(&models.AMMTrade{}).Count(&totalTrades) // Use AMMTrade
+	// h.db.Model(&models.Contest{}).Where("status = ?", "ACTIVE").Count(&activeContests)
 
 	// Recent activity
 	var recentLogs []models.AdminLog
@@ -84,189 +84,10 @@ func (h *AdminHandler) GetDashboard(c *gin.Context) {
 			"total_users":     totalUsers,
 			"total_markets":   totalMarkets,
 			"total_trades":    totalTrades,
-			"active_contests": activeContests,
+			"active_contests": 0, // Disabled
 			"stats":           stats,
 			"recent_logs":     recentLogs,
 		},
-	})
-}
-
-// CreateContest creates a new contest
-func (h *AdminHandler) CreateContest(c *gin.Context) {
-	adminID := c.GetUint("admin_id")
-
-	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
-		StartDate   string `json:"start_date" binding:"required"`
-		EndDate     string `json:"end_date" binding:"required"`
-		PrizePool   string `json:"prize_pool" binding:"required"`
-		Rules       string `json:"rules"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format"})
-		return
-	}
-
-	endDate, err := time.Parse("2006-01-02", req.EndDate)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format"})
-		return
-	}
-
-	prizePool, err := decimal.NewFromString(req.PrizePool)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid prize pool amount"})
-		return
-	}
-
-	contest, err := h.adminService.CreateContest(adminID, req.Name, req.Description,
-		startDate, endDate, prizePool, req.Rules)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    contest,
-	})
-}
-
-// GetContests returns all contests
-func (h *AdminHandler) GetContests(c *gin.Context) {
-	contests, err := h.adminService.GetContests()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contests"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    contests,
-		"count":   len(contests),
-	})
-}
-
-// GetContest returns a single contest
-func (h *AdminHandler) GetContest(c *gin.Context) {
-	contestID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
-
-	contest, err := h.adminService.GetContest(uint(contestID))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contest not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    contest,
-	})
-}
-
-// StartContest starts a contest
-func (h *AdminHandler) StartContest(c *gin.Context) {
-	adminID := c.GetUint("admin_id")
-	contestID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
-
-	if err := h.adminService.StartContest(uint(contestID), adminID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Contest started",
-	})
-}
-
-// EndContest ends a contest and distributes prizes
-func (h *AdminHandler) EndContest(c *gin.Context) {
-	adminID := c.GetUint("admin_id")
-	contestID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
-
-	if err := h.adminService.EndContest(uint(contestID), adminID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Contest ended and prizes distributed",
-	})
-}
-
-// GetContestLeaderboard returns contest leaderboard
-func (h *AdminHandler) GetContestLeaderboard(c *gin.Context) {
-	contestID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
-
-	leaderboard, err := h.adminService.GetContestLeaderboard(uint(contestID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch leaderboard"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    leaderboard,
-	})
-}
-
-// GetActiveContests returns active contests (for users)
-func (h *AdminHandler) GetActiveContests(c *gin.Context) {
-	contests, err := h.adminService.GetActiveContests()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contests"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    contests,
-	})
-}
-
-// JoinContest allows a user to join a contest
-func (h *AdminHandler) JoinContest(c *gin.Context) {
-	userID := c.GetUint("user_id")
-	contestID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
-
-	if err := h.adminService.JoinContest(uint(contestID), userID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Successfully joined contest",
 	})
 }
 
@@ -356,38 +177,6 @@ func (h *AdminHandler) GetUserRestrictions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    restrictions,
-	})
-}
-
-// UpdateUserBalance updates a user's balance
-func (h *AdminHandler) UpdateUserBalance(c *gin.Context) {
-	adminID := c.GetUint("admin_id")
-
-	var req struct {
-		UserID uint   `json:"user_id" binding:"required"`
-		Amount string `json:"amount" binding:"required"`
-		Reason string `json:"reason" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	amount, err := decimal.NewFromString(req.Amount)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid amount"})
-		return
-	}
-
-	if err := h.adminService.UpdateUserBalance(req.UserID, amount, req.Reason, adminID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Balance updated",
 	})
 }
 
