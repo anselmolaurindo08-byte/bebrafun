@@ -14,7 +14,6 @@ interface DuelArenaProps {
 export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
   const { user } = useUserStore();
   const [showDepositFlow, setShowDepositFlow] = useState(false);
-  const [depositedPlayers, setDepositedPlayers] = useState<Set<string>>(new Set());
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,13 +23,18 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
   const isParticipant = isPlayer1 || isPlayer2;
   const canJoin = !isParticipant && duel.status === DuelStatus.PENDING && !duel.player2Id;
 
+  // Check deposit status based on backend data
+  const player1Deposited = duel.player1Deposited || false;
+  const player2Deposited = duel.player2Deposited || false;
+
+  const iHaveDeposited = (isPlayer1 && player1Deposited) || (isPlayer2 && player2Deposited);
+  // const opponentDeposited = (isPlayer1 && player2Deposited) || (isPlayer2 && player1Deposited);
+
   // Assuming backend provides these fields, or we check contract state
-  // For demo: checking if status is ACTIVE means everyone deposited
   const isActive = duel.status === DuelStatus.ACTIVE;
 
   const handleDepositComplete = (_signature: string) => {
     // Ideally refetch duel to check backend confirmation status
-    setDepositedPlayers((prev) => new Set(prev).add(currentUserId || ''));
     setShowDepositFlow(false);
     window.location.reload(); // Refresh to see updated status
   };
@@ -49,10 +53,13 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
     }
   };
 
+  // Convert lamports to SOL for display
+  const displayAmount = duel.betAmount / 1e9;
+
   if (showDepositFlow) {
     return (
       <DepositFlow
-        duel={duel}
+        duel={{...duel, betAmount: displayAmount}} // Pass formatted amount
         onComplete={handleDepositComplete}
         onCancel={() => setShowDepositFlow(false)}
       />
@@ -88,11 +95,9 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
           </div>
           <div className="text-center">
             <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
-            <p className="text-2xl font-mono font-bold text-pump-green">{duel.betAmount} {duel.currency}</p>
+            <p className="text-2xl font-mono font-bold text-pump-green">{displayAmount} {duel.currency}</p>
           </div>
-          {/* Check deposit status logic from backend */}
-          {(depositedPlayers.has(duel.player1Id) || duel.status === DuelStatus.MATCHED) && (
-             // Simplifying: if matched, P1 probably deposited? or we need explicit flag
+          {player1Deposited && (
              <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
                 <p className="text-pump-green font-sans text-sm">✓ Ready</p>
              </div>
@@ -112,10 +117,10 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
             <div className="text-center">
               <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
               <p className="text-2xl font-mono font-bold text-pump-green">
-                {duel.betAmount} {duel.currency}
+                {displayAmount} {duel.currency}
               </p>
             </div>
-            {(depositedPlayers.has(duel.player2Id) || duel.status === DuelStatus.MATCHED) && (
+            {player2Deposited && (
               <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
                 <p className="text-pump-green font-sans text-sm">✓ Ready</p>
               </div>
@@ -135,6 +140,13 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
         <p className="text-lg font-mono font-bold text-pump-yellow">
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}
         </p>
+        {isParticipant && !isActive && (
+            <p className="text-sm text-pump-gray-light mt-2">
+                {iHaveDeposited
+                    ? "Waiting for opponent to deposit..."
+                    : "Action required: Deposit funds to start!"}
+            </p>
+        )}
       </div>
 
       {/* Error Display */}
@@ -153,15 +165,12 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved }) => {
         >
           {isJoining ? 'Joining...' : 'JOIN DUEL'}
         </button>
-      ) : isParticipant && (duel.status === DuelStatus.MATCHED || duel.status === DuelStatus.PENDING) ? (
-        // Logic check: if PENDING/MATCHED and haven't deposited yet
-        // Ideally backend tells us if WE have deposited.
-        // For now, showing button always if not active/resolved.
+      ) : isParticipant && (duel.status === DuelStatus.MATCHED || duel.status === DuelStatus.PENDING) && !iHaveDeposited ? (
         <button
           onClick={() => setShowDepositFlow(true)}
-          className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow"
+          className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow animate-pulse"
         >
-          DEPOSIT FUNDS ({duel.betAmount} SOL)
+          DEPOSIT FUNDS ({displayAmount} {duel.currency})
         </button>
       ) : null}
     </div>

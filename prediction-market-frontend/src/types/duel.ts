@@ -23,6 +23,8 @@ export interface Duel {
   escrowTxHash?: string;
   resolutionTxHash?: string;
   predictedOutcome?: 'UP' | 'DOWN';
+  player1Deposited?: boolean;
+  player2Deposited?: boolean;
 
   // Legacy fields for backward compatibility if needed
   priceAtStart?: number;

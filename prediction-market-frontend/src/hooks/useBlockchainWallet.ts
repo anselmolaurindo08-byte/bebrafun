@@ -22,6 +22,8 @@ export function useBlockchainWallet() {
     connect,
     disconnect,
     wallet,
+    signTransaction,
+    sendTransaction
   } = useWallet();
 
   const [account, setAccount] = useState<UserAccount | null>(null);
@@ -31,8 +33,8 @@ export function useBlockchainWallet() {
 
   const clearError = useCallback(() => setError(null), []);
 
-  // Fetch balance and account data from chain
-  const refreshBalance = useCallback(async () => {
+  // Fetch balance and account data from chain with retry logic
+  const refreshBalance = useCallback(async (retries = 3) => {
     if (!publicKey) {
       setBalance(null);
       setAccount(null);
@@ -47,14 +49,19 @@ export function useBlockchainWallet() {
       setAccount(userAccount);
       setBalance(userAccount.totalBalance);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to fetch balance';
-      setError(
-        blockchainService.createError(
-          BlockchainErrorType.NETWORK_ERROR,
-          message,
-        ),
-      );
+      if (retries > 0) {
+          // Retry after delay
+          setTimeout(() => refreshBalance(retries - 1), 1000);
+      } else {
+          const message =
+            err instanceof Error ? err.message : 'Failed to fetch balance';
+          setError(
+            blockchainService.createError(
+              BlockchainErrorType.NETWORK_ERROR,
+              message,
+            ),
+          );
+      }
     } finally {
       setLoading(false);
     }
@@ -68,6 +75,15 @@ export function useBlockchainWallet() {
       setAccount(null);
       setBalance(null);
     }
+  }, [connected, publicKey, refreshBalance]);
+
+  // Poll balance periodically
+  useEffect(() => {
+      if (!connected || !publicKey) return;
+      const interval = setInterval(() => {
+          refreshBalance(0); // No retries on polling to avoid spam
+      }, 10000);
+      return () => clearInterval(interval);
   }, [connected, publicKey, refreshBalance]);
 
   const connectWallet = useCallback(async () => {
@@ -110,6 +126,8 @@ export function useBlockchainWallet() {
     connected,
     connecting,
     walletName: wallet?.adapter?.name,
+    signTransaction,
+    sendTransaction,
 
     // Account data (from chain)
     account,
