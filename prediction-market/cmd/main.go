@@ -76,7 +76,7 @@ func main() {
 	duelService := services.NewDuelService(repo, escrowContract, solanaClient)
 
 	// Initialize AMM service
-	ammService := services.NewAMMService(database.GetDB())
+	ammService := services.NewAMMService(database.GetDB(), solanaClient)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
