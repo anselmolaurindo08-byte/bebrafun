@@ -20,7 +20,8 @@ export const DuelsPage: React.FC = () => {
     const fetchDuels = async () => {
       try {
         setLoading(true);
-        const { duels } = await duelService.getPlayerDuels();
+        // Fetch ALL active duels instead of just the player's own duels
+        const { duels } = await duelService.getActiveDuels();
 
         // Deduplicate duels by ID just in case
         const uniqueDuels = Array.from(

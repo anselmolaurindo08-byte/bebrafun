@@ -32,35 +32,57 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
       setError(null);
       setStep('sending');
 
+      // Use the connection from wallet adapter context via blockchainService for consistency,
+      // but ensure we get a fresh blockhash using that connection.
       const connection = blockchainService.getConnection();
+
+      // Get fresh blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
 
+      // Create transaction with explicit parameters
       const transaction = new Transaction({
         blockhash,
         lastValidBlockHeight,
         feePayer: publicKey,
       });
 
-      // Construct Real Transaction (Simulating Deposit to Program for now)
-      // Memo instruction to prove intent
+      console.log('Constructing transaction for duel:', duel.id, 'Amount:', duel.betAmount);
+
+      // 1. Memo instruction to prove intent (Program ID: MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb)
+      const memoProgramId = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb');
+      const memoData = Buffer.from(`PUMPSLY:DUEL_DEPOSIT:${duel.id}`, 'utf-8');
+
       const memoIx = new TransactionInstruction({
         keys: [{ pubkey: publicKey, isSigner: true, isWritable: true }],
-        programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb'),
-        data: Buffer.from(`PUMPSLY:DUEL_DEPOSIT:${duel.id}`, 'utf-8'),
+        programId: memoProgramId,
+        data: memoData,
       });
       transaction.add(memoIx);
 
-      // Real Transfer (Lamports)
+      // 2. Real Transfer (Lamports)
+      // Ensure precise calculation
       const lamports = Math.floor(duel.betAmount * LAMPORTS_PER_SOL);
+
+      if (lamports <= 0) {
+        throw new Error("Invalid bet amount");
+      }
+
+      console.log('Adding transfer instruction. Lamports:', lamports);
       const transferIx = SystemProgram.transfer({
         fromPubkey: publicKey,
-        toPubkey: publicKey, // Sending to self for safety in this demo phase, usually to Vault PDA
+        toPubkey: publicKey, // Sending to self for safety in this demo phase
         lamports: lamports,
       });
       transaction.add(transferIx);
 
-      // 2. Sign and Send
-      const txSignature = await sendTransaction(transaction, connection);
+      // 3. Send Transaction
+      // Note: sendTransaction will sign the transaction with the wallet
+      const txSignature = await sendTransaction(transaction, connection, {
+        skipPreflight: false, // Set to false to see simulation errors if any
+        preflightCommitment: 'confirmed',
+      });
+
+      console.log('Transaction sent. Signature:', txSignature);
       setSignature(txSignature);
       setStep('confirming');
 
