@@ -280,22 +280,22 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 	receiver := transaction.Message.AccountKeys[1].String()
 
 	// Calculate amount change for receiver (approximate check)
-	// preBalance := tx.Meta.PreBalances[1]
-	// postBalance := tx.Meta.PostBalances[1]
-	// amount := postBalance - preBalance
-    // Note: This is naive if receiver had other movements. Instruction parsing is better.
-
-    // Better: Rely on verification logic in Service that trusts "Confirmed" status + Manual check?
-    // User wants "Strengthen Deposit Verification".
-
-    // We will assume the Service will use the boolean/struct.
-    // For this immediate step, let's return the basic verified struct so `DepositToDuel` can use it.
+	// We rely on Meta.PostBalances - Meta.PreBalances to determine the net transfer to the receiver
+	// This is robust enough for simple transfers where the receiver is index 1.
+	var amount uint64
+	if len(tx.Meta.PreBalances) > 1 && len(tx.Meta.PostBalances) > 1 {
+		preBalance := tx.Meta.PreBalances[1]
+		postBalance := tx.Meta.PostBalances[1]
+		if postBalance > preBalance {
+			amount = postBalance - preBalance
+		}
+	}
 
 	return &TransactionDetails{
 		Signature: txHash,
 		Sender:    sender,
 		Receiver:  receiver,
-		// Amount:    uint64(amount), // Need robust way
+		Amount:    amount,
 		Confirmed: true,
 	}, nil
 }
