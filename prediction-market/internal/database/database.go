@@ -100,6 +100,9 @@ func AutoMigrate() error {
 		&models.DuelTransaction{},
 		&models.DuelQueue{},
 		&models.DuelStatistics{},
+		&models.DuelResult{},
+		&models.TransactionConfirmationRecord{},
+		&models.DuelPriceCandle{},
 	}
 
 	for _, model := range duelModels {
