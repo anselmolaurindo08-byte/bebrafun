@@ -64,7 +64,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         {/* Token Selection */}
         <div>
           <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
-            Select Price Feed (Asset to Predict)
+            Select Price Feed (Graph)
           </label>
           <div className="flex gap-2">
             <button
@@ -76,7 +76,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-purple'
               }`}
             >
-              SOL
+              SOL/USDT
             </button>
             <button
               type="button"
@@ -87,7 +87,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
               }`}
             >
-              PUMP (Virtual)
+              DOGE/USDT (Demo)
             </button>
           </div>
         </div>
