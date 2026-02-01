@@ -222,9 +222,9 @@ func (ds *DuelService) DepositToDuel(
 		return fmt.Errorf("failed to get duel: %w", err)
 	}
 
-	// Verify duel status
-	if duel.Status != models.DuelStatusMatched {
-		return fmt.Errorf("duel is not in matched status, current status: %s", duel.Status)
+	// Verify duel status - allow deposits in PENDING (first player) or MATCHED (both players)
+	if duel.Status != models.DuelStatusPending && duel.Status != models.DuelStatusMatched {
+		return fmt.Errorf("duel is not in pending/matched status, current status: %s", duel.Status)
 	}
 
 	// Verify transaction on blockchain (require at least 1 confirmation)
