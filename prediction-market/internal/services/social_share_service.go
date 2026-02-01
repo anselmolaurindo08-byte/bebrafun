@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 	"log"
-	"sync"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -12,7 +11,6 @@ import (
 
 type SocialShareService struct {
 	db *gorm.DB
-	mu sync.Mutex
 }
 
 func NewSocialShareService(db *gorm.DB) *SocialShareService {
@@ -23,9 +21,6 @@ func NewSocialShareService(db *gorm.DB) *SocialShareService {
 
 // ShareWinOnTwitter creates a social share record and applies bonus
 func (s *SocialShareService) ShareWinOnTwitter(userID uint, marketID uint, pnlAmount decimal.Decimal, shareURL string) (*models.SocialShare, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Only apply bonus if PnL is positive
 	var bonusAmount decimal.Decimal
 	if pnlAmount.GreaterThan(decimal.Zero) {
@@ -65,9 +60,6 @@ func (s *SocialShareService) ShareWinOnTwitter(userID uint, marketID uint, pnlAm
 
 // VerifyTwitterShare verifies a Twitter share
 func (s *SocialShareService) VerifyTwitterShare(shareID uint) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var share models.SocialShare
 	if err := s.db.Where("id = ?", shareID).First(&share).Error; err != nil {
 		return err
