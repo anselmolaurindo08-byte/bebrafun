@@ -171,11 +171,11 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
         });
         setShowResultModal(true);
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("Resolution failed:", e);
-        // Even if API fails, we show result locally? Or show error?
-        // Show error for now, user might retry or refresh
-        alert("Error resolving duel. Please check console.");
+        // Extract specific error message from backend
+        const errorMessage = e.response?.data?.error || e.message || "Unknown error";
+        alert(`Error resolving duel: ${errorMessage}`);
     } finally {
         setIsResolving(false);
     }
