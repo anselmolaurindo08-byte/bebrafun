@@ -50,7 +50,11 @@ func (e *EscrowContract) VerifyDuelTransaction(
 	ctx context.Context,
 	signature string,
 ) (bool, error) {
-	return e.client.VerifyTransaction(ctx, signature, 1)
+	details, err := e.client.VerifyTransaction(ctx, signature, 1)
+	if err != nil {
+		return false, err
+	}
+	return details != nil && details.Confirmed, nil
 }
 
 // ReleaseToWinner builds and signs a transaction to release funds from escrow

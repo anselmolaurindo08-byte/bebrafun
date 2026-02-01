@@ -116,69 +116,28 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
     setIsResolving(true);
 
-    // 2. Determine Winner locally
-    const priceEnd = currentPrice;
-    const priceStart = duel.priceAtStart || startPrice;
+    // 2. Poll for Server Resolution (Read-Only Mode)
+    // We no longer calculate winner client-side or call resolve().
+    // We wait for the backend auto-resolution job to update the duel status.
 
-    // Logic:
-    // P1 (Creator) predicts 'UP' or 'DOWN'.
-    // If UP: P1 wins if End > Start.
-    // If DOWN: P1 wins if End < Start.
-    const isUpPrediction = duel.predictedOutcome === 'UP';
-    const wentUp = priceEnd > priceStart;
-    const wentDown = priceEnd < priceStart;
+    const pollInterval = setInterval(async () => {
+        try {
+            const updatedDuel = await duelService.getDuel(duel.id);
+            if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED') {
+                clearInterval(pollInterval);
 
-    let winnerId = "";
-
-    // Check P1 win condition
-    const p1Wins = (isUpPrediction && wentUp) || (!isUpPrediction && wentDown);
-
-    if (p1Wins) {
-        winnerId = String(duel.player1Id);
-    } else {
-        // If P1 didn't win, P2 wins (unless it's a perfect tie, then house or push? assume P2 for binary logic)
-        // If P2 exists
-        if (duel.player2Id) {
-            winnerId = String(duel.player2Id);
-        } else {
-            // Should not happen in active duel
-            winnerId = String(duel.player1Id); // Fallback
+                setResult({
+                    winnerId: updatedDuel.winnerId || "0",
+                    finalPrice: updatedDuel.priceAtEnd || currentPrice,
+                    payout: (updatedDuel.betAmount || duel.betAmount) * 2
+                });
+                setShowResultModal(true);
+                setIsResolving(false);
+            }
+        } catch (e) {
+            console.error("Polling error:", e);
         }
-    }
-
-    // 3. Call Backend Resolution
-    try {
-        console.log(`Resolving Duel ${duel.id}. Winner: ${winnerId}, Start: ${priceStart}, End: ${priceEnd}`);
-
-        // Ensure winnerId is a valid string representation of the ID
-        const winnerIdStr = String(winnerId);
-        if (!winnerIdStr || winnerIdStr === "undefined" || winnerIdStr === "0") {
-             console.error("Invalid winner ID detected:", winnerId);
-             throw new Error("Cannot resolve duel: Invalid winner ID");
-        }
-
-        await duelService.resolveDuelWithPrice(
-            duel.id,
-            winnerIdStr,
-            priceEnd,
-            "CLIENT_RESOLUTION_V1"
-        );
-
-        setResult({
-            winnerId,
-            finalPrice: priceEnd,
-            payout: duel.betAmount * 2
-        });
-        setShowResultModal(true);
-
-    } catch (e: any) {
-        console.error("Resolution failed:", e);
-        // Extract specific error message from backend
-        const errorMessage = e.response?.data?.error || e.message || "Unknown error";
-        alert(`Error resolving duel: ${errorMessage}`);
-    } finally {
-        setIsResolving(false);
-    }
+    }, 2000);
   };
 
   // Calculate percentage change for UI
