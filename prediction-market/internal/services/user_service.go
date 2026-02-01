@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"prediction-market/internal/models"
@@ -31,17 +30,6 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	return &user, nil
 }
 
-// GetUserBalance retrieves a user's virtual balance
-func (s *UserService) GetUserBalance(userID uint) (decimal.Decimal, error) {
-	var user models.User
-	if err := s.db.Select("virtual_balance").First(&user, userID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return decimal.Zero, fmt.Errorf("user not found")
-		}
-		return decimal.Zero, err
-	}
-	return user.VirtualBalance, nil
-}
 
 // GetUserInviteCodes retrieves all invite codes for a user
 func (s *UserService) GetUserInviteCodes(userID uint) ([]models.InviteCode, error) {

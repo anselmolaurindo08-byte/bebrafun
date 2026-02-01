@@ -38,7 +38,6 @@ func AutoMigrate() error {
 		&models.InviteCode{},
 		&models.Market{},
 		&models.MarketEvent{},
-		&models.Order{},
 		&models.Transaction{},
 		&models.UserProposal{},
 	}
@@ -116,6 +115,9 @@ func AutoMigrate() error {
 		&models.DuelTransaction{},
 		&models.DuelQueue{},
 		&models.DuelStatistics{},
+		&models.DuelResult{},
+		&models.TransactionConfirmationRecord{},
+		&models.DuelPriceCandle{},
 	}
 
 	for _, model := range duelModels {

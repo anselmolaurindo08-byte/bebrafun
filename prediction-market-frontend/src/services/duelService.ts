@@ -5,10 +5,19 @@ import type {
   CreateDuelRequest,
   DepositRequest,
 } from '../types/duel';
+import { DuelCurrency } from '../types/duel';
 
 // Map snake_case API response to camelCase Duel
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDuel(raw: any): Duel {
+  // Map integer currency to string enum
+  let currency: DuelCurrency = DuelCurrency.SOL;
+  if (raw.currency === 1 || raw.currency === 'PUMP') {
+    currency = DuelCurrency.PUMP;
+  } else if (raw.currency === 2 || raw.currency === 'USDC') {
+    currency = DuelCurrency.USDC;
+  }
+
   return {
     id: raw.id ?? raw.ID ?? '',
     duelId: raw.duel_id ?? raw.duelId ?? 0,
@@ -19,7 +28,7 @@ function mapDuel(raw: any): Duel {
     player2Username: raw.player_2_username ?? raw.player2Username,
     player2Avatar: raw.player_2_avatar ?? raw.player2Avatar,
     betAmount: raw.bet_amount ?? raw.betAmount ?? 0,
-    currency: raw.currency ?? 0,
+    currency: currency,
     player1Amount: raw.player_1_amount ?? raw.player1Amount ?? 0,
     player2Amount: raw.player_2_amount ?? raw.player2Amount,
     status: raw.status ?? 0,
@@ -43,6 +52,7 @@ export const duelService = {
       market_id: request.marketId,
       event_id: request.eventId,
       predicted_outcome: request.predictedOutcome,
+      currency: request.currency,
     });
     return mapDuel(raw);
   },
@@ -91,6 +101,20 @@ export const duelService = {
     await api.resolveDuel(duelId, winnerId, winnerAmount);
   },
 
+  resolveDuelWithPrice: async (
+    duelId: string,
+    winnerId: string,
+    exitPrice: number,
+    transactionHash: string,
+  ): Promise<void> => {
+    await api.resolveDuelWithPrice({
+      duelId,
+      winnerId,
+      exitPrice,
+      transactionHash,
+    });
+  },
+
   getActiveDuels: async (
     limit = 50,
   ): Promise<{ duels: Duel[]; total: number }> => {
@@ -99,5 +123,9 @@ export const duelService = {
       duels: (result.duels || []).map(mapDuel),
       total: result.total,
     };
+  },
+
+  getDuelConfig: async (): Promise<{ escrowAddress: string }> => {
+    return await api.getDuelConfig();
   },
 };

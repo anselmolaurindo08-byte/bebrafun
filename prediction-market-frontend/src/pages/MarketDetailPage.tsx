@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
 import blockchainService from '../services/blockchainService';
-import TradingPanel from '../components/TradingPanel';
 import AMMTradingPanel from '../components/AMMTradingPanel';
 import Portfolio from '../components/Portfolio';
 import type { Market } from '../types/types';
@@ -34,7 +33,7 @@ export default function MarketDetailPage() {
             const pool = await blockchainService.getPoolByMarketId(id!);
             setAmmPoolId(pool.poolId);
         } catch {
-            // No AMM pool for this market — that's fine
+            // No AMM pool for this market
         }
     };
 
@@ -94,31 +93,27 @@ export default function MarketDetailPage() {
             {/* Portfolio */}
             <Portfolio marketId={parseInt(id!)} />
 
-            {/* AMM Trading Panel */}
-            {ammPoolId && (
-                <div className="mt-8 space-y-6">
-                    <h2 className="text-2xl font-mono font-bold text-pump-white">AMM Trading</h2>
+            {/* Trading Section */}
+            <div className="mt-8 space-y-6">
+                <h2 className="text-2xl font-mono font-bold text-pump-white">Trade</h2>
+
+                {ammPoolId ? (
                     <AMMTradingPanel
                         poolId={ammPoolId}
                         eventTitle={market.title}
                     />
-                </div>
-            )}
-
-            {/* Order Book Trading Panels */}
-            {market.events && market.events.length > 0 && (
-                <div className="mt-8 space-y-6">
-                    <h2 className="text-2xl font-mono font-bold text-pump-white">Trade Outcomes</h2>
-                    {market.events.map((event) => (
-                        <TradingPanel
-                            key={event.id}
-                            marketId={parseInt(id!)}
-                            eventId={event.id}
-                            eventTitle={event.event_title}
-                        />
-                    ))}
-                </div>
-            )}
+                ) : (
+                    <div className="bg-pump-gray-darker border-2 border-pump-yellow/30 rounded-lg p-8 text-center">
+                        <div className="text-4xl mb-4">⚠️</div>
+                        <h3 className="text-xl font-mono font-bold text-pump-white mb-2">No Liquidity Pool</h3>
+                        <p className="text-pump-gray-light font-sans mb-6">
+                            This market does not have an active AMM pool yet.
+                            Liquidity must be added to enable trading.
+                        </p>
+                        {/* TODO: Add button to create pool if admin/allowed */}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
