@@ -76,7 +76,7 @@ func (ds *DuelService) CreateDuel(
 	}
 
 	// Save to database
-	err := ds.repo.CreateDuel(ctx, duel)
+	err = ds.repo.CreateDuel(ctx, duel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create duel: %w", err)
 	}
