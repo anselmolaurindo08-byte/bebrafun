@@ -33,6 +33,24 @@ func (r *Repository) GetDuelByID(ctx context.Context, duelID uuid.UUID) (*models
 	return &duel, nil
 }
 
+// FindAndLockDuel finds the latest duel for a player and locks it
+func (r *Repository) FindAndLockDuel(ctx context.Context, playerID uint) (*models.Duel, error) {
+	var duel models.Duel
+	err := r.db.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+		Where("player1_id = ?", playerID).
+		Order("created_at DESC").
+		First(&duel).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil // No duel found or locked
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &duel, nil
+}
+
 // GetDuelByDuelID retrieves a duel by DuelID (numeric ID)
 func (r *Repository) GetDuelByDuelID(ctx context.Context, duelID int64) (*models.Duel, error) {
 	var duel models.Duel
@@ -85,6 +103,40 @@ func (r *Repository) FindMatchingOpponent(
 
 	// Return the opponent's player ID
 	return &duel.Player1ID, nil
+}
+
+// FindAndLockMatchingOpponent finds a waiting opponent with the same bet amount and locks the row
+func (r *Repository) FindAndLockMatchingOpponent(
+	ctx context.Context,
+	playerID uint,
+	betAmount int64,
+) (*models.Duel, error) {
+	// Find a duel in PENDING status with same bet amount but different player
+	var duel models.Duel
+	err := r.db.WithContext(ctx).
+		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+		Where("status = ? AND bet_amount = ? AND player1_id != ? AND player2_id IS NULL",
+			models.DuelStatusPending, betAmount, playerID).
+		Order("created_at ASC").
+		First(&duel).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil // No match found
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &duel, nil
+}
+
+// WithTransaction executes a function within a transaction
+func (r *Repository) WithTransaction(ctx context.Context, fn func(txRepo *Repository) error) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &Repository{db: tx}
+		return fn(txRepo)
+	})
 }
 
 // GetPlayerDuels retrieves all duels for a player
