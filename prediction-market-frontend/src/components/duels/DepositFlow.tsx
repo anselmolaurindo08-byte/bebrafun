@@ -4,7 +4,7 @@ import { duelService } from '../../services/duelService';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
-import { LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
 
 interface DepositFlowProps {
   duel: Duel;
@@ -20,6 +20,19 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'confirm' | 'sending' | 'confirming' | 'complete'>('confirm');
   const [signature, setSignature] = useState<string | null>(null);
+  const [serverWallet, setServerWallet] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Fetch server wallet configuration
+    duelService.getDuelConfig()
+      .then(config => {
+        if (config.escrowAddress) {
+            console.log("Server Escrow Address Loaded:", config.escrowAddress);
+            setServerWallet(config.escrowAddress);
+        }
+      })
+      .catch(err => console.error("Failed to load duel config:", err));
+  }, []);
 
   const handleDeposit = async () => {
     if (!publicKey) {
@@ -71,13 +84,22 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
       // Since I don't have it, I will keep 'publicKey' (self) but mark where to change it.
       // Ideally, the backend provides this address in the 'duel' object response.
 
-      // For now, keeping self-transfer to avoid locking funds in an unknown wallet if user doesn't update it.
-      // The instruction below is what SHOULD be used if we had the address:
-      // const targetPubkey = new PublicKey("...");
+      // Use the server wallet if available, otherwise fallback to self-transfer (safe mode)
+      let targetPubkey = publicKey;
+      if (serverWallet) {
+          try {
+              targetPubkey = new PublicKey(serverWallet);
+              console.log("Targeting Server Wallet:", targetPubkey.toString());
+          } catch (e) {
+              console.error("Invalid server wallet address:", serverWallet);
+          }
+      } else {
+          console.warn("Server wallet not configured, defaulting to self-transfer");
+      }
 
       const transferIx = SystemProgram.transfer({
         fromPubkey: publicKey,
-        toPubkey: publicKey, // TODO: CHANGE THIS to serverEscrowAddress for real custodial escrow
+        toPubkey: targetPubkey,
         lamports: lamports,
       });
       transaction.add(transferIx);

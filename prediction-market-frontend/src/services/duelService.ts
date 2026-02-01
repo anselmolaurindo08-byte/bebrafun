@@ -124,4 +124,8 @@ export const duelService = {
       total: result.total,
     };
   },
+
+  getDuelConfig: async (): Promise<{ escrowAddress: string }> => {
+    return await api.getDuelConfig();
+  },
 };

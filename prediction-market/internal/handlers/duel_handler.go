@@ -318,6 +318,19 @@ func (h *DuelHandler) GetAvailableDuels(c *gin.Context) {
 	})
 }
 
+// GetConfig returns duel configuration including escrow address
+// GET /api/duels/config
+func (h *DuelHandler) GetConfig(c *gin.Context) {
+	escrowAddress := h.duelService.GetEscrowWalletAddress()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"escrowAddress": escrowAddress,
+		},
+	})
+}
+
 // GetUserDuels retrieves all duels for a specific user
 // GET /api/duels/user/:userId
 func (h *DuelHandler) GetUserDuels(c *gin.Context) {

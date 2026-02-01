@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -73,11 +74,21 @@ func (ps *PriceService) runBinanceStream() {
 
 				// Parse price
 				var price float64
-				fmt.Sscanf(trade.Price, "%f", &price)
+				// Use Sscanf or ParseFloat. Trade price is string.
+				// fmt.Sscanf(trade.Price, "%f", &price)
+
+				if p, err := strconv.ParseFloat(trade.Price, 64); err == nil {
+					price = p
+				} else {
+					log.Printf("Error parsing price for %s: %v", trade.Symbol, err)
+					continue
+				}
 
 				ps.pricesMux.Lock()
 				ps.prices[trade.Symbol] = price
 				ps.pricesMux.Unlock()
+
+				// log.Printf("Updated price for %s: %f", trade.Symbol, price) // Debug
 			}
 			c.Close()
 		}

@@ -215,6 +215,7 @@ func main() {
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
 		api.GET("/duels/status/active", duelHandler.GetActiveDuels)
+		api.GET("/duels/config", duelHandler.GetConfig)
 
 		// AMM endpoints (protected)
 		amm := api.Group("/amm")

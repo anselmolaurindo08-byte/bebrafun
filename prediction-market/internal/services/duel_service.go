@@ -336,13 +336,17 @@ func (ds *DuelService) ResolveDuel(
 
 	// TODO: Get Winner's Wallet Address from DB
 	// For now using placeholder, in real implementation retrieve from User model
-	// winnerUser, _ := ds.repo.GetUserByID(winnerID)
-	// winnerPubKey := winnerUser.WalletAddress
-	winnerPubKey := "WinnerWalletAddressPlaceholder"
+	winnerUser, err := ds.repo.GetUserByID(ctx, winnerID)
+	if err != nil {
+		return fmt.Errorf("failed to get winner user: %w", err)
+	}
+	winnerPubKey := winnerUser.WalletAddress
+	// winnerPubKey := "WinnerWalletAddressPlaceholder"
 
 	// Trigger Blockchain Release via Server Authority
 	// This generates a signed transaction that the server submits to the network
-	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
+	// Pass amount in lamports
+	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey, uint64(winnerAmount))
 	if err != nil {
 		log.Printf("Error signing release transaction: %v", err)
 		// We might want to retry or mark for manual intervention
@@ -662,9 +666,18 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	// Trigger Blockchain Release via Server Authority
 	// The client might send a hash, but we ideally want the server to perform the payout
 	// from the escrow account.
-	winnerPubKey := "WinnerWalletAddressPlaceholder" // TODO: Fetch real address from User model
 
-	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey)
+	// Fetch real address from User model
+	winnerUser, err := ds.repo.GetUserByID(ctx, winnerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get winner user: %w", err)
+	}
+	winnerPubKey := winnerUser.WalletAddress
+
+	// Calculate total prize (2x bet amount)
+	totalPrize := uint64(duel.BetAmount * 2)
+
+	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey, totalPrize)
 	if err != nil {
 		log.Printf("Error releasing funds: %v", err)
 		// Fallback to client hash if server release fails (e.g. simulation mode)
@@ -822,6 +835,11 @@ func (ds *DuelService) GenerateShareURL(
 	)
 
 	return shareURL, tweetText
+}
+
+// GetEscrowWalletAddress returns the server's wallet address for deposits
+func (ds *DuelService) GetEscrowWalletAddress() string {
+	return ds.solanaClient.GetServerWalletPublicKey()
 }
 
 // Helper functions

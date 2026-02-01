@@ -311,3 +311,11 @@ func (s *SolanaClient) GetTransactionStatus(ctx context.Context, txHash string) 
 	}
 	return false, 0, nil
 }
+
+// GetServerWalletPublicKey returns the public key of the server wallet if configured
+func (s *SolanaClient) GetServerWalletPublicKey() string {
+	if s.serverWallet == nil {
+		return ""
+	}
+	return s.serverWallet.PublicKey().String()
+}

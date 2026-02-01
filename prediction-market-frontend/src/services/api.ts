@@ -208,6 +208,11 @@ class ApiService {
         return response.data;
     }
 
+    async getDuelConfig(): Promise<{ escrowAddress: string }> {
+        const response = await this.api.get<ApiResponse<{ escrowAddress: string }>>('/api/duels/config');
+        return response.data.data!;
+    }
+
     // Wallet/Blockchain endpoints
     async connectWallet(data: { wallet_address: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
