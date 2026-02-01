@@ -47,9 +47,10 @@ func main() {
 	userService := services.NewUserService(database.GetDB())
 	blockchainService := services.NewBlockchainService(
 		database.GetDB(),
-		"devnet", // Use "mainnet-beta" for production
-		"",       // Token mint address (configure later)
-		"",       // Escrow contract address (configure later)
+		"devnet",                   // Use "mainnet-beta" for production
+		"",                         // Token mint address (configure later)
+		"",                         // Escrow contract address (configure later)
+		cfg.ServerWalletPrivateKey, // Server wallet private key from env
 	)
 
 	// Initialize repository
@@ -57,9 +58,10 @@ func main() {
 
 	// Initialize Solana client
 	solanaClient := blockchain.NewSolanaClient(
-		"devnet", // network
-		"",       // Token mint address (configure later)
-		"",       // Escrow contract address (configure later)
+		"devnet",                   // network
+		"",                         // Token mint address (configure later)
+		"",                         // Escrow contract address (configure later)
+		cfg.ServerWalletPrivateKey, // Server wallet private key from env
 	)
 
 	// Initialize escrow contract
@@ -73,13 +75,13 @@ func main() {
 	duelService := services.NewDuelService(repo, escrowContract, solanaClient)
 
 	// Initialize AMM service
-	ammService := services.NewAMMService(database.GetDB())
+	ammService := services.NewAMMService(database.GetDB(), solanaClient)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	marketHandler := handlers.NewMarketHandler(database.GetDB())
-	tradingHandler := handlers.NewTradingHandler(database.GetDB())
+	// tradingHandler := handlers.NewTradingHandler(database.GetDB()) // Commented out - handler not implemented
 	referralHandler := handlers.NewReferralHandler(database.GetDB())
 	adminHandler := handlers.NewAdminHandler(database.GetDB())
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
@@ -157,23 +159,23 @@ func main() {
 		userRoutes := api.Group("/user")
 		{
 			userRoutes.GET("/profile", userHandler.GetProfile)
-			userRoutes.GET("/balance", userHandler.GetBalance)
+			// userRoutes.GET("/balance", userHandler.GetBalance) // Method not implemented
 			userRoutes.GET("/invite-codes", userHandler.GetInviteCodes)
 			userRoutes.GET("/referrals", userHandler.GetReferrals)
 		}
 
 		// Trading endpoints (protected) - must come before :id routes
-		api.POST("/orders", tradingHandler.PlaceOrder)
-		api.DELETE("/orders/:id", tradingHandler.CancelOrder)
-		api.GET("/orders", tradingHandler.GetUserOrders)
+		// api.POST("/orders", tradingHandler.PlaceOrder) // Handler not implemented
+		// api.DELETE("/orders/:id", tradingHandler.CancelOrder)
+		// api.GET("/orders", tradingHandler.GetUserOrders)
 
 		// Market endpoints (protected)
 		api.POST("/markets", marketHandler.CreateMarket)
 		api.POST("/markets/propose", marketHandler.ProposeMarket)
 		api.GET("/markets/proposals/pending", marketHandler.GetPendingProposals)
 		api.POST("/markets/proposals/:id/moderate", marketHandler.ModerateProposal)
-		api.GET("/trading/portfolio/:market_id", tradingHandler.GetUserPortfolio)
-		api.GET("/trading/pnl/:market_id", tradingHandler.GetUserPnL)
+		// api.GET("/trading/portfolio/:market_id", tradingHandler.GetUserPortfolio) // Handler not implemented
+		// api.GET("/trading/pnl/:market_id", tradingHandler.GetUserPnL)
 		api.POST("/markets/:id/resolve", marketHandler.ResolveMarket)
 
 		// Referral endpoints (protected)
@@ -188,9 +190,9 @@ func main() {
 		api.GET("/social/shares", referralHandler.GetSocialShares)
 
 		// Contest endpoints (for users)
-		api.GET("/contests", adminHandler.GetActiveContests)
-		api.POST("/contests/:id/join", adminHandler.JoinContest)
-		api.GET("/contests/:id/leaderboard", adminHandler.GetContestLeaderboard)
+		// api.GET("/contests", adminHandler.GetActiveContests) // Method not implemented
+		// api.POST("/contests/:id/join", adminHandler.JoinContest) // Method not implemented
+		// api.GET("/contests/:id/leaderboard", adminHandler.GetContestLeaderboard)
 
 		// Wallet/Blockchain endpoints (protected)
 		api.POST("/wallet/connect", blockchainHandler.ConnectWallet)
@@ -254,7 +256,7 @@ func main() {
 		admin.POST("/users/restrict", adminHandler.RestrictUser)
 		admin.DELETE("/users/restrictions/:id", adminHandler.RemoveRestriction)
 		admin.GET("/users/:id/restrictions", adminHandler.GetUserRestrictions)
-		admin.POST("/users/balance", adminHandler.UpdateUserBalance)
+		// admin.POST("/users/balance", adminHandler.UpdateUserBalance) // Method not implemented
 		admin.POST("/users/promote", adminHandler.PromoteToAdmin)
 
 		// Market management
@@ -262,7 +264,7 @@ func main() {
 		admin.PUT("/markets/:id/status", adminHandler.UpdateMarketStatus)
 
 		// Contest management
-		admin.GET("/contests", adminHandler.GetContests)
+		// admin.GET("/contests", adminHandler.GetContests) // Method not implemented
 		admin.POST("/contests", adminHandler.CreateContest)
 		admin.GET("/contests/:id", adminHandler.GetContest)
 		admin.POST("/contests/:id/start", adminHandler.StartContest)
@@ -274,7 +276,7 @@ func main() {
 	}
 
 	// Public order book route
-	router.GET("/api/trading/orderbook/:market_id/:event_id", tradingHandler.GetOrderBook)
+	// router.GET("/api/trading/orderbook/:market_id/:event_id", tradingHandler.GetOrderBook) // Handler not implemented
 
 	// Create HTTP server
 	srv := &http.Server{
