@@ -27,6 +27,7 @@ const (
 	DuelTransactionTypeDeposit  DuelTransactionType = "DEPOSIT"
 	DuelTransactionTypeWithdraw DuelTransactionType = "WITHDRAW"
 	DuelTransactionTypePayout   DuelTransactionType = "PAYOUT"
+	DuelTransactionTypeFee      DuelTransactionType = "FEE"
 	DuelTransactionTypeTransfer DuelTransactionType = "TRANSFER"
 )
 

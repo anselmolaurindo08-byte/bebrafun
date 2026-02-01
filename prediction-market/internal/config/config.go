@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -48,6 +49,9 @@ type PolymarketConfig struct {
 type SolanaConfig struct {
 	Network                string
 	ServerWalletPrivateKey string
+	ServerWalletPublicKey  string
+	EscrowProgramID        string
+	PlatformFeePercent     float64
 }
 
 // Load loads configuration from environment variables
@@ -79,6 +83,9 @@ func Load() (*Config, error) {
 		Solana: SolanaConfig{
 			Network:                getEnv("SOLANA_NETWORK", "devnet"),
 			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
+			ServerWalletPublicKey:  getEnv("SERVER_WALLET_PUBLIC_KEY", ""),
+			EscrowProgramID:        getEnv("ESCROW_PROGRAM_ID", "F1CFijTZ6QEWPEoSTZ9BfYc4bhD6ejK5oRZhK5YYH9SY"),
+			PlatformFeePercent:     getEnvFloat("PLATFORM_FEE_PERCENT", 5.0),
 		},
 	}
 
@@ -115,4 +122,16 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+// getEnvFloat gets a float environment variable with a fallback default value
+func getEnvFloat(key string, defaultValue float64) float64 {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	if parsed, err := strconv.ParseFloat(value, 64); err == nil {
+		return parsed
+	}
+	return defaultValue
 }

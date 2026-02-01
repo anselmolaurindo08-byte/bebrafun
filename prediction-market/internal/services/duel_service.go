@@ -18,6 +18,7 @@ type DuelService struct {
 	repo              *repository.Repository
 	escrowContract    *blockchain.EscrowContract
 	solanaClient      *blockchain.SolanaClient
+	payoutService     *PayoutService
 	duelMatchingQueue chan *models.DuelQueue
 }
 
@@ -25,11 +26,13 @@ func NewDuelService(
 	repo *repository.Repository,
 	escrowContract *blockchain.EscrowContract,
 	solanaClient *blockchain.SolanaClient,
+	payoutService *PayoutService,
 ) *DuelService {
 	ds := &DuelService{
 		repo:              repo,
 		escrowContract:    escrowContract,
 		solanaClient:      solanaClient,
+		payoutService:     payoutService,
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
 
@@ -307,39 +310,21 @@ func (ds *DuelService) ResolveDuel(
 		return errors.New("winner must be one of the duel players")
 	}
 
-	// Release tokens from escrow to winner
-	// TODO: Implement payout when smart contract is ready
-	// txHash, err := ds.escrowContract.ReleaseToWinner(...)
-	txHash := fmt.Sprintf("mock_payout_%d", time.Now().UnixNano())
-	log.Printf("Payout skipped for duel %d, winner %d (not implemented yet)", duel.DuelID, winnerID)
+	// Execute automatic payout via PayoutService
+	payoutTx, err := ds.payoutService.ExecutePayout(ctx, duel, winnerID)
+	if err != nil {
+		return fmt.Errorf("failed to execute payout: %w", err)
+	}
 
 	// Update duel
 	duel.Status = models.DuelStatusResolved
 	duel.WinnerID = &winnerID
 	duel.ResolvedAt = timePtr(time.Now())
-	duel.ResolutionTxHash = &txHash
+	duel.ResolutionTxHash = payoutTx.TxHash
 
 	err = ds.repo.UpdateDuel(ctx, duel)
 	if err != nil {
 		return fmt.Errorf("failed to update duel: %w", err)
-	}
-
-	// Record payout transaction
-	payoutTx := &models.DuelTransaction{
-		ID:              uuid.New(),
-		DuelID:          duelID,
-		TransactionType: models.DuelTransactionTypePayout,
-		PlayerID:        winnerID,
-		Amount:          winnerAmount,
-		TxHash:          &txHash,
-		Status:          models.DuelTransactionStatusConfirmed,
-		CreatedAt:       time.Now(),
-		ConfirmedAt:     timePtr(time.Now()),
-	}
-
-	err = ds.repo.CreateDuelTransaction(ctx, payoutTx)
-	if err != nil {
-		return fmt.Errorf("failed to record payout: %w", err)
 	}
 
 	// Update player statistics

@@ -47,10 +47,10 @@ func main() {
 	userService := services.NewUserService(database.GetDB())
 	blockchainService := services.NewBlockchainService(
 		database.GetDB(),
-		"devnet",                   // Use "mainnet-beta" for production
-		"",                         // Token mint address (configure later)
-		"",                         // Escrow contract address (configure later)
-		cfg.ServerWalletPrivateKey, // Server wallet private key from env
+		"devnet",                          // Use "mainnet-beta" for production
+		"",                                // Token mint address (configure later)
+		"",                                // Escrow contract address (configure later)
+		cfg.Solana.ServerWalletPrivateKey, // Server wallet private key from env
 	)
 
 	// Initialize repository
@@ -58,21 +58,28 @@ func main() {
 
 	// Initialize Solana client
 	solanaClient := blockchain.NewSolanaClient(
-		"devnet",                   // network
-		"",                         // Token mint address (configure later)
-		"",                         // Escrow contract address (configure later)
-		cfg.ServerWalletPrivateKey, // Server wallet private key from env
+		"devnet",                          // network
+		"",                                // Token mint address (configure later)
+		"",                                // Escrow contract address (configure later)
+		cfg.Solana.ServerWalletPrivateKey, // Server wallet private key from env
 	)
 
 	// Initialize escrow contract
 	escrowContract := blockchain.NewEscrowContract(
 		solanaClient,
-		"", // Program ID (configure from Step 2.2 deployment)
-		"", // Token mint pubkey (configure later)
+		cfg.Solana.EscrowProgramID, // Program ID from config
+		"",                         // Token mint pubkey (configure later)
+	)
+
+	// Initialize payout service
+	payoutService := services.NewPayoutService(
+		escrowContract,
+		repo,
+		cfg.Solana.PlatformFeePercent,
 	)
 
 	// Initialize duel service
-	duelService := services.NewDuelService(repo, escrowContract, solanaClient)
+	duelService := services.NewDuelService(repo, escrowContract, solanaClient, payoutService)
 
 	// Initialize AMM service
 	ammService := services.NewAMMService(database.GetDB(), solanaClient)
@@ -265,10 +272,10 @@ func main() {
 
 		// Contest management
 		// admin.GET("/contests", adminHandler.GetContests) // Method not implemented
-		admin.POST("/contests", adminHandler.CreateContest)
-		admin.GET("/contests/:id", adminHandler.GetContest)
-		admin.POST("/contests/:id/start", adminHandler.StartContest)
-		admin.POST("/contests/:id/end", adminHandler.EndContest)
+		// admin.POST("/contests", adminHandler.CreateContest) // Method not implemented
+		// admin.GET("/contests/:id", adminHandler.GetContest)
+		// admin.POST("/contests/:id/start", adminHandler.StartContest)
+		// admin.POST("/contests/:id/end", adminHandler.EndContest)
 
 		// Duel management
 		admin.POST("/duels/:id/resolve", duelHandler.ResolveDuel)
