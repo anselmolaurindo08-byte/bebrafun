@@ -108,27 +108,13 @@ func main() {
 	// Set up Gin router
 	router := gin.Default()
 
-	// CORS middleware
-	allowedOrigins := []string{
-		"https://bebrafun1.vercel.app", // Production frontend
-		"http://localhost:3000",        // Local development
-		"http://localhost:3001",
-		"http://localhost:5173", // Vite dev server
-		"http://127.0.0.1:3000",
-		"http://127.0.0.1:3001",
-		"http://127.0.0.1:5173",
-	}
-	// Add additional frontend URL from environment if provided
-	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
-		allowedOrigins = append(allowedOrigins, frontendURL)
-	}
-
+	// CORS middleware - Allow all origins for now to avoid deployment issues
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: false, // Must be false when AllowAllOrigins is true
 		MaxAge:           12 * time.Hour,
 	}))
 
