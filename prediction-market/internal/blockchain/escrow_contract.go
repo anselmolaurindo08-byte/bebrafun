@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/system"
 )
 
 // EscrowContract handles interactions with the Solana escrow smart contract
@@ -67,18 +68,17 @@ func (e *EscrowContract) VerifyDuelTransaction(
 	// Current `VerifyTransaction` calculates net change.
 	// IF details.Amount < expectedAmount { return false ... }
 
-	// Since we are in simulation mode (self-transfer), the net change might be 0 or negative (fees).
-	// To avoid breaking the current Devnet flow while "Strengthening" the code structure:
-	// We will log the discrepancy but return TRUE for the simulation phase,
-	// UNLESS the amount is clearly > 0 and wrong.
+	// Verify receiver matches server wallet
+	serverPubKey := e.client.serverWallet.PublicKey().String()
+	if details.Receiver != serverPubKey {
+		return false, fmt.Errorf("invalid deposit receiver: expected %s, got %s", serverPubKey, details.Receiver)
+	}
 
-	// STRICT MODE (Uncomment for Production):
-	// if details.Amount < expectedAmount {
-	// 	 return false, fmt.Errorf("insufficient deposit amount: expected %d, got %d", expectedAmount, details.Amount)
-	// }
-
-	// For now, return verified based on Confirmation status to keep the demo working,
-	// but the infrastructure for amount checking is now plumbed through.
+	// Verify amount (strict check)
+	// Allow a tiny margin for float conversion issues if any, but uint64 comparisons should be exact.
+	if details.Amount < expectedAmount {
+		 return false, fmt.Errorf("insufficient deposit amount: expected %d, got %d", expectedAmount, details.Amount)
+	}
 
 	return true, nil
 }
@@ -88,6 +88,7 @@ func (e *EscrowContract) ReleaseToWinner(
 	ctx context.Context,
 	duelID int64,
 	winnerPubKeyStr string,
+	amount uint64,
 ) (string, error) {
 	if e.client.serverWallet == nil {
 		return "", fmt.Errorf("server wallet not configured")
@@ -98,61 +99,56 @@ func (e *EscrowContract) ReleaseToWinner(
 		return "", fmt.Errorf("invalid winner public key: %w", err)
 	}
 
-	// 1. Derive PDAs (Program Derived Addresses)
-	// Escrow Account PDA: ["duel_escrow", duel_id]
-	// Escrow Vault PDA: ["duel_vault", duel_id]
-	duelIDBytes := uint64ToBytes(uint64(duelID))
+	// For the "Custodial" phase (Season 0/Devnet), funds are in the Server Wallet.
+	// We perform a SystemProgram.Transfer from Server Wallet to Winner.
+	// When we move to "Smart Contract" phase, this logic will change to a CPI call via Anchor instruction.
 
-	escrowPDA, _, err := solana.FindProgramAddress(
-		[][]byte{[]byte("duel_escrow"), duelIDBytes},
-		e.programID,
-	)
+	log.Printf("[SERVER-WALLET] Signing release transaction for Duel %d to %s. Amount: %d lamports", duelID, winnerPubKey, amount)
+
+	// 1. Get recent blockhash
+	recent, err := e.client.GetRecentBlockhash(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to derive escrow PDA: %w", err)
+		return "", fmt.Errorf("failed to get blockhash: %w", err)
 	}
 
-	escrowVaultPDA, _, err := solana.FindProgramAddress(
-		[][]byte{[]byte("duel_vault"), duelIDBytes},
-		e.programID,
+	// 2. Build Transfer Instruction
+	ix := system.NewTransferInstruction(
+		amount,
+		e.client.serverWallet.PublicKey(), // From
+		winnerPubKey,                      // To
+	).Build()
+
+	// 3. Create Transaction
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{ix},
+		recent,
+		solana.TransactionPayer(e.client.serverWallet.PublicKey()),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to derive escrow vault PDA: %w", err)
+		return "", fmt.Errorf("failed to build transaction: %w", err)
 	}
 
-	// Winner Token Account (Associated Token Account)
-	// assuming standard ATA derivation
-	// In a real implementation, we need to check if it exists or use the user's main wallet if native SOL (wrapped)
-	// For simplicity, assuming WinnerPubKey IS the destination (native SOL) or we derive ATA
-	// Let's assume Native SOL for MVP or use proper ATA derivation lib
+	// 4. Sign Transaction
+	_, err = tx.Sign(
+		func(key solana.PublicKey) *solana.PrivateKey {
+			if key.Equals(e.client.serverWallet.PublicKey()) {
+				return &e.client.serverWallet.PrivateKey
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign transaction: %w", err)
+	}
 
-	// 2. Build Transaction Instruction
-	// NOTE: This requires constructing the specific Instruction data layout matching the Anchor program
-	// Anchor instruction: [Discriminator (8 bytes) + Args]
-	// We need the discriminator for "resolve_duel"
+	// 5. Send Transaction
+	sig, err := e.client.SendTransaction(ctx, tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to send release transaction: %w", err)
+	}
 
-	// Since we can't easily generate Anchor discriminators dynamically without IDL parsing in Go,
-	// we will Simulate/Mock the actual on-chain call here for this task step
-	// unless we implement the full binary marshaling.
-
-	log.Printf("[SERVER-WALLET] Signing release transaction for Duel %d to %s", duelID, winnerPubKey)
-	log.Printf("Authority: %s", e.client.serverWallet.PublicKey())
-	log.Printf("Escrow PDA: %s", escrowPDA)
-	log.Printf("Vault PDA: %s", escrowVaultPDA)
-
-	// In a full implementation:
-	// blockhash, _ := e.client.GetRecentBlockhash(ctx)
-	// tx, _ := solana.NewTransaction(...)
-	// tx.AddInstruction(...)
-	// tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
-	// 	if key.Equals(e.client.serverWallet.PublicKey()) {
-	// 		return &e.client.serverWallet.PrivateKey
-	// 	}
-	// 	return nil
-	// })
-	// sig, _ := e.client.SendTransaction(ctx, tx)
-	// return sig.String(), nil
-
-	return fmt.Sprintf("simulated_release_tx_by_%s", e.client.serverWallet.PublicKey().String()), nil
+	log.Printf("Payout successful. Signature: %s", sig)
+	return sig.String(), nil
 }
 
 // CancelEscrow builds transaction for server-side cancellation

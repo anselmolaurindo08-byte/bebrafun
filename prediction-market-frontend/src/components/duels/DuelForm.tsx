@@ -36,10 +36,8 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       setError(null);
 
       // Convert SOL to lamports/units logic usually happens in service, passing float for now
-      // Assuming backend handles conversion or expects float
       const request: CreateDuelRequest = {
-        betAmount: amount, // Backend expects float for now? Or we should check types.
-                           // Current CreateDuelRequest uses number.
+        betAmount: amount,
         currency: selectedToken,
         predictedOutcome: prediction
       };
@@ -70,24 +68,22 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
             <button
               type="button"
               onClick={() => setSelectedToken(DuelCurrency.SOL)}
-              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${
-                selectedToken === DuelCurrency.SOL
+              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${selectedToken === DuelCurrency.SOL
                   ? 'bg-pump-purple text-white border-2 border-pump-purple'
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-purple'
-              }`}
+                }`}
             >
-              SOL
+              SOL/USDT
             </button>
             <button
               type="button"
               onClick={() => setSelectedToken(DuelCurrency.PUMP)}
-              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${
-                selectedToken === DuelCurrency.PUMP
+              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${selectedToken === DuelCurrency.PUMP
                   ? 'bg-pump-green text-pump-black border-2 border-pump-green'
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
-              }`}
+                }`}
             >
-              PUMP (Virtual)
+              PUMP/USDT
             </button>
           </div>
         </div>
@@ -101,22 +97,20 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
             <button
               type="button"
               onClick={() => setPrediction('UP')}
-              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${
-                prediction === 'UP'
+              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${prediction === 'UP'
                   ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
                   : 'bg-pump-black text-pump-green border-2 border-pump-gray-dark hover:border-pump-green'
-              }`}
+                }`}
             >
               ▲ HIGHER
             </button>
             <button
               type="button"
               onClick={() => setPrediction('DOWN')}
-              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${
-                prediction === 'DOWN'
+              className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${prediction === 'DOWN'
                   ? 'bg-pump-red text-white border-2 border-pump-red'
                   : 'bg-pump-black text-pump-red border-2 border-pump-gray-dark hover:border-pump-red'
-              }`}
+                }`}
             >
               ▼ LOWER
             </button>

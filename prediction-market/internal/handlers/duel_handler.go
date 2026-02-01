@@ -504,3 +504,16 @@ func (h *DuelHandler) ShareOnX(c *gin.Context) {
 		},
 	})
 }
+
+// GetConfig returns duel configuration including escrow address
+// GET /api/duels/config
+func (h *DuelHandler) GetConfig(c *gin.Context) {
+	escrowAddress := h.duelService.GetEscrowWalletAddress()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"escrowAddress": escrowAddress,
+		},
+	})
+}

@@ -19,10 +19,10 @@ type BlockchainService struct {
 	mu           sync.Mutex
 }
 
-func NewBlockchainService(db *gorm.DB, network, tokenMintAddress, escrowContractAddress, privateKey string) *BlockchainService {
+func NewBlockchainService(db *gorm.DB, network, tokenMintAddress, escrowContractAddress, serverWalletPrivateKey string) *BlockchainService {
 	return &BlockchainService{
 		db:           db,
-		solanaClient: blockchain.NewSolanaClient(network, tokenMintAddress, escrowContractAddress, privateKey),
+		solanaClient: blockchain.NewSolanaClient(network, tokenMintAddress, escrowContractAddress, serverWalletPrivateKey),
 	}
 }
 

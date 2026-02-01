@@ -48,9 +48,9 @@ func main() {
 	userService := services.NewUserService(database.GetDB())
 	blockchainService := services.NewBlockchainService(
 		database.GetDB(),
-		cfg.Solana.Network,
-		"", // Token mint address (configure later)
-		"", // Escrow contract address (configure later)
+		cfg.Solana.Network, // Use "mainnet-beta" for production
+		"",                 // Token mint address (configure later)
+		"",                 // Escrow contract address (configure later)
 		cfg.Solana.ServerWalletPrivateKey,
 	)
 
@@ -76,7 +76,7 @@ func main() {
 	duelService := services.NewDuelService(repo, escrowContract, solanaClient)
 
 	// Initialize AMM service
-	ammService := services.NewAMMService(database.GetDB(), solanaClient)
+	ammService := services.NewAMMService(database.GetDB())
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -215,6 +215,7 @@ func main() {
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
 		api.GET("/duels/status/active", duelHandler.GetActiveDuels)
+		api.GET("/duels/config", duelHandler.GetConfig)
 
 		// AMM endpoints (protected)
 		amm := api.Group("/amm")

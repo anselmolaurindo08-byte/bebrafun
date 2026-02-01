@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -38,8 +39,11 @@ func NewPriceService() *PriceService {
 }
 
 func (ps *PriceService) runBinanceStream() {
-	// Stream for SOLUSDT and DOGEUSDT (example)
-	url := "wss://stream.binance.com:9443/ws/solusdt@trade/dogeusdt@trade"
+	// Stream for SOLUSDT and PUMPUSDT
+	// Note: PUMP/USDT on Binance might be 1000SATS or similar if not direct PUMP.
+	// But user provided direct link https://www.binance.com/ru/trade/PUMP_USDT?type=spot
+	// Assuming symbol is "PUMPUSDT" (case insensitive for stream usually lowercase)
+	url := "wss://stream.binance.com:9443/ws/solusdt@trade/pumpusdt@trade"
 
 	for {
 		select {
@@ -73,11 +77,19 @@ func (ps *PriceService) runBinanceStream() {
 
 				// Parse price
 				var price float64
-				fmt.Sscanf(trade.Price, "%f", &price)
+
+				if p, err := strconv.ParseFloat(trade.Price, 64); err == nil {
+					price = p
+				} else {
+					log.Printf("Error parsing price for %s: %v", trade.Symbol, err)
+					continue
+				}
 
 				ps.pricesMux.Lock()
 				ps.prices[trade.Symbol] = price
 				ps.pricesMux.Unlock()
+
+				// log.Printf("Updated price for %s: %f", trade.Symbol, price) // Debug
 			}
 			c.Close()
 		}

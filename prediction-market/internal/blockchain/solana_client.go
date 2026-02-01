@@ -115,10 +115,7 @@ func (s *SolanaClient) GetRecentBlockhash(ctx context.Context) (solana.Hash, err
 // rpcCall makes a JSON-RPC call to the Solana node
 func (s *SolanaClient) rpcCall(ctx context.Context, method string, params []interface{}) (*RPCResponse, error) {
 	// Fallback to manual HTTP call for methods not covered by solana-go library or for custom parsing
-	// Reusing existing logic for compatibility
-
-	// Use rpcClient's endpoint
-	rpcURL := "https://api.devnet.solana.com" // Default fallback
+	rpcURL := "https://api.devnet.solana.com"
 	if s.network == "mainnet-beta" {
 		rpcURL = "https://api.mainnet-beta.solana.com"
 	}
@@ -187,21 +184,6 @@ func (s *SolanaClient) GetSOLBalance(ctx context.Context, walletAddress string) 
 	return decimal.NewFromInt(int64(balance.Value)).Div(decimal.NewFromInt(1_000_000_000)), nil
 }
 
-// GetTokenBalance gets the token balance for a specific SPL token
-func (s *SolanaClient) GetTokenBalance(ctx context.Context, walletAddress string) (decimal.Decimal, error) {
-	// Simplified using rpcClient
-	// This would require GetTokenAccountsByOwner logic
-	// Keeping existing HTTP implementation for simplicity in this migration step
-	// or returning 0 if mint not set
-	if s.tokenMintAddress == "" {
-		return decimal.Zero, nil // fmt.Errorf("token mint address not configured")
-	}
-
-	// ... (Existing logic can remain or be updated to use solana-go)
-	// For now, let's return 0 placeholder or implement properly later
-	return decimal.Zero, nil
-}
-
 // TransactionDetails holds the parsed details of a verified transaction
 type TransactionDetails struct {
 	Signature   string
@@ -247,29 +229,8 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 		return nil, fmt.Errorf("failed to get transaction details: %w", err)
 	}
 
-	// Parse the transaction to find the transfer instruction
-	// This logic depends on the specific instruction structure (SystemProgram.Transfer)
-	// For MVP, we extract the first instruction or look for a SOL transfer
-
-	// Note: We need to parse the Meta.PostBalances - Meta.PreBalances or parse Instructions
-	// Parsing instructions is safer to verify sender -> receiver
-
-	// Simplified extraction for SystemProgram Transfer
-	// We iterate over instructions to find one that matches our criteria
-
-	// TODO: Implement robust instruction parsing using solana-go's system program types
-	// For now, we return basic confirmation success with placeholder details if parsing is complex without specific types
-
-	// Note: Parse logic depends on whether Transaction is decoded or not.
-	// Assuming JSONParsed encoding was not requested explicitly but usually default in solana-go high level if not specified.
-	// Actually GetTransaction returns *rpc.GetTransactionResult which contains Transaction *rpc.TransactionResultEnvelope
-
-	// Accessing the decoded transaction requires type assertion or proper access based on encoding
-	// Simplified fallback for now:
-
 	transaction, err := tx.Transaction.GetTransaction()
 	if err != nil {
-		// Fallback if parsing fails
 		log.Printf("Failed to decode transaction: %v", err)
 		return &TransactionDetails{Signature: txHash, Confirmed: true}, nil
 	}
@@ -282,8 +243,6 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 	receiver := transaction.Message.AccountKeys[1].String()
 
 	// Calculate amount change for receiver (approximate check)
-	// We rely on Meta.PostBalances - Meta.PreBalances to determine the net transfer to the receiver
-	// This is robust enough for simple transfers where the receiver is index 1.
 	var amount uint64
 	if len(tx.Meta.PreBalances) > 1 && len(tx.Meta.PostBalances) > 1 {
 		preBalance := tx.Meta.PreBalances[1]
@@ -309,9 +268,17 @@ func (s *SolanaClient) GetTransactionStatus(ctx context.Context, txHash string) 
 		return false, 0, err
 	}
 	if tx != nil && tx.Confirmed {
-		return true, 10, nil // Mock confirmations count for now
+		return true, 10, nil
 	}
 	return false, 0, nil
+}
+
+// GetServerWalletPublicKey returns the public key of the server wallet if configured
+func (s *SolanaClient) GetServerWalletPublicKey() string {
+	if s.serverWallet == nil {
+		return ""
+	}
+	return s.serverWallet.PublicKey().String()
 }
 
 // GetTokenAccountBalance gets the token balance for a specific owner and mint
@@ -358,4 +325,19 @@ func (s *SolanaClient) GetTokenAccountBalance(ctx context.Context, ownerAddress 
 	}
 
 	return totalBalance, nil
+}
+
+// GetTokenBalance gets the token balance for the configured default mint
+func (s *SolanaClient) GetTokenBalance(ctx context.Context, walletAddress string) (decimal.Decimal, error) {
+	if s.tokenMintAddress == "" {
+		return decimal.Zero, fmt.Errorf("token mint address not configured")
+	}
+
+	balance, err := s.GetTokenAccountBalance(ctx, walletAddress, s.tokenMintAddress)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	// Assuming 6 decimals for default token (USDC/etc) - should be dynamic but MVP
+	return decimal.NewFromInt(int64(balance)).Div(decimal.NewFromInt(1_000_000)), nil
 }
