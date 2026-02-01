@@ -136,7 +136,16 @@ func (h *DuelHandler) JoinDuel(c *gin.Context) {
 		return
 	}
 
-	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID)
+	var req struct {
+		Signature string `json:"signature" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "signature required"})
+		return
+	}
+
+	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID, req.Signature)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

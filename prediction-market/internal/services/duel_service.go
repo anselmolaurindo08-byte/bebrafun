@@ -191,11 +191,12 @@ func (ds *DuelService) matchDuels() {
 	}
 }
 
-// JoinDuel allows a player to join/accept a pending duel
+// JoinDuel allows a player to join/accept a pending duel with deposit verification
 func (ds *DuelService) JoinDuel(
 	ctx context.Context,
 	duelID uuid.UUID,
 	playerID uint,
+	signature string,
 ) (*models.Duel, error) {
 	// Get duel
 	duel, err := ds.repo.GetDuelByID(ctx, duelID)
@@ -218,7 +219,28 @@ func (ds *DuelService) JoinDuel(
 		return nil, errors.New("duel already has a second player")
 	}
 
-	// Set Player2 and update status
+	// Check if this transaction signature was already used (idempotency)
+	existingTx, err := ds.repo.GetTransactionByHash(ctx, signature)
+	if err == nil && existingTx != nil {
+		return nil, errors.New("transaction signature already used")
+	}
+
+	// Verify transaction on blockchain
+	txDetails, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify deposit transaction: %w", err)
+	}
+
+	if txDetails == nil || !txDetails.Confirmed {
+		return nil, errors.New("deposit transaction not confirmed on blockchain")
+	}
+
+	// Verify transaction amount matches bet amount
+	if txDetails.Amount < uint64(duel.BetAmount) {
+		return nil, fmt.Errorf("insufficient deposit: expected %d lamports, got %d", duel.BetAmount, txDetails.Amount)
+	}
+
+	// Set Player2 and update status to MATCHED
 	duel.Player2ID = &playerID
 	duel.Player2Amount = &duel.BetAmount
 	duel.Status = models.DuelStatusMatched
@@ -230,12 +252,25 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
 
-	// Initialize escrow on blockchain
-	// TODO: Implement escrow initialization when smart contract is ready
-	// escrowTxHash, err := ds.escrowContract.InitializeEscrow(...)
-	log.Printf("Escrow initialization skipped for duel %d (not implemented yet)", duel.DuelID)
+	// Record deposit transaction for Player2
+	depositTx := &models.DuelTransaction{
+		ID:              uuid.New(),
+		DuelID:          duel.ID,
+		TransactionType: models.DuelTransactionTypeDeposit,
+		PlayerID:        playerID,
+		Amount:          duel.BetAmount,
+		TxHash:          &signature,
+		Status:          models.DuelTransactionStatusConfirmed,
+		CreatedAt:       time.Now(),
+		ConfirmedAt:     timePtr(time.Now()),
+	}
 
-	log.Printf("Player %d joined duel %d (created by player %d)", playerID, duel.DuelID, duel.Player1ID)
+	err = ds.repo.CreateDuelTransaction(ctx, depositTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record deposit transaction: %w", err)
+	}
+
+	log.Printf("Player %d joined duel %d with verified deposit (tx: %s)", playerID, duel.DuelID, signature)
 
 	return duel, nil
 }

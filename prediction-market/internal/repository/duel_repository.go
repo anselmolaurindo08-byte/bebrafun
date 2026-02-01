@@ -196,6 +196,24 @@ func (r *Repository) GetDuelTransactions(ctx context.Context, duelID uuid.UUID) 
 	return transactions, nil
 }
 
+// GetTransactionByHash retrieves a transaction by its hash (for idempotency check)
+func (r *Repository) GetTransactionByHash(ctx context.Context, txHash string) (*models.DuelTransaction, error) {
+	var transaction models.DuelTransaction
+	err := r.db.WithContext(ctx).
+		Where("tx_hash = ?", txHash).
+		First(&transaction).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil // No transaction found (not an error)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &transaction, nil
+}
+
 // GetDuelStatistics retrieves duel statistics for a user
 func (r *Repository) GetDuelStatistics(ctx context.Context, userID uint) (*models.DuelStatistics, error) {
 	var stats models.DuelStatistics
@@ -271,8 +289,8 @@ func (r *Repository) IncrementDuelStats(
 			// Calculate derived fields atomically using the NEW values of counters
 			// Note: referencing the column name here (e.g. duel_statistics.total_duels) usually refers to the OLD value in Postgres ON CONFLICT DO UPDATE.
 			// So we must repeat the increment logic in the calculation.
-			"win_rate": gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN (CAST((duel_statistics.wins + ?) AS NUMERIC) / (duel_statistics.total_duels + ?) * 100) ELSE 0 END", duelsIncr, winsIncr, duelsIncr),
-			"avg_bet":  gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN ((duel_statistics.total_wagered + ?) / (duel_statistics.total_duels + ?)) ELSE 0 END", duelsIncr, wageredIncr, duelsIncr),
+			"win_rate":   gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN (CAST((duel_statistics.wins + ?) AS NUMERIC) / (duel_statistics.total_duels + ?) * 100) ELSE 0 END", duelsIncr, winsIncr, duelsIncr),
+			"avg_bet":    gorm.Expr("CASE WHEN (duel_statistics.total_duels + ?) > 0 THEN ((duel_statistics.total_wagered + ?) / (duel_statistics.total_duels + ?)) ELSE 0 END", duelsIncr, wageredIncr, duelsIncr),
 			"updated_at": gorm.Expr("CURRENT_TIMESTAMP"),
 		}),
 	}).Create(&initialStats).Error
