@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"prediction-market/internal/blockchain"
@@ -125,51 +128,90 @@ func (ds *DuelService) CreateDuel(
 
 // matchDuels continuously matches players from the queue
 func (ds *DuelService) matchDuels() {
-	for queueItem := range ds.duelMatchingQueue {
-		ctx := context.Background()
+	workerCount := 10
+	if env := os.Getenv("DUEL_WORKER_COUNT"); env != "" {
+		if v, err := strconv.Atoi(env); err == nil && v > 0 {
+			workerCount = v
+		}
+	}
+	var wg sync.WaitGroup
 
-		// Try to find a matching opponent
-		opponentID, err := ds.repo.FindMatchingOpponent(
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for queueItem := range ds.duelMatchingQueue {
+				ds.processMatch(queueItem)
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+func (ds *DuelService) processMatch(queueItem *models.DuelQueue) {
+	ctx := context.Background()
+
+	err := ds.repo.WithTransaction(ctx, func(txRepo *repository.Repository) error {
+		// 1. Find and Lock Self First (Deadlock Prevention)
+		myDuel, err := txRepo.FindAndLockDuel(ctx, queueItem.PlayerID)
+		if err != nil {
+			return fmt.Errorf("error finding/locking my duel: %w", err)
+		}
+		if myDuel == nil {
+			// Already locked by someone else (e.g., matched as opponent) or not found.
+			return nil
+		}
+
+		// Validation: Ensure Self is PENDING
+		if myDuel.Status != models.DuelStatusPending {
+			return nil // Already matched, nothing to do
+		}
+
+		// 2. Find Opponent (Locked)
+		opponentDuel, err := txRepo.FindAndLockMatchingOpponent(
 			ctx,
 			queueItem.PlayerID,
 			queueItem.BetAmount,
 		)
 
 		if err != nil {
-			log.Printf("Error finding opponent: %v", err)
-			continue
+			return fmt.Errorf("error finding opponent: %w", err)
 		}
 
-		if opponentID == nil {
-			// No opponent found, keep waiting
-			log.Printf("No opponent found for player %d with bet %d", queueItem.PlayerID, queueItem.BetAmount)
-			continue
+		if opponentDuel == nil {
+			// No opponent found
+			return nil
 		}
 
-		// Found a match! Update the duel
-		duel1, err := ds.repo.GetLatestDuelByPlayer(ctx, queueItem.PlayerID)
-		if err != nil {
-			log.Printf("Error getting duel: %v", err)
-			continue
+		// 3. Update Both Duels
+		// Update Opponent
+		now := time.Now()
+		opponentDuel.Player2ID = &queueItem.PlayerID
+		opponentDuel.Player2Amount = &queueItem.BetAmount
+		opponentDuel.Status = models.DuelStatusMatched
+		opponentDuel.StartedAt = &now
+
+		if err := txRepo.UpdateDuel(ctx, opponentDuel); err != nil {
+			return fmt.Errorf("failed to update opponent duel: %w", err)
 		}
 
-		// Update first duel with matched opponent
-		duel1.Player2ID = opponentID
-		duel1.Player2Amount = &queueItem.BetAmount
-		duel1.Status = models.DuelStatusMatched
-		duel1.StartedAt = timePtr(time.Now())
+		// Update Self
+		myDuel.Player2ID = &opponentDuel.Player1ID
+		myDuel.Player2Amount = &opponentDuel.BetAmount
+		myDuel.Status = models.DuelStatusMatched
+		myDuel.StartedAt = &now
 
-		// Save to database
-		err = ds.repo.UpdateDuel(ctx, duel1)
-		if err != nil {
-			log.Printf("Error updating duel: %v", err)
-			continue
+		if err := txRepo.UpdateDuel(ctx, myDuel); err != nil {
+			return fmt.Errorf("failed to update my duel: %w", err)
 		}
 
-		// NOTE: Escrow Initialization is now triggered by Frontend
-		// Backend just waits for transaction hash confirmation via DepositToDuel
+		log.Printf("Matched duel %d (P1:%d) with duel %d (P1:%d)", myDuel.DuelID, myDuel.Player1ID, opponentDuel.DuelID, opponentDuel.Player1ID)
+		return nil
+	})
 
-		log.Printf("Matched duel %d: %d vs %d", duel1.DuelID, duel1.Player1ID, *duel1.Player2ID)
+	if err != nil {
+		log.Printf("Error processing match for player %d: %v", queueItem.PlayerID, err)
 	}
 }
 
