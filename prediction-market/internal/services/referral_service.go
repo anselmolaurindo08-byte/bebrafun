@@ -135,7 +135,11 @@ func (s *ReferralService) ValidateAndApplyReferralCode(referredUserID uint, code
 	}
 
 	// Update referral stats
-	s.updateReferralStats(referralCode.UserID)
+	if err := s.IncrementReferralCount(referralCode.UserID, true); err != nil {
+		log.Printf("Error incrementing referral stats: %v", err)
+		// Fallback to full recalculation on error
+		s.RecalculateReferralStats(referralCode.UserID)
+	}
 
 	log.Printf("Applied referral code %s: user %d referred by user %d", code, referredUserID, referralCode.UserID)
 	return nil
@@ -199,6 +203,11 @@ func (s *ReferralService) ProcessTradeRebate(tradeID uint, traderID uint, tradeA
 		return fmt.Errorf("failed to create rebate: %w", err)
 	}
 
+	// Update stats: Increment total rebates earned (includes pending)
+	if err := s.IncrementRebatesEarned(*trader.ReferrerID, rebateAmount); err != nil {
+		log.Printf("Error incrementing rebates earned: %v", err)
+	}
+
 	// Immediately pay the rebate
 	if err := s.PayRebate(rebate.ID); err != nil {
 		log.Printf("Error paying rebate: %v", err)
@@ -235,7 +244,10 @@ func (s *ReferralService) PayRebate(rebateID uint) error {
 	}
 
 	// Update referral stats
-	s.updateReferralStats(rebate.ReferrerID)
+	if err := s.IncrementRebatesPaid(rebate.ReferrerID, rebate.RebateAmount); err != nil {
+		log.Printf("Error incrementing rebates paid: %v", err)
+		s.RecalculateReferralStats(rebate.ReferrerID)
+	}
 
 	log.Printf("Rebate paid: %s to user %d", rebate.RebateAmount, rebate.ReferrerID)
 	return nil
@@ -266,8 +278,8 @@ func (s *ReferralService) GetReferralStats(userID uint) (*models.ReferralStats, 
 	return &stats, nil
 }
 
-// updateReferralStats updates referral statistics for a user
-func (s *ReferralService) updateReferralStats(userID uint) error {
+// RecalculateReferralStats updates referral statistics for a user by recalculating from source data
+func (s *ReferralService) RecalculateReferralStats(userID uint) error {
 	// Count total referrals
 	var totalReferrals int64
 	if err := s.db.Model(&models.Referral{}).Where("referrer_id = ?", userID).
@@ -320,6 +332,64 @@ func (s *ReferralService) updateReferralStats(userID uint) error {
 		"total_rebates_paid":   totalRebatesPaid,
 		"updated_at":           time.Now(),
 	}).Error
+}
+
+// IncrementReferralCount atomically increments the referral count
+func (s *ReferralService) IncrementReferralCount(userID uint, isNewActive bool) error {
+	updates := map[string]interface{}{
+		"total_referrals": gorm.Expr("total_referrals + ?", 1),
+		"updated_at":      time.Now(),
+	}
+	if isNewActive {
+		updates["active_referrals"] = gorm.Expr("active_referrals + ?", 1)
+	}
+
+	result := s.db.Model(&models.ReferralStats{}).Where("user_id = ?", userID).Updates(updates)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return s.RecalculateReferralStats(userID)
+	}
+	return nil
+}
+
+// IncrementRebatesEarned atomically increments the rebates earned
+func (s *ReferralService) IncrementRebatesEarned(userID uint, amount decimal.Decimal) error {
+	result := s.db.Model(&models.ReferralStats{}).Where("user_id = ?", userID).
+		Updates(map[string]interface{}{
+			"total_rebates_earned": gorm.Expr("total_rebates_earned + ?", amount),
+			"updated_at":           time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return s.RecalculateReferralStats(userID)
+	}
+	return nil
+}
+
+// IncrementRebatesPaid atomically increments the rebates paid
+func (s *ReferralService) IncrementRebatesPaid(userID uint, amount decimal.Decimal) error {
+	result := s.db.Model(&models.ReferralStats{}).Where("user_id = ?", userID).
+		Updates(map[string]interface{}{
+			"total_rebates_paid": gorm.Expr("total_rebates_paid + ?", amount),
+			"updated_at":         time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return s.RecalculateReferralStats(userID)
+	}
+	return nil
 }
 
 // GetUserReferrals returns all referrals for a user

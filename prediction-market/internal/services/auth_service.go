@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"prediction-market/internal/models"
@@ -33,7 +32,6 @@ func (s *AuthService) ProcessWalletLogin(walletAddress string, inviteCode string
 		// New user — create account
 		user = models.User{
 			WalletAddress:  walletAddress,
-			VirtualBalance: decimal.NewFromFloat(1000.00),
 		}
 
 		// Handle referral if invite code provided
@@ -69,15 +67,6 @@ func (s *AuthService) ProcessWalletLogin(walletAddress string, inviteCode string
 					})
 			}
 		}
-
-		// Create initial transaction record
-		transaction := models.Transaction{
-			UserID:      user.ID,
-			Type:        "deposit",
-			Amount:      1000.00,
-			Description: "Initial virtual balance",
-		}
-		s.db.Create(&transaction)
 
 		log.Printf("New user created: wallet=%s (ID: %d)", walletAddress, user.ID)
 	} else if result.Error != nil {

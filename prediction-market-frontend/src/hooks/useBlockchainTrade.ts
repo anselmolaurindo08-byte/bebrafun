@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import BN from 'bn.js';
 import blockchainService from '../services/blockchainService';
 import type {
@@ -18,7 +18,8 @@ import type { TradeType } from '../services/types/blockchain';
  * Works with the stateless BlockchainService singleton.
  */
 export function useBlockchainTrade(poolId: string) {
-  const { publicKey } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
+  useConnection(); // Ensure connection context exists
 
   const [poolState, setPoolState] = useState<PoolState | null>(null);
   const [quote, setQuote] = useState<TradeQuote | null>(null);
@@ -151,10 +152,13 @@ export function useBlockchainTrade(poolId: string) {
             inputAmount,
             tradeType,
             minOutputAmount: quote.minimumReceived,
+            expectedOutputAmount: quote.outputAmount,
+            feeAmount: quote.feeAmount,
             slippageTolerance,
             userWallet: publicKey,
           },
           publicKey,
+          sendTransaction // Pass the sendTransaction function
         );
 
         setTxSignature(result.signature);
@@ -181,7 +185,7 @@ export function useBlockchainTrade(poolId: string) {
         setLoading(false);
       }
     },
-    [publicKey, poolState, quote, fetchPoolState],
+    [publicKey, poolState, quote, fetchPoolState, sendTransaction],
   );
 
   return {

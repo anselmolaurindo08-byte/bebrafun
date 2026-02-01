@@ -61,7 +61,9 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-pump-gray font-sans text-xs mb-1">Bet Amount</p>
-          <p className="text-pump-green font-mono font-bold text-lg">{duel.betAmount.toLocaleString()} Tokens</p>
+          <p className="text-pump-green font-mono font-bold text-lg">
+            {(duel.betAmount / 1_000_000_000).toLocaleString()} {duel.currency === 'SOL' ? 'SOL' : String(duel.currency)}
+          </p>
         </div>
         <div className={`px-3 py-1.5 rounded-full text-xs font-sans font-semibold ${getStatusColor(duel.status)}`}>
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}

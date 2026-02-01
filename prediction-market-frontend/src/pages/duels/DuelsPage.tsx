@@ -20,8 +20,15 @@ export const DuelsPage: React.FC = () => {
     const fetchDuels = async () => {
       try {
         setLoading(true);
-        const { duels } = await duelService.getPlayerDuels();
-        setDuels(duels);
+        // Fetch ALL active duels instead of just the player's own duels
+        const { duels } = await duelService.getActiveDuels();
+
+        // Deduplicate duels by ID just in case
+        const uniqueDuels = Array.from(
+          new Map(duels.map(d => [d.id, d])).values()
+        );
+
+        setDuels(uniqueDuels);
         setError(null);
       } catch (err: any) {
         console.error('Failed to fetch duels:', err);
