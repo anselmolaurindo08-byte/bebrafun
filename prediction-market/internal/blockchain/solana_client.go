@@ -10,15 +10,20 @@ import (
 	"strings"
 	"time"
 
+	bin "github.com/gagliardetto/binary"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/token"
+	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/shopspring/decimal"
 )
 
 // SolanaClient handles Solana blockchain interactions
 type SolanaClient struct {
-	rpcURL                string
+	rpcClient             *rpc.Client
 	network               string
 	tokenMintAddress      string
 	escrowContractAddress string
+	serverWallet          *solana.Wallet
 	httpClient            *http.Client
 }
 
@@ -45,7 +50,7 @@ type RPCError struct {
 }
 
 // NewSolanaClient creates a new Solana client
-func NewSolanaClient(network, tokenMintAddress, escrowContractAddress string) *SolanaClient {
+func NewSolanaClient(network, tokenMintAddress, escrowContractAddress, privateKey string) *SolanaClient {
 	var rpcURL string
 	switch network {
 	case "mainnet-beta":
@@ -58,8 +63,8 @@ func NewSolanaClient(network, tokenMintAddress, escrowContractAddress string) *S
 		rpcURL = "https://api.devnet.solana.com"
 	}
 
-	return &SolanaClient{
-		rpcURL:                rpcURL,
+	client := &SolanaClient{
+		rpcClient:             rpc.New(rpcURL),
 		network:               network,
 		tokenMintAddress:      tokenMintAddress,
 		escrowContractAddress: escrowContractAddress,
@@ -67,10 +72,54 @@ func NewSolanaClient(network, tokenMintAddress, escrowContractAddress string) *S
 			Timeout: 30 * time.Second,
 		},
 	}
+
+	// Initialize server wallet if private key is provided
+	if privateKey != "" {
+		wallet, err := solana.WalletFromPrivateKeyBase58(privateKey)
+		if err != nil {
+			log.Printf("Warning: Failed to load server wallet: %v", err)
+		} else {
+			client.serverWallet = wallet
+			log.Printf("Server wallet loaded: %s", wallet.PublicKey())
+		}
+	}
+
+	return client
+}
+
+// SendTransaction sends a signed transaction to the network
+func (s *SolanaClient) SendTransaction(ctx context.Context, tx *solana.Transaction) (solana.Signature, error) {
+	sig, err := s.rpcClient.SendTransactionWithOpts(
+		ctx,
+		tx,
+		rpc.TransactionOpts{
+			SkipPreflight:       false,
+			PreflightCommitment: rpc.CommitmentConfirmed,
+		},
+	)
+	if err != nil {
+		return solana.Signature{}, fmt.Errorf("failed to send transaction: %w", err)
+	}
+	return sig, nil
+}
+
+// GetRecentBlockhash gets the latest blockhash
+func (s *SolanaClient) GetRecentBlockhash(ctx context.Context) (solana.Hash, error) {
+	resp, err := s.rpcClient.GetLatestBlockhash(ctx, rpc.CommitmentConfirmed)
+	if err != nil {
+		return solana.Hash{}, fmt.Errorf("failed to get recent blockhash: %w", err)
+	}
+	return resp.Value.Blockhash, nil
 }
 
 // rpcCall makes a JSON-RPC call to the Solana node
 func (s *SolanaClient) rpcCall(ctx context.Context, method string, params []interface{}) (*RPCResponse, error) {
+	// Fallback to manual HTTP call for methods not covered by solana-go library or for custom parsing
+	rpcURL := "https://api.devnet.solana.com"
+	if s.network == "mainnet-beta" {
+		rpcURL = "https://api.mainnet-beta.solana.com"
+	}
+
 	request := RPCRequest{
 		Jsonrpc: "2.0",
 		ID:      1,
@@ -83,7 +132,7 @@ func (s *SolanaClient) rpcCall(ctx context.Context, method string, params []inte
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.rpcURL, strings.NewReader(string(reqBody)))
+	req, err := http.NewRequestWithContext(ctx, "POST", rpcURL, strings.NewReader(string(reqBody)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -115,185 +164,180 @@ func (s *SolanaClient) rpcCall(ctx context.Context, method string, params []inte
 
 // ValidateWalletAddress validates a Solana wallet address format
 func (s *SolanaClient) ValidateWalletAddress(address string) bool {
-	// Solana addresses are base58 encoded and 32-44 characters long
-	if len(address) < 32 || len(address) > 44 {
-		return false
-	}
-
-	// Check for valid base58 characters
-	validChars := "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	for _, c := range address {
-		if !strings.ContainsRune(validChars, c) {
-			return false
-		}
-	}
-
-	return true
+	_, err := solana.PublicKeyFromBase58(address)
+	return err == nil
 }
 
 // GetSOLBalance gets the SOL balance for a wallet
 func (s *SolanaClient) GetSOLBalance(ctx context.Context, walletAddress string) (decimal.Decimal, error) {
-	params := []interface{}{
-		walletAddress,
-		map[string]string{"commitment": "confirmed"},
-	}
-
-	resp, err := s.rpcCall(ctx, "getBalance", params)
+	pubKey, err := solana.PublicKeyFromBase58(walletAddress)
 	if err != nil {
 		return decimal.Zero, err
 	}
 
-	var result struct {
-		Value uint64 `json:"value"`
-	}
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return decimal.Zero, fmt.Errorf("failed to parse balance: %w", err)
+	balance, err := s.rpcClient.GetBalance(ctx, pubKey, rpc.CommitmentConfirmed)
+	if err != nil {
+		return decimal.Zero, err
 	}
 
-	// Convert lamports to SOL (1 SOL = 1,000,000,000 lamports)
-	balance := decimal.NewFromInt(int64(result.Value)).Div(decimal.NewFromInt(1_000_000_000))
-	return balance, nil
+	// Convert lamports to SOL
+	return decimal.NewFromInt(int64(balance.Value)).Div(decimal.NewFromInt(1_000_000_000)), nil
 }
 
-// GetTokenBalance gets the token balance for a specific SPL token
+// TransactionDetails holds the parsed details of a verified transaction
+type TransactionDetails struct {
+	Signature   string
+	Sender      string
+	Receiver    string
+	Amount      uint64 // in lamports
+	Confirmed   bool
+}
+
+// VerifyTransaction verifies if a transaction is confirmed and returns its details
+func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, requiredConfirmations int) (*TransactionDetails, error) {
+	sig, err := solana.SignatureFromBase58(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1. Check Status First
+	status, err := s.rpcClient.GetSignatureStatuses(ctx, true, sig)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(status.Value) == 0 || status.Value[0] == nil {
+		return nil, nil // Not found
+	}
+
+	// Check for execution errors
+	if status.Value[0].Err != nil {
+		log.Printf("Transaction %s failed with error: %v", txHash, status.Value[0].Err)
+		return nil, fmt.Errorf("transaction execution failed")
+	}
+
+	confStatus := status.Value[0].ConfirmationStatus
+	if confStatus != rpc.ConfirmationStatusConfirmed && confStatus != rpc.ConfirmationStatusFinalized {
+		return nil, nil // Not confirmed yet
+	}
+
+	// 2. Fetch Full Transaction Content to Verify Amount & Receiver
+	tx, err := s.rpcClient.GetTransaction(ctx, sig, &rpc.GetTransactionOpts{
+		Commitment: rpc.CommitmentConfirmed,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transaction details: %w", err)
+	}
+
+	transaction, err := tx.Transaction.GetTransaction()
+	if err != nil {
+		log.Printf("Failed to decode transaction: %v", err)
+		return &TransactionDetails{Signature: txHash, Confirmed: true}, nil
+	}
+
+	if len(transaction.Message.AccountKeys) < 2 {
+		return &TransactionDetails{Signature: txHash, Confirmed: true}, nil
+	}
+
+	sender := transaction.Message.AccountKeys[0].String()
+	receiver := transaction.Message.AccountKeys[1].String()
+
+	// Calculate amount change for receiver (approximate check)
+	var amount uint64
+	if len(tx.Meta.PreBalances) > 1 && len(tx.Meta.PostBalances) > 1 {
+		preBalance := tx.Meta.PreBalances[1]
+		postBalance := tx.Meta.PostBalances[1]
+		if postBalance > preBalance {
+			amount = postBalance - preBalance
+		}
+	}
+
+	return &TransactionDetails{
+		Signature: txHash,
+		Sender:    sender,
+		Receiver:  receiver,
+		Amount:    amount,
+		Confirmed: true,
+	}, nil
+}
+
+// GetTransactionStatus gets status (backward compatibility)
+func (s *SolanaClient) GetTransactionStatus(ctx context.Context, txHash string) (bool, int, error) {
+	tx, err := s.VerifyTransaction(ctx, txHash, 1)
+	if err != nil {
+		return false, 0, err
+	}
+	if tx != nil && tx.Confirmed {
+		return true, 10, nil
+	}
+	return false, 0, nil
+}
+
+// GetServerWalletPublicKey returns the public key of the server wallet if configured
+func (s *SolanaClient) GetServerWalletPublicKey() string {
+	if s.serverWallet == nil {
+		return ""
+	}
+	return s.serverWallet.PublicKey().String()
+}
+
+// GetTokenAccountBalance gets the token balance for a specific owner and mint
+func (s *SolanaClient) GetTokenAccountBalance(ctx context.Context, ownerAddress string, mintAddress string) (uint64, error) {
+	owner, err := solana.PublicKeyFromBase58(ownerAddress)
+	if err != nil {
+		return 0, fmt.Errorf("invalid owner address: %w", err)
+	}
+	mint, err := solana.PublicKeyFromBase58(mintAddress)
+	if err != nil {
+		return 0, fmt.Errorf("invalid mint address: %w", err)
+	}
+
+	// Find token accounts for this mint owned by the address
+	resp, err := s.rpcClient.GetTokenAccountsByOwner(
+		ctx,
+		owner,
+		&rpc.GetTokenAccountsConfig{
+			Mint: &mint,
+		},
+		&rpc.GetTokenAccountsOpts{
+			Encoding: solana.EncodingBase64,
+		},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get token accounts: %w", err)
+	}
+
+	if len(resp.Value) == 0 {
+		return 0, nil // No account means 0 balance
+	}
+
+	// Sum up balances if multiple accounts exist (though typically there's only one for a pool)
+	var totalBalance uint64
+	for _, account := range resp.Value {
+		var tokenAccount token.Account
+		decoder := bin.NewBinDecoder(account.Account.Data.GetBinary())
+		err := tokenAccount.UnmarshalWithDecoder(decoder)
+		if err != nil {
+			log.Printf("Warning: failed to decode token account data: %v", err)
+			continue
+		}
+		totalBalance += tokenAccount.Amount
+	}
+
+	return totalBalance, nil
+}
+
+// GetTokenBalance gets the token balance for the configured default mint
 func (s *SolanaClient) GetTokenBalance(ctx context.Context, walletAddress string) (decimal.Decimal, error) {
 	if s.tokenMintAddress == "" {
 		return decimal.Zero, fmt.Errorf("token mint address not configured")
 	}
 
-	params := []interface{}{
-		walletAddress,
-		map[string]interface{}{
-			"mint": s.tokenMintAddress,
-		},
-		map[string]string{"encoding": "jsonParsed"},
-	}
-
-	resp, err := s.rpcCall(ctx, "getTokenAccountsByOwner", params)
+	balance, err := s.GetTokenAccountBalance(ctx, walletAddress, s.tokenMintAddress)
 	if err != nil {
-		log.Printf("Warning: Could not fetch token balance: %v", err)
-		return decimal.Zero, nil
+		return decimal.Zero, err
 	}
 
-	var result struct {
-		Value []struct {
-			Account struct {
-				Data struct {
-					Parsed struct {
-						Info struct {
-							TokenAmount struct {
-								UiAmount float64 `json:"uiAmount"`
-								Amount   string  `json:"amount"`
-								Decimals int     `json:"decimals"`
-							} `json:"tokenAmount"`
-						} `json:"info"`
-					} `json:"parsed"`
-				} `json:"data"`
-			} `json:"account"`
-		} `json:"value"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return decimal.Zero, fmt.Errorf("failed to parse token balance: %w", err)
-	}
-
-	if len(result.Value) == 0 {
-		return decimal.Zero, nil
-	}
-
-	balance := decimal.NewFromFloat(result.Value[0].Account.Data.Parsed.Info.TokenAmount.UiAmount)
-	return balance, nil
-}
-
-// GetTransactionStatus gets the status of a transaction
-func (s *SolanaClient) GetTransactionStatus(ctx context.Context, txHash string) (bool, int, error) {
-	params := []interface{}{
-		txHash,
-		map[string]interface{}{
-			"encoding":                       "json",
-			"maxSupportedTransactionVersion": 0,
-		},
-	}
-
-	resp, err := s.rpcCall(ctx, "getTransaction", params)
-	if err != nil {
-		return false, 0, err
-	}
-
-	if resp.Result == nil || string(resp.Result) == "null" {
-		return false, 0, nil // Transaction not found
-	}
-
-	var result struct {
-		Slot uint64 `json:"slot"`
-		Meta struct {
-			Err interface{} `json:"err"`
-		} `json:"meta"`
-	}
-
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return false, 0, fmt.Errorf("failed to parse transaction: %w", err)
-	}
-
-	// Get current slot for confirmation count
-	currentSlot, err := s.GetCurrentSlot(ctx)
-	if err != nil {
-		return false, 0, err
-	}
-
-	confirmations := int(currentSlot - result.Slot)
-	isSuccess := result.Meta.Err == nil
-
-	return isSuccess, confirmations, nil
-}
-
-// GetCurrentSlot gets the current slot number
-func (s *SolanaClient) GetCurrentSlot(ctx context.Context) (uint64, error) {
-	resp, err := s.rpcCall(ctx, "getSlot", []interface{}{
-		map[string]string{"commitment": "confirmed"},
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	var slot uint64
-	if err := json.Unmarshal(resp.Result, &slot); err != nil {
-		return 0, fmt.Errorf("failed to parse slot: %w", err)
-	}
-
-	return slot, nil
-}
-
-// VerifyTransaction verifies if a transaction is confirmed
-func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, requiredConfirmations int) (bool, error) {
-	isSuccess, confirmations, err := s.GetTransactionStatus(ctx, txHash)
-	if err != nil {
-		return false, err
-	}
-
-	return isSuccess && confirmations >= requiredConfirmations, nil
-}
-
-// GetEscrowBalance gets the token balance in the escrow contract
-func (s *SolanaClient) GetEscrowBalance(ctx context.Context) (decimal.Decimal, error) {
-	if s.escrowContractAddress == "" {
-		return decimal.Zero, fmt.Errorf("escrow contract address not configured")
-	}
-
-	return s.GetTokenBalance(ctx, s.escrowContractAddress)
-}
-
-// GetNetwork returns the current network
-func (s *SolanaClient) GetNetwork() string {
-	return s.network
-}
-
-// GetTokenMintAddress returns the token mint address
-func (s *SolanaClient) GetTokenMintAddress() string {
-	return s.tokenMintAddress
-}
-
-// GetEscrowContractAddress returns the escrow contract address
-func (s *SolanaClient) GetEscrowContractAddress() string {
-	return s.escrowContractAddress
+	// Assuming 6 decimals for default token (USDC/etc) - should be dynamic but MVP
+	return decimal.NewFromInt(int64(balance)).Div(decimal.NewFromInt(1_000_000)), nil
 }
