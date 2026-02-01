@@ -78,8 +78,8 @@ export const duelService = {
     await api.cancelDuel(duelId);
   },
 
-  joinDuel: async (duelId: string): Promise<Duel> => {
-    const raw = await api.joinDuel(duelId);
+  joinDuel: async (duelId: string, signature: string): Promise<Duel> => {
+    const raw = await api.joinDuel(duelId, { signature });
     return mapDuel(raw);
   },
 

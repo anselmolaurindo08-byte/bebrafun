@@ -187,7 +187,7 @@ class ApiService {
     }
 
     // Duel endpoints
-    async createDuel(data: { bet_amount: number; market_id?: string; event_id?: string; predicted_outcome?: string; currency?: string }): Promise<any> {
+    async createDuel(data: { bet_amount: number; market_id?: string; event_id?: string; predicted_outcome?: string; currency?: string; signature: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/duels', data);
         return response.data;
     }
@@ -215,8 +215,8 @@ class ApiService {
         await this.api.post(`/api/duels/${duelId}/cancel`);
     }
 
-    async joinDuel(duelId: string): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`);
+    async joinDuel(duelId: string, data: { signature: string }): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`, data);
         return response.data;
     }
 

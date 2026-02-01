@@ -77,6 +77,7 @@ export interface CreateDuelRequest {
   eventId?: string;
   currency: DuelCurrency;
   predictedOutcome?: 'UP' | 'DOWN';
+  signature: string; // Transaction signature (REQUIRED)
 }
 
 export interface DuelResult {
@@ -114,6 +115,7 @@ export interface TransactionConfirmation {
 
 export interface JoinDuelRequest {
   duelId: string;
+  signature: string; // Transaction signature (REQUIRED)
 }
 
 export interface AvailableDuelsResponse {
@@ -161,12 +163,12 @@ export interface DepositRequest {
 export type DuelFlowState = 'confirm' | 'sending' | 'confirming' | 'complete';
 
 export interface DuelFlowStateObj {
-    currentStep: DuelFlowState;
-    duel: Duel | null;
-    confirmations: number;
-    countdownValue: number;
-    currentPrice: number;
-    entryPrice: number | null;
-    result: DuelResult | null;
-    error: string | null;
+  currentStep: DuelFlowState;
+  duel: Duel | null;
+  confirmations: number;
+  countdownValue: number;
+  currentPrice: number;
+  entryPrice: number | null;
+  result: DuelResult | null;
+  error: string | null;
 }
