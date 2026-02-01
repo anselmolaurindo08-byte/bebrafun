@@ -123,12 +123,14 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     const pollInterval = setInterval(async () => {
         try {
             const updatedDuel = await duelService.getDuel(duel.id);
-            if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED') {
+            // Check for both RESOLVED and FINISHED statuses
+            // Also check if winnerId is set, as that confirms resolution
+            if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED' || updatedDuel.winnerId) {
                 clearInterval(pollInterval);
 
                 setResult({
                     winnerId: updatedDuel.winnerId || "0",
-                    finalPrice: updatedDuel.priceAtEnd || currentPrice,
+                    finalPrice: updatedDuel.priceAtEnd || currentPrice, // Use server price if available
                     payout: (updatedDuel.betAmount || duel.betAmount) * 2
                 });
                 setShowResultModal(true);

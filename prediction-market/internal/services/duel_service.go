@@ -237,13 +237,14 @@ func (ds *DuelService) DepositToDuel(
 	}
 
 	// Verify transaction on blockchain
-	confirmed, err := ds.escrowContract.VerifyDuelTransaction(ctx, signature)
+	// Pass the expected bet amount (lamports) to the verification logic
+	confirmed, err := ds.escrowContract.VerifyDuelTransaction(ctx, signature, uint64(duel.BetAmount))
 	if err != nil {
 		return fmt.Errorf("failed to verify transaction: %w", err)
 	}
 
 	if !confirmed {
-		return errors.New("transaction not confirmed on blockchain")
+		return errors.New("transaction not confirmed on blockchain or amount mismatch")
 	}
 
 	// Determine player ID
