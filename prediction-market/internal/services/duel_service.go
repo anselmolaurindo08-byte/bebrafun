@@ -620,6 +620,16 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		return nil, fmt.Errorf("failed to create duel result: %w", err)
 	}
 
+	// Execute automatic payout to winner
+	_, err = ds.payoutService.ExecutePayout(ctx, duel, winnerID)
+	if err != nil {
+		log.Printf("ERROR: Failed to execute payout for duel %s: %v", duelID, err)
+		// Don't fail the entire resolution, but log the error
+		// The duel is still resolved, but payout failed
+	} else {
+		log.Printf("Payout executed successfully for duel %s, winner %d", duelID, winnerID)
+	}
+
 	// Update statistics
 	if err := ds.updatePlayerStatistics(ctx, duel, winnerID); err != nil {
 		log.Printf("Error updating statistics after resolve: %v", err)
