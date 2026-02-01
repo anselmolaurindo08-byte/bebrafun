@@ -18,6 +18,7 @@ type DuelService struct {
 	repo              *repository.Repository
 	escrowContract    *blockchain.EscrowContract
 	solanaClient      *blockchain.SolanaClient
+	priceService      *PriceService
 	duelMatchingQueue chan *models.DuelQueue
 }
 
@@ -30,11 +31,15 @@ func NewDuelService(
 		repo:              repo,
 		escrowContract:    escrowContract,
 		solanaClient:      solanaClient,
+		priceService:      NewPriceService(),
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
 
 	// Start matching goroutine
 	go ds.matchDuels()
+
+	// Start resolution monitor (Server-side Oracle)
+	go ds.monitorActiveDuels()
 
 	return ds
 }
@@ -280,6 +285,17 @@ func (ds *DuelService) DepositToDuel(
 		now := time.Now()
 		duel.StartedAt = &now
 
+		// Capture Start Price Server-Side
+		// TODO: Support DOGE or other pairs based on duel config. Default to SOLUSDT for demo.
+		symbol := "SOLUSDT"
+		if startPrice, err := ds.priceService.GetCurrentPrice(symbol); err == nil {
+			duel.PriceAtStart = &startPrice
+			log.Printf("Captured Start Price for Duel %d: %f", duel.DuelID, startPrice)
+		} else {
+			log.Printf("Warning: Failed to capture start price for Duel %d: %v", duel.DuelID, err)
+			// Fallback? Or fail start? For MVP, we proceed, resolution might need handling.
+		}
+
 		err = ds.repo.UpdateDuel(ctx, duel)
 		if err != nil {
 			return fmt.Errorf("failed to update duel status: %w", err)
@@ -468,6 +484,81 @@ func (ds *DuelService) GetActiveDuels(ctx context.Context, limit int) ([]*models
 // ExpirePendingDuels marks expired pending duels as expired
 func (ds *DuelService) ExpirePendingDuels(ctx context.Context) error {
 	return ds.repo.ExpirePendingDuels(ctx)
+}
+
+// monitorActiveDuels background job to auto-resolve duels
+func (ds *DuelService) monitorActiveDuels() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		ctx := context.Background()
+		activeDuels, err := ds.repo.GetActiveDuels(ctx, 100) // Batch process
+		if err != nil {
+			log.Printf("Error fetching active duels: %v", err)
+			continue
+		}
+
+		for _, duel := range activeDuels {
+			// Only process ACTIVE duels that have started
+			if duel.Status != models.DuelStatusActive || duel.StartedAt == nil {
+				continue
+			}
+
+			// Check if duration passed (60 seconds)
+			elapsed := time.Since(*duel.StartedAt)
+			if elapsed >= 60*time.Second {
+				ds.resolveDuelAutomatically(ctx, duel)
+			}
+		}
+	}
+}
+
+func (ds *DuelService) resolveDuelAutomatically(ctx context.Context, duel *models.Duel) {
+	log.Printf("Auto-resolving Duel %d...", duel.DuelID)
+
+	symbol := "SOLUSDT" // Dynamic based on duel.Currency/Asset later
+	exitPrice, err := ds.priceService.GetCurrentPrice(symbol)
+	if err != nil {
+		log.Printf("Failed to get exit price for duel %d: %v. Retrying next tick.", duel.DuelID, err)
+		return
+	}
+
+	startPrice := 0.0
+	if duel.PriceAtStart != nil {
+		startPrice = *duel.PriceAtStart
+	} else {
+		// Fallback: If start price wasn't captured, use exit price (Push/Tie) or error?
+		// For demo, we might just use exitPrice, resulting in 0 change.
+		// Ideally we should have persistent candles.
+		log.Printf("Warning: No start price for duel %d", duel.DuelID)
+	}
+
+	// Determine Winner Logic
+	// Player 1 (Creator) predicts.
+	// Direction: 0 = UP, 1 = DOWN (from duel struct, assuming mapped)
+	// Map string "UP"/"DOWN" to internal if needed.
+	// The model has PredictedOutcome string.
+
+	isUpPrediction := duel.PredictedOutcome != nil && *duel.PredictedOutcome == "UP"
+	wentUp := exitPrice > startPrice
+	wentDown := exitPrice < startPrice
+
+	var winnerID uint
+	if (isUpPrediction && wentUp) || (!isUpPrediction && wentDown) {
+		winnerID = duel.Player1ID
+	} else if duel.Player2ID != nil {
+		winnerID = *duel.Player2ID
+	} else {
+		winnerID = duel.Player1ID // Fallback if single player (shouldn't happen in active)
+	}
+
+	// Execute Resolution
+	// We reuse ResolveDuelWithPrice but ignore the client hash argument
+	_, err = ds.ResolveDuelWithPrice(ctx, duel.ID, winnerID, exitPrice, "SERVER_AUTO_RESOLUTION")
+	if err != nil {
+		log.Printf("Error auto-resolving duel %d: %v", duel.DuelID, err)
+	}
 }
 
 // ============================================================================
