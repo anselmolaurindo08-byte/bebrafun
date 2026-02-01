@@ -4,6 +4,35 @@ import type { TradeQuote } from './types/blockchain';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+export interface CreatePoolRequest {
+    market_id?: number;
+    program_id: string;
+    authority: string;
+    yes_mint: string;
+    no_mint: string;
+    yes_reserve: number;
+    no_reserve: number;
+    fee_percentage: number;
+}
+
+export interface PoolResponse {
+    id: string;
+    market_id: number;
+    program_id: string;
+    authority: string;
+    yes_mint: string;
+    no_mint: string;
+    yes_reserve: number;
+    no_reserve: number;
+    fee_percentage: number;
+    total_liquidity: number;
+    yes_price: number;
+    no_price: number;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
+
 class ApiService {
     private api: AxiosInstance;
 
@@ -120,6 +149,11 @@ class ApiService {
     }
 
     // AMM endpoints
+    async createPool(data: CreatePoolRequest): Promise<PoolResponse> {
+        const response = await this.api.post<PoolResponse>('/api/amm/pools', data);
+        return response.data;
+    }
+
     async getPools(marketId?: string): Promise<any[]> {
         const params = marketId ? `?market_id=${marketId}` : '';
         const response = await this.api.get<ApiResponse<any[]>>(`/api/amm/pools${params}`);

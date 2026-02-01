@@ -4,18 +4,63 @@ import apiService from '../services/api';
 import blockchainService from '../services/blockchainService';
 import AMMTradingPanel from '../components/AMMTradingPanel';
 import Portfolio from '../components/Portfolio';
-import type { Market } from '../types/types';
+import type { Market, User } from '../types/types';
+import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 
 export default function MarketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [market, setMarket] = useState<Market | null>(null);
     const [ammPoolId, setAmmPoolId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isCreatingPool, setIsCreatingPool] = useState(false);
+    const { connected, publicKey, sendTransaction } = useBlockchainWallet();
 
     useEffect(() => {
         fetchMarket();
         fetchAmmPool();
+        fetchUser();
     }, [id]);
+
+    const fetchUser = async () => {
+        try {
+            const user = await apiService.getProfile();
+            setCurrentUser(user);
+
+            // Check if user is admin
+            try {
+                await apiService.getAdminDashboard();
+                setIsAdmin(true);
+            } catch {
+                setIsAdmin(false);
+            }
+        } catch {
+            // User might not be logged in
+        }
+    };
+
+    const handleCreatePool = async () => {
+        if (!connected || !publicKey || !id) return;
+
+        setIsCreatingPool(true);
+        try {
+            // Default initial liquidity: 10 tokens
+            const initialLiquidity = 10;
+            const poolId = await blockchainService.createPool(
+                id,
+                initialLiquidity,
+                publicKey,
+                sendTransaction
+            );
+            setAmmPoolId(poolId);
+        } catch (error: any) {
+            console.error('Failed to create pool:', error);
+            alert(`Failed to create pool: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsCreatingPool(false);
+        }
+    };
 
     const fetchMarket = async () => {
         try {
@@ -110,7 +155,23 @@ export default function MarketDetailPage() {
                             This market does not have an active AMM pool yet.
                             Liquidity must be added to enable trading.
                         </p>
-                        {/* TODO: Add button to create pool if admin/allowed */}
+                        {currentUser && market && (currentUser.id === market.created_by || isAdmin) && (
+                            <div className="mt-4">
+                                {!connected ? (
+                                    <p className="text-pump-red font-sans text-sm">
+                                        Please connect wallet to create pool
+                                    </p>
+                                ) : (
+                                    <button
+                                        onClick={handleCreatePool}
+                                        disabled={isCreatingPool}
+                                        className="bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isCreatingPool ? 'Creating Pool...' : 'Create Liquidity Pool (10 SOL)'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
