@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"prediction-market/internal/blockchain"
@@ -19,6 +20,7 @@ import (
 type AMMService struct {
 	db           *gorm.DB
 	solanaClient *blockchain.SolanaClient
+	fetchCache   sync.Map // Stores last fetch timestamp for pools
 }
 
 // NewAMMService creates a new AMM service
@@ -37,18 +39,13 @@ func (s *AMMService) GetPool(ctx context.Context, poolID uuid.UUID) (*models.AMM
 		return nil, fmt.Errorf("pool not found: %w", err)
 	}
 
-	// Fetch real reserve data from Blockchain
+	// Fetch real reserve data from Blockchain asynchronously if needed
 	if s.solanaClient != nil {
-		if yesBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.YesMint); err == nil {
-			pool.YesReserve = int64(yesBal)
-		} else {
-			fmt.Printf("Warning: Failed to fetch Yes reserve for pool %s: %v\n", pool.ID, err)
-		}
-
-		if noBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.NoMint); err == nil {
-			pool.NoReserve = int64(noBal)
-		} else {
-			fmt.Printf("Warning: Failed to fetch No reserve for pool %s: %v\n", pool.ID, err)
+		lastFetch, ok := s.fetchCache.Load(poolID)
+		if !ok || time.Since(lastFetch.(time.Time)) > 10*time.Second {
+			// Update cache timestamp immediately to prevent redundant calls
+			s.fetchCache.Store(poolID, time.Now())
+			go s.updatePoolReserves(context.Background(), poolID, pool.Authority, pool.YesMint, pool.NoMint)
 		}
 	}
 
@@ -62,18 +59,13 @@ func (s *AMMService) GetPoolByMarketID(ctx context.Context, marketID uint) (*mod
 		return nil, fmt.Errorf("pool not found for market %d: %w", marketID, err)
 	}
 
-	// Fetch real reserve data from Blockchain
+	// Fetch real reserve data from Blockchain asynchronously if needed
 	if s.solanaClient != nil {
-		if yesBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.YesMint); err == nil {
-			pool.YesReserve = int64(yesBal)
-		} else {
-			fmt.Printf("Warning: Failed to fetch Yes reserve for pool %s: %v\n", pool.ID, err)
-		}
-
-		if noBal, err := s.solanaClient.GetTokenAccountBalance(ctx, pool.Authority, pool.NoMint); err == nil {
-			pool.NoReserve = int64(noBal)
-		} else {
-			fmt.Printf("Warning: Failed to fetch No reserve for pool %s: %v\n", pool.ID, err)
+		lastFetch, ok := s.fetchCache.Load(pool.ID)
+		if !ok || time.Since(lastFetch.(time.Time)) > 10*time.Second {
+			// Update cache timestamp immediately to prevent redundant calls
+			s.fetchCache.Store(pool.ID, time.Now())
+			go s.updatePoolReserves(context.Background(), pool.ID, pool.Authority, pool.YesMint, pool.NoMint)
 		}
 	}
 
@@ -148,6 +140,34 @@ func (s *AMMService) ToPoolResponse(pool *models.AMMPool) *models.PoolResponse {
 		Status:         string(pool.Status),
 		CreatedAt:      pool.CreatedAt,
 		UpdatedAt:      pool.UpdatedAt,
+	}
+}
+
+// updatePoolReserves fetches real-time reserves from blockchain and updates DB
+func (s *AMMService) updatePoolReserves(ctx context.Context, poolID uuid.UUID, authority, yesMint, noMint string) {
+	// Create a timeout context to prevent hanging
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	updates := make(map[string]interface{})
+
+	if yesBal, err := s.solanaClient.GetTokenAccountBalance(ctx, authority, yesMint); err == nil {
+		updates["yes_reserve"] = int64(yesBal)
+	} else {
+		fmt.Printf("Warning: Failed to fetch Yes reserve for pool %s: %v\n", poolID, err)
+	}
+
+	if noBal, err := s.solanaClient.GetTokenAccountBalance(ctx, authority, noMint); err == nil {
+		updates["no_reserve"] = int64(noBal)
+	} else {
+		fmt.Printf("Warning: Failed to fetch No reserve for pool %s: %v\n", poolID, err)
+	}
+
+	if len(updates) > 0 {
+		updates["updated_at"] = time.Now()
+		if err := s.db.WithContext(ctx).Model(&models.AMMPool{}).Where("id = ?", poolID).Updates(updates).Error; err != nil {
+			fmt.Printf("Error updating pool reserves for %s: %v\n", poolID, err)
+		}
 	}
 }
 
