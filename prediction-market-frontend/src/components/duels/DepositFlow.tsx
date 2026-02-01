@@ -3,7 +3,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
-import { blockchainService } from '../../services/blockchainService';
+import blockchainService from '../../services/blockchainService';
 
 interface DepositFlowProps {
   duel: Duel;

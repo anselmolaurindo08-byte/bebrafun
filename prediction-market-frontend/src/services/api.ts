@@ -242,6 +242,11 @@ class ApiService {
         return response.data;
     }
 
+    async getDuelConfig(): Promise<{ serverWallet: string; network: string }> {
+        const response = await this.api.get<{ serverWallet: string; network: string }>('/api/duels/config');
+        return response.data;
+    }
+
     // Wallet/Blockchain endpoints
     async connectWallet(data: { wallet_address: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
