@@ -82,6 +82,8 @@ export interface TradeParams {
   inputAmount: BN; // In lamports (SOL)
   tradeType: TradeType;
   minOutputAmount: BN; // In lamports
+  expectedOutputAmount?: BN; // In lamports, estimated from quote
+  feeAmount?: BN; // In lamports
   slippageTolerance?: number; // Default 0.5%
   userWallet: PublicKey;
 }

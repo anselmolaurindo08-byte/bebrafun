@@ -13,6 +13,7 @@ type Config struct {
 	Server     ServerConfig
 	App        AppConfig
 	Polymarket PolymarketConfig
+	Solana     SolanaConfig
 }
 
 // DatabaseConfig holds database connection settings
@@ -43,6 +44,12 @@ type PolymarketConfig struct {
 	Passphrase string
 }
 
+// SolanaConfig holds Solana network settings
+type SolanaConfig struct {
+	Network                string
+	ServerWalletPrivateKey string
+}
+
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	// Try to load .env file (ignore error if it doesn't exist)
@@ -68,6 +75,10 @@ func Load() (*Config, error) {
 			APIKey:     getEnv("POLYMARKET_API_KEY", ""),
 			Secret:     getEnv("POLYMARKET_SECRET", ""),
 			Passphrase: getEnv("POLYMARKET_PASSPHRASE", ""),
+		},
+		Solana: SolanaConfig{
+			Network:                getEnv("SOLANA_NETWORK", "devnet"),
+			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
 		},
 	}
 

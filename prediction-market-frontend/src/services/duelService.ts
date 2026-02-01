@@ -102,8 +102,8 @@ export const duelService = {
   },
 
   getConfig: async (): Promise<{ serverWallet: string; network: string }> => {
-    const response = await api.get('/duels/config');
-    return response.data;
+    const response = await api.getDuelConfig();
+    return response;
   },
 };
 

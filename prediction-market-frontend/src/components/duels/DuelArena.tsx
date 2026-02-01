@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
+import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
 
@@ -10,22 +11,52 @@ interface DuelArenaProps {
   onResolved: () => void;
 }
 
-export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved: _onResolved }) => {
+export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResolved }) => {
   const { user } = useUserStore();
+  // Removed unused hook usage
+  // const { fetchDuel } = useDuel();
+  const [duel, setDuel] = useState<Duel>(initialDuel);
   const [showDepositFlow, setShowDepositFlow] = useState(false);
-  const [depositedPlayers, setDepositedPlayers] = useState<Set<string>>(new Set());
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Poll for duel updates
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        if (!duel.id) return;
+        const updatedDuel = await duelService.getDuel(duel.id);
+        setDuel(updatedDuel);
+      } catch (err) {
+        console.error("Failed to poll duel updates", err);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [duel.id]);
+
   const currentUserId = user?.id?.toString();
-  const isPlayer1 = currentUserId === duel.player1Id;
-  const isPlayer2 = currentUserId === duel.player2Id;
+  const isPlayer1 = currentUserId === String(duel.player1Id);
+  const isPlayer2 = currentUserId === String(duel.player2Id);
   const isParticipant = isPlayer1 || isPlayer2;
   const canJoin = !isParticipant && duel.status === DuelStatus.PENDING && !duel.player2Id;
 
+  // Check deposit status based on backend data
+  const player1Deposited = duel.player1Deposited || false;
+  const player2Deposited = duel.player2Deposited || false;
+
+  const iHaveDeposited = (isPlayer1 && player1Deposited) || (isPlayer2 && player2Deposited);
+  // const opponentDeposited = (isPlayer1 && player2Deposited) || (isPlayer2 && player1Deposited);
+
+  // Assuming backend provides these fields, or we check contract state
+  const isActive = duel.status === DuelStatus.ACTIVE;
+
   const handleDepositComplete = (_signature: string) => {
-    setDepositedPlayers((prev) => new Set(prev).add(duel.player1Id));
+    // Ideally refetch duel to check backend confirmation status
     setShowDepositFlow(false);
+    // Removed window.location.reload() to prevent loop
+    // Instead we should rely on state update or explicit refetch
+    // onResolved(); // or similar if available
   };
 
   const handleJoinDuel = async () => {
@@ -42,14 +73,29 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved: _onResol
     }
   };
 
+  // Convert lamports to SOL for display
+  const displayAmount = duel.betAmount / 1e9;
+
   if (showDepositFlow) {
     return (
       <DepositFlow
-        duel={duel}
+        duel={{...duel, betAmount: displayAmount}} // Pass formatted amount
         onComplete={handleDepositComplete}
         onCancel={() => setShowDepositFlow(false)}
       />
     );
+  }
+
+  // Active Game View
+  if (isActive) {
+      return (
+          <div className="bg-pump-gray-darker border-2 border-pump-green rounded-lg p-8">
+              <h2 className="text-2xl font-mono font-bold text-pump-white mb-4 text-center">
+                  DUEL IN PROGRESS
+              </h2>
+              <DuelGameView duel={duel} onResolved={onResolved} />
+          </div>
+      );
   }
 
   return (
@@ -59,45 +105,58 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved: _onResol
       {/* Players */}
       <div className="grid grid-cols-2 gap-6 mb-8">
         {/* Player 1 */}
-        <div className="bg-pump-black rounded-lg p-6 border-2 border-pump-green">
+        <div className={`bg-pump-black rounded-lg p-6 border-2 ${isPlayer1 ? 'border-pump-green shadow-[0_0_15px_rgba(0,255,65,0.2)]' : 'border-pump-gray-dark'}`}>
           <div className="text-center mb-4">
             <div className="w-16 h-16 bg-pump-gray-dark rounded-full mx-auto mb-2 flex items-center justify-center text-2xl">
               👤
             </div>
-            <p className="text-pump-white font-sans font-bold">{duel.player1Username || 'Player 1'}</p>
+            <p className="text-pump-white font-sans font-bold">
+              {duel.player1Username || 'Player 1'}
+              {isPlayer1 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
+            </p>
+            <p className="text-xs text-pump-green mt-1">{duel.predictedOutcome === 'UP' ? '▲ HIGHER' : '▼ LOWER'}</p>
           </div>
           <div className="text-center">
             <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
-            <p className="text-2xl font-mono font-bold text-pump-green">{duel.player1Amount.toLocaleString()}</p>
+            <p className="text-2xl font-mono font-bold text-pump-green">{displayAmount} {duel.currency}</p>
           </div>
-          {depositedPlayers.has(duel.player1Id) && (
-            <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
-              <p className="text-pump-green font-sans text-sm">✓ Deposited</p>
-            </div>
+          {player1Deposited && (
+             <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
+                <p className="text-pump-green font-sans text-sm">✓ Ready</p>
+             </div>
           )}
         </div>
 
         {/* Player 2 */}
-        {duel.player2Id && (
-          <div className="bg-pump-black rounded-lg p-6 border-2 border-pump-gray-dark">
+        {duel.player2Id ? (
+          <div className={`bg-pump-black rounded-lg p-6 border-2 ${isPlayer2 ? 'border-pump-green shadow-[0_0_15px_rgba(0,255,65,0.2)]' : 'border-pump-gray-dark'}`}>
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-pump-gray-dark rounded-full mx-auto mb-2 flex items-center justify-center text-2xl">
                 👤
               </div>
-              <p className="text-pump-white font-sans font-bold">{duel.player2Username || 'Player 2'}</p>
+              <p className="text-pump-white font-sans font-bold">
+                {duel.player2Username || 'Player 2'}
+                {isPlayer2 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
+              </p>
+              <p className="text-xs text-pump-red mt-1">{duel.predictedOutcome === 'UP' ? '▼ LOWER' : '▲ HIGHER'}</p>
             </div>
             <div className="text-center">
               <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
               <p className="text-2xl font-mono font-bold text-pump-green">
-                {duel.player2Amount?.toLocaleString()}
+                {displayAmount} {duel.currency}
               </p>
             </div>
-            {depositedPlayers.has(duel.player2Id) && (
+            {player2Deposited && (
               <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
-                <p className="text-pump-green font-sans text-sm">✓ Deposited</p>
+                <p className="text-pump-green font-sans text-sm">✓ Ready</p>
               </div>
             )}
           </div>
+        ) : (
+            <div className="bg-pump-black rounded-lg p-6 border-2 border-dashed border-pump-gray-dark flex flex-col items-center justify-center min-h-[200px]">
+                <p className="text-pump-gray font-sans mb-4">Waiting for opponent...</p>
+                <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow"></div>
+            </div>
         )}
       </div>
 
@@ -107,6 +166,13 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved: _onResol
         <p className="text-lg font-mono font-bold text-pump-yellow">
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}
         </p>
+        {isParticipant && !isActive && (
+            <p className="text-sm text-pump-gray-light mt-2">
+                {iHaveDeposited
+                    ? "Waiting for opponent to deposit..."
+                    : "Action required: Deposit funds to start!"}
+            </p>
+        )}
       </div>
 
       {/* Error Display */}
@@ -123,22 +189,16 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel, onResolved: _onResol
           disabled={isJoining}
           className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isJoining ? 'Joining...' : 'Join Duel'}
+          {isJoining ? 'Joining...' : 'JOIN DUEL'}
         </button>
-      ) : isParticipant && duel.status === DuelStatus.MATCHED ? (
+      ) : isParticipant && (duel.status === DuelStatus.MATCHED || duel.status === DuelStatus.PENDING) && !iHaveDeposited ? (
         <button
           onClick={() => setShowDepositFlow(true)}
-          className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow"
+          className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow animate-pulse"
         >
-          Deposit to Duel
+          DEPOSIT FUNDS ({displayAmount} {duel.currency})
         </button>
-      ) : (
-        <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-4 text-center">
-          <p className="text-pump-gray-light font-sans text-sm">
-            {!isParticipant ? 'This duel is not available to join' : 'Waiting for opponent to join'}
-          </p>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

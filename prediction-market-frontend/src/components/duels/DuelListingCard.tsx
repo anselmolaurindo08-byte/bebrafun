@@ -99,6 +99,7 @@ export const DuelListingCard: React.FC<DuelListingCardProps> = ({
           </div>
           <div className="bg-pump-gray-dark px-3 py-1.5 rounded-full">
             <span className="text-pump-white font-mono text-sm font-semibold">
+              {/* @ts-expect-error - currency may be number temporarily */}
               {CURRENCY_LABELS[duel.currency] ?? 'SOL'}
             </span>
           </div>

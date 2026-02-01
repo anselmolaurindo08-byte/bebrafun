@@ -2,21 +2,65 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
 import blockchainService from '../services/blockchainService';
-import TradingPanel from '../components/TradingPanel';
 import AMMTradingPanel from '../components/AMMTradingPanel';
 import Portfolio from '../components/Portfolio';
-import type { Market } from '../types/types';
+import type { Market, User } from '../types/types';
+import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 
 export default function MarketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [market, setMarket] = useState<Market | null>(null);
     const [ammPoolId, setAmmPoolId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isCreatingPool, setIsCreatingPool] = useState(false);
+    const { connected, publicKey, sendTransaction } = useBlockchainWallet();
 
     useEffect(() => {
         fetchMarket();
         fetchAmmPool();
+        fetchUser();
     }, [id]);
+
+    const fetchUser = async () => {
+        try {
+            const user = await apiService.getProfile();
+            setCurrentUser(user);
+
+            // Check if user is admin
+            try {
+                await apiService.getAdminDashboard();
+                setIsAdmin(true);
+            } catch {
+                setIsAdmin(false);
+            }
+        } catch {
+            // User might not be logged in
+        }
+    };
+
+    const handleCreatePool = async () => {
+        if (!connected || !publicKey || !id) return;
+
+        setIsCreatingPool(true);
+        try {
+            // Default initial liquidity: 10 tokens
+            const initialLiquidity = 10;
+            const poolId = await blockchainService.createPool(
+                id,
+                initialLiquidity,
+                publicKey,
+                sendTransaction
+            );
+            setAmmPoolId(poolId);
+        } catch (error: any) {
+            console.error('Failed to create pool:', error);
+            alert(`Failed to create pool: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsCreatingPool(false);
+        }
+    };
 
     const fetchMarket = async () => {
         try {
@@ -34,7 +78,7 @@ export default function MarketDetailPage() {
             const pool = await blockchainService.getPoolByMarketId(id!);
             setAmmPoolId(pool.poolId);
         } catch {
-            // No AMM pool for this market — that's fine
+            // No AMM pool for this market
         }
     };
 
@@ -94,31 +138,43 @@ export default function MarketDetailPage() {
             {/* Portfolio */}
             <Portfolio marketId={parseInt(id!)} />
 
-            {/* AMM Trading Panel */}
-            {ammPoolId && (
-                <div className="mt-8 space-y-6">
-                    <h2 className="text-2xl font-mono font-bold text-pump-white">AMM Trading</h2>
+            {/* Trading Section */}
+            <div className="mt-8 space-y-6">
+                <h2 className="text-2xl font-mono font-bold text-pump-white">Trade</h2>
+
+                {ammPoolId ? (
                     <AMMTradingPanel
                         poolId={ammPoolId}
                         eventTitle={market.title}
                     />
-                </div>
-            )}
-
-            {/* Order Book Trading Panels */}
-            {market.events && market.events.length > 0 && (
-                <div className="mt-8 space-y-6">
-                    <h2 className="text-2xl font-mono font-bold text-pump-white">Trade Outcomes</h2>
-                    {market.events.map((event) => (
-                        <TradingPanel
-                            key={event.id}
-                            marketId={parseInt(id!)}
-                            eventId={event.id}
-                            eventTitle={event.event_title}
-                        />
-                    ))}
-                </div>
-            )}
+                ) : (
+                    <div className="bg-pump-gray-darker border-2 border-pump-yellow/30 rounded-lg p-8 text-center">
+                        <div className="text-4xl mb-4">⚠️</div>
+                        <h3 className="text-xl font-mono font-bold text-pump-white mb-2">No Liquidity Pool</h3>
+                        <p className="text-pump-gray-light font-sans mb-6">
+                            This market does not have an active AMM pool yet.
+                            Liquidity must be added to enable trading.
+                        </p>
+                        {currentUser && market && (currentUser.id === market.created_by || isAdmin) && (
+                            <div className="mt-4">
+                                {!connected ? (
+                                    <p className="text-pump-red font-sans text-sm">
+                                        Please connect wallet to create pool
+                                    </p>
+                                ) : (
+                                    <button
+                                        onClick={handleCreatePool}
+                                        disabled={isCreatingPool}
+                                        className="bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isCreatingPool ? 'Creating Pool...' : 'Create Liquidity Pool (10 SOL)'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
