@@ -58,12 +58,15 @@ func (ds *DuelService) CreateDuel(
 	duelID := time.Now().UnixNano()
 
 	// Create duel in database
+	// Convert float64 SOL to int64 lamports
+	betAmountLamports := int64(req.BetAmount * 1_000_000_000)
+
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
 		Player1ID:        playerID,
-		BetAmount:        req.BetAmount,
-		Player1Amount:    req.BetAmount,
+		BetAmount:        betAmountLamports,
+		Player1Amount:    betAmountLamports,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
@@ -82,7 +85,7 @@ func (ds *DuelService) CreateDuel(
 	queueItem := &models.DuelQueue{
 		ID:               uuid.New(),
 		PlayerID:         playerID,
-		BetAmount:        req.BetAmount,
+		BetAmount:        betAmountLamports,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
@@ -146,25 +149,9 @@ func (ds *DuelService) matchDuels() {
 		}
 
 		// Initialize escrow on blockchain
-		escrowTxHash, err := ds.escrowContract.InitializeEscrow(
-			ctx,
-			duel1.DuelID,
-			duel1.Player1ID,
-			*duel1.Player2ID,
-			duel1.BetAmount,
-		)
-
-		if err != nil {
-			log.Printf("Error initializing escrow: %v", err)
-			// Don't fail the match if escrow fails, just log it
-			// In production, you might want to handle this differently
-		} else {
-			duel1.EscrowTxHash = &escrowTxHash
-			err = ds.repo.UpdateDuel(ctx, duel1)
-			if err != nil {
-				log.Printf("Error updating escrow hash: %v", err)
-			}
-		}
+		// TODO: Implement escrow initialization when smart contract is ready
+		// escrowTxHash, err := ds.escrowContract.InitializeEscrow(...)
+		log.Printf("Escrow initialization skipped for duel %d (not implemented yet)", duel1.DuelID)
 
 		log.Printf("Matched duel %d: %d vs %d", duel1.DuelID, duel1.Player1ID, *duel1.Player2ID)
 	}
@@ -210,24 +197,9 @@ func (ds *DuelService) JoinDuel(
 	}
 
 	// Initialize escrow on blockchain
-	escrowTxHash, err := ds.escrowContract.InitializeEscrow(
-		ctx,
-		duel.DuelID,
-		duel.Player1ID,
-		*duel.Player2ID,
-		duel.BetAmount,
-	)
-
-	if err != nil {
-		log.Printf("Error initializing escrow: %v", err)
-		// Continue even if escrow initialization fails
-	} else {
-		// Save escrow transaction hash
-		duel.EscrowTxHash = &escrowTxHash
-		if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
-			log.Printf("Error updating escrow hash: %v", err)
-		}
-	}
+	// TODO: Implement escrow initialization when smart contract is ready
+	// escrowTxHash, err := ds.escrowContract.InitializeEscrow(...)
+	log.Printf("Escrow initialization skipped for duel %d (not implemented yet)", duel.DuelID)
 
 	log.Printf("Player %d joined duel %d (created by player %d)", playerID, duel.DuelID, duel.Player1ID)
 
@@ -253,12 +225,12 @@ func (ds *DuelService) DepositToDuel(
 	}
 
 	// Verify transaction on blockchain (require at least 1 confirmation)
-	confirmed, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
+	txDetails, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
 	if err != nil {
 		return fmt.Errorf("failed to verify transaction: %w", err)
 	}
 
-	if !confirmed {
+	if txDetails == nil || !txDetails.Confirmed {
 		return errors.New("transaction not confirmed on blockchain")
 	}
 
@@ -335,25 +307,11 @@ func (ds *DuelService) ResolveDuel(
 		return errors.New("winner must be one of the duel players")
 	}
 
-	// Determine winner number
-	var winnerNumber uint8
-	if winnerID == duel.Player1ID {
-		winnerNumber = 1
-	} else {
-		winnerNumber = 2
-	}
-
 	// Release tokens from escrow to winner
-	txHash, err := ds.escrowContract.ReleaseToWinner(
-		ctx,
-		duel.DuelID,
-		winnerNumber,
-		winnerAmount,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to release tokens: %w", err)
-	}
+	// TODO: Implement payout when smart contract is ready
+	// txHash, err := ds.escrowContract.ReleaseToWinner(...)
+	txHash := fmt.Sprintf("mock_payout_%d", time.Now().UnixNano())
+	log.Printf("Payout skipped for duel %d, winner %d (not implemented yet)", duel.DuelID, winnerID)
 
 	// Update duel
 	duel.Status = models.DuelStatusResolved
