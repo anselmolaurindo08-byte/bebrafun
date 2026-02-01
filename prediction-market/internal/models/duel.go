@@ -196,6 +196,7 @@ type CreateDuelRequest struct {
 	EventID          *uint   `json:"event_id"`
 	PredictedOutcome *string `json:"predicted_outcome"`
 	Opponent         *uint   `json:"opponent"`
+	Signature        string  `json:"signature" binding:"required"` // Transaction signature for deposit
 }
 
 // DuelResponse represents a duel in API responses

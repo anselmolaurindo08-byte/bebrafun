@@ -42,7 +42,7 @@ func NewDuelService(
 	return ds
 }
 
-// CreateDuel creates a new duel and adds player to queue
+// CreateDuel creates a new duel with immediate deposit verification
 func (ds *DuelService) CreateDuel(
 	ctx context.Context,
 	playerID uint,
@@ -53,17 +53,28 @@ func (ds *DuelService) CreateDuel(
 		return nil, errors.New("bet amount must be positive")
 	}
 
-	// TODO: Check player wallet balance
-	// This requires WalletConnection integration
-	// For now, we'll skip balance validation and let blockchain handle it
+	// Convert float64 SOL to int64 lamports
+	betAmountLamports := int64(req.BetAmount * 1_000_000_000)
+
+	// Verify transaction on blockchain FIRST
+	txDetails, err := ds.solanaClient.VerifyTransaction(ctx, req.Signature, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify deposit transaction: %w", err)
+	}
+
+	if txDetails == nil || !txDetails.Confirmed {
+		return nil, errors.New("deposit transaction not confirmed on blockchain")
+	}
+
+	// Verify transaction amount matches bet amount
+	if txDetails.Amount < uint64(betAmountLamports) {
+		return nil, fmt.Errorf("insufficient deposit: expected %d lamports, got %d", betAmountLamports, txDetails.Amount)
+	}
 
 	// Generate duel ID
 	duelID := time.Now().UnixNano()
 
-	// Create duel in database
-	// Convert float64 SOL to int64 lamports
-	betAmountLamports := int64(req.BetAmount * 1_000_000_000)
-
+	// Create duel in database with PENDING status (waiting for opponent)
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
@@ -79,10 +90,30 @@ func (ds *DuelService) CreateDuel(
 	}
 
 	// Save to database
-	err := ds.repo.CreateDuel(ctx, duel)
+	err = ds.repo.CreateDuel(ctx, duel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create duel: %w", err)
 	}
+
+	// Record deposit transaction
+	depositTx := &models.DuelTransaction{
+		ID:              uuid.New(),
+		DuelID:          duel.ID,
+		TransactionType: models.DuelTransactionTypeDeposit,
+		PlayerID:        playerID,
+		Amount:          betAmountLamports,
+		TxHash:          &req.Signature,
+		Status:          models.DuelTransactionStatusConfirmed,
+		CreatedAt:       time.Now(),
+		ConfirmedAt:     timePtr(time.Now()),
+	}
+
+	err = ds.repo.CreateDuelTransaction(ctx, depositTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record deposit transaction: %w", err)
+	}
+
+	log.Printf("Duel %d created with verified deposit from player %d (tx: %s)", duelID, playerID, req.Signature)
 
 	// Add to matching queue
 	queueItem := &models.DuelQueue{
