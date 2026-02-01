@@ -4,7 +4,7 @@ import { duelService } from '../../services/duelService';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
-import { LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 
 interface DepositFlowProps {
   duel: Duel;
@@ -64,8 +64,8 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
       // Target the Server Wallet (Admin/Escrow) for Custodial Escrow
       // Hardcoded Devnet Server Public Key for MVP/Demo
       // TODO: Fetch this from an API endpoint /api/config/escrow-address
-      const serverEscrowAddress = new PublicKey("7Xw76w...YOUR_SERVER_WALLET_PUBLIC_KEY_HERE...");
-      console.log('Targeting Server Wallet (Placeholder):', serverEscrowAddress.toString());
+      // const serverEscrowAddress = new PublicKey("YOUR_SERVER_WALLET_PUBLIC_KEY_HERE");
+      // console.log('Targeting Server Wallet (Placeholder):', serverEscrowAddress.toString());
 
       // NOTE: User needs to provide the actual public key corresponding to the backend private key.
       // Since I don't have it, I will keep 'publicKey' (self) but mark where to change it.
@@ -77,7 +77,7 @@ export const DepositFlow: React.FC<DepositFlowProps> = ({ duel, onComplete, onCa
 
       const transferIx = SystemProgram.transfer({
         fromPubkey: publicKey,
-        toPubkey: publicKey, // CHANGE THIS to serverEscrowAddress for real custodial escrow
+        toPubkey: publicKey, // TODO: CHANGE THIS to serverEscrowAddress for real custodial escrow
         lamports: lamports,
       });
       transaction.add(transferIx);
