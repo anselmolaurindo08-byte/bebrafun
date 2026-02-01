@@ -100,4 +100,10 @@ export const duelService = {
       total: result.total,
     };
   },
+
+  getConfig: async (): Promise<{ serverWallet: string; network: string }> => {
+    const response = await api.get('/duels/config');
+    return response.data;
+  },
 };
+

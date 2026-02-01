@@ -1,7 +1,37 @@
 import axios, { type AxiosInstance } from 'axios';
 import type { User, ApiResponse } from '../types/types';
+import type { TradeQuote } from './types/blockchain';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+export interface CreatePoolRequest {
+    market_id?: number;
+    program_id: string;
+    authority: string;
+    yes_mint: string;
+    no_mint: string;
+    yes_reserve: number;
+    no_reserve: number;
+    fee_percentage: number;
+}
+
+export interface PoolResponse {
+    id: string;
+    market_id: number;
+    program_id: string;
+    authority: string;
+    yes_mint: string;
+    no_mint: string;
+    yes_reserve: number;
+    no_reserve: number;
+    fee_percentage: number;
+    total_liquidity: number;
+    yes_price: number;
+    no_price: number;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
 
 class ApiService {
     private api: AxiosInstance;
@@ -25,9 +55,10 @@ class ApiService {
     }
 
     // Auth endpoints
-    async walletLogin(walletAddress: string, inviteCode?: string): Promise<{ token: string; user: User }> {
+    async walletLogin(walletAddress: string, signature: string, inviteCode?: string): Promise<{ token: string; user: User }> {
         const response = await this.api.post<{ token: string; user: User }>('/auth/wallet', {
             wallet_address: walletAddress,
+            signature,
             invite_code: inviteCode,
         });
         return response.data;
@@ -48,10 +79,7 @@ class ApiService {
     async getProfile(): Promise<User> {
         const response = await this.api.get<ApiResponse<{ user: User }>>('/api/user/profile');
         const user = response.data.user!;
-        return {
-            ...user,
-            virtual_balance: Number(user.virtual_balance)
-        };
+        return user;
     }
 
     async getCurrentUser(): Promise<User> {
@@ -59,8 +87,12 @@ class ApiService {
     }
 
     async getBalance(): Promise<number> {
-        const response = await this.api.get<ApiResponse<{ balance: number }>>('/api/user/balance');
-        return response.data.balance || 0;
+        try {
+            const response = await this.api.get<ApiResponse<{ balance: number }>>('/api/user/balance');
+            return response.data.balance || 0;
+        } catch {
+            return 0;
+        }
     }
 
     // Health check
@@ -112,39 +144,159 @@ class ApiService {
         await this.api.post(`/api/markets/proposals/${id}/moderate`, { action });
     }
 
-    // Trading endpoints
-    async placeOrder(data: {
-        market_id: number;
-        market_event_id: number;
-        order_type: string;
-        quantity: string;
-        price: string;
+    async resolveMarket(marketId: string, outcome: string): Promise<void> {
+        await this.api.post(`/api/markets/${marketId}/resolve`, { outcome });
+    }
+
+    // AMM endpoints
+    async createPool(data: CreatePoolRequest): Promise<PoolResponse> {
+        const response = await this.api.post<PoolResponse>('/api/amm/pools', data);
+        return response.data;
+    }
+
+    async getPools(marketId?: string): Promise<any[]> {
+        const params = marketId ? `?market_id=${marketId}` : '';
+        const response = await this.api.get<ApiResponse<any[]>>(`/api/amm/pools${params}`);
+        return response.data.data || [];
+    }
+
+    async getPool(poolId: string): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>(`/api/amm/pools/${poolId}`);
+        return response.data.data!;
+    }
+
+    async getTradeQuote(poolId: string, inputAmount: string, tradeType: number): Promise<TradeQuote> {
+        const response = await this.api.get<ApiResponse<TradeQuote>>(`/api/amm/quote?pool_id=${poolId}&input_amount=${inputAmount}&trade_type=${tradeType}`);
+        return response.data.data!;
+    }
+
+    async recordTrade(data: {
+        pool_id: string;
+        trade_type: number;
+        input_amount: string;
+        output_amount: string;
+        fee_amount: string;
+        transaction_signature: string;
     }): Promise<void> {
-        await this.api.post('/api/orders', data);
+        await this.api.post('/api/amm/trades', data);
     }
 
-    async getOrderBook(marketId: number, eventId: number): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>(`/api/trading/orderbook/${marketId}/${eventId}`);
-        return response.data.data;
-    }
-
-    async getUserPortfolio(marketId: number): Promise<any[]> {
-        const response = await this.api.get<ApiResponse<any[]>>(`/api/trading/portfolio/${marketId}`);
+    async getUserAMMPositions(userAddress: string): Promise<any[]> {
+        const response = await this.api.get<ApiResponse<any[]>>(`/api/amm/positions/user/${userAddress}`);
         return response.data.data || [];
     }
 
-    async getUserPnL(marketId: number): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>(`/api/trading/pnl/${marketId}`);
+    // Duel endpoints
+    async createDuel(data: { bet_amount: number; market_id?: string; event_id?: string; predicted_outcome?: string; currency?: string }): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>('/api/duels', data);
+        return response.data;
+    }
+
+    async getDuel(duelId: string): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>(`/api/duels/${duelId}`);
+        return response.data;
+    }
+
+    async getPlayerDuels(limit = 20, offset = 0): Promise<{ duels: any[]; total: number }> {
+        const response = await this.api.get<any>('/api/duels', { params: { limit, offset } });
+        return response.data;
+    }
+
+    async getPlayerStatistics(): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>('/api/duels/stats');
+        return response.data;
+    }
+
+    async depositToDuel(duelId: string, data: { signature: string }): Promise<void> {
+        await this.api.post(`/api/duels/${duelId}/deposit`, data);
+    }
+
+    async cancelDuel(duelId: string): Promise<void> {
+        await this.api.post(`/api/duels/${duelId}/cancel`);
+    }
+
+    async joinDuel(duelId: string): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`);
+        return response.data;
+    }
+
+    async resolveDuel(duelId: string, winnerId: string, winnerAmount: number): Promise<void> {
+        await this.api.post(`/api/admin/duels/${duelId}/resolve`, {
+            winner_id: winnerId,
+            winner_amount: winnerAmount,
+        });
+    }
+
+    async resolveDuelWithPrice(data: {
+        duelId: string;
+        winnerId: string;
+        exitPrice: number;
+        transactionHash: string;
+    }): Promise<any> {
+        const response = await this.api.post('/api/duels/resolve', data);
+        return response.data;
+    }
+
+    async getActiveDuels(limit = 50): Promise<{ duels: any[]; total: number }> {
+        const response = await this.api.get<any>('/api/duels/status/active', { params: { limit } });
+        return response.data;
+    }
+
+    async getDuelConfig(): Promise<{ serverWallet: string; network: string }> {
+        const response = await this.api.get<{ serverWallet: string; network: string }>('/api/duels/config');
+        return response.data;
+    }
+
+    // Wallet/Blockchain endpoints
+    async connectWallet(data: { wallet_address: string }): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
         return response.data.data;
     }
 
-    async cancelOrder(orderId: number): Promise<void> {
-        await this.api.delete(`/api/orders/${orderId}`);
+    async disconnectWallet(): Promise<void> {
+        await this.api.delete('/api/wallet/disconnect');
     }
 
-    async getUserOrders(): Promise<any[]> {
-        const response = await this.api.get<ApiResponse<any[]>>('/api/orders');
+    async getWalletConnection(): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>('/api/wallet');
+        return response.data.data;
+    }
+
+    async refreshWalletBalance(): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>('/api/wallet/refresh');
+        return response.data.data;
+    }
+
+    async getWalletBalances(): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>('/api/wallet/balances');
+        return response.data.data;
+    }
+
+    // Escrow endpoints
+    async getEscrowBalance(): Promise<any> {
+        const response = await this.api.get<ApiResponse<any>>('/api/escrow/balance');
+        return response.data.data;
+    }
+
+    async getEscrowTransactions(): Promise<any[]> {
+        const response = await this.api.get<ApiResponse<any[]>>('/api/escrow/transactions');
         return response.data.data || [];
+    }
+
+    async lockTokensForDuel(data: {
+        duel_id: number;
+        amount: string;
+        transaction_hash: string;
+    }): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>('/api/escrow/lock', data);
+        return response.data.data;
+    }
+
+    async confirmEscrowDeposit(data: {
+        escrow_transaction_id: number;
+        transaction_hash: string;
+    }): Promise<void> {
+        await this.api.post('/api/escrow/confirm', data);
     }
 
     // Referral endpoints
@@ -261,117 +413,21 @@ class ApiService {
         return response.data.data;
     }
 
-    // Contest endpoints (for users)
-    async getActiveContests(): Promise<any[]> {
-        const response = await this.api.get<ApiResponse<any[]>>('/api/contests');
-        return response.data.data || [];
+    // Legacy OrderBook stubs (to prevent build errors until components are refactored)
+    async getOrderBook(_marketId: number, _eventId: number): Promise<any> {
+        return { bids: [], asks: [] };
     }
 
-    async joinContest(contestId: number): Promise<void> {
-        await this.api.post(`/api/contests/${contestId}/join`);
+    async placeOrder(_data: any): Promise<void> {
+        throw new Error("Order book trading is disabled. Use AMM.");
     }
 
-    async getContestLeaderboard(contestId: number): Promise<any[]> {
-        const response = await this.api.get<ApiResponse<any[]>>(`/api/contests/${contestId}/leaderboard`);
-        return response.data.data || [];
+    async getUserPortfolio(_marketId: number): Promise<any[]> {
+        return [];
     }
 
-    // Wallet/Blockchain endpoints
-    async connectWallet(data: { wallet_address: string }): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
-        return response.data.data;
-    }
-
-    async disconnectWallet(): Promise<void> {
-        await this.api.delete('/api/wallet/disconnect');
-    }
-
-    async getWalletConnection(): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>('/api/wallet');
-        return response.data.data;
-    }
-
-    async refreshWalletBalance(): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>('/api/wallet/refresh');
-        return response.data.data;
-    }
-
-    async getWalletBalances(): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>('/api/wallet/balances');
-        return response.data.data;
-    }
-
-    // Escrow endpoints
-    async getEscrowBalance(): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>('/api/escrow/balance');
-        return response.data.data;
-    }
-
-    async getEscrowTransactions(): Promise<any[]> {
-        const response = await this.api.get<ApiResponse<any[]>>('/api/escrow/transactions');
-        return response.data.data || [];
-    }
-
-    async lockTokensForDuel(data: {
-        duel_id: number;
-        amount: string;
-        transaction_hash: string;
-    }): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>('/api/escrow/lock', data);
-        return response.data.data;
-    }
-
-    async confirmEscrowDeposit(data: {
-        escrow_transaction_id: number;
-        transaction_hash: string;
-    }): Promise<void> {
-        await this.api.post('/api/escrow/confirm', data);
-    }
-
-    // Duel endpoints
-    async createDuel(data: { bet_amount: number; market_id?: string; event_id?: string; predicted_outcome?: string }): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>('/api/duels', data);
-        return response.data;
-    }
-
-    async getDuel(duelId: string): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>(`/api/duels/${duelId}`);
-        return response.data;
-    }
-
-    async getPlayerDuels(limit = 20, offset = 0): Promise<{ duels: any[]; total: number }> {
-        const response = await this.api.get<any>('/api/duels', { params: { limit, offset } });
-        return response.data;
-    }
-
-    async getPlayerStatistics(): Promise<any> {
-        const response = await this.api.get<ApiResponse<any>>('/api/duels/stats');
-        return response.data;
-    }
-
-    async depositToDuel(duelId: string, data: { signature: string }): Promise<void> {
-        await this.api.post(`/api/duels/${duelId}/deposit`, data);
-    }
-
-    async cancelDuel(duelId: string): Promise<void> {
-        await this.api.post(`/api/duels/${duelId}/cancel`);
-    }
-
-    async joinDuel(duelId: string): Promise<any> {
-        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/join`);
-        return response.data;
-    }
-
-    async resolveDuel(duelId: string, winnerId: string, winnerAmount: number): Promise<void> {
-        await this.api.post(`/api/admin/duels/${duelId}/resolve`, {
-            winner_id: winnerId,
-            winner_amount: winnerAmount,
-        });
-    }
-
-    async getActiveDuels(limit = 50): Promise<{ duels: any[]; total: number }> {
-        const response = await this.api.get<any>('/api/admin/duels/active', { params: { limit } });
-        return response.data;
+    async getUserPnL(_marketId: number): Promise<any> {
+        return 0;
     }
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 
 	"prediction-market/internal/auth"
@@ -376,7 +377,7 @@ func (h *DuelHandler) ConfirmTransaction(c *gin.Context) {
 		c.Request.Context(),
 		duelID,
 		req.TransactionHash,
-		0,       // Initial confirmations
+		0, // Initial confirmations
 		"pending",
 	)
 	if err != nil {
@@ -502,5 +503,22 @@ func (h *DuelHandler) ShareOnX(c *gin.Context) {
 			"shareUrl":  url.QueryEscape(shareURL),
 			"tweetText": tweetText,
 		},
+	})
+}
+
+// GetConfig returns duel configuration including server wallet
+// GET /api/duels/config
+func (h *DuelHandler) GetConfig(c *gin.Context) {
+	serverWallet := os.Getenv("SERVER_WALLET_PUBLIC_KEY")
+	network := os.Getenv("SOLANA_NETWORK")
+
+	if serverWallet == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "server wallet not configured"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"serverWallet": serverWallet,
+		"network":      network,
 	})
 }

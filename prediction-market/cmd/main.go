@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -112,12 +111,7 @@ func main() {
 	}
 	// Add additional frontend URL from environment if provided
 	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
-		// Validate that the URL has proper protocol
-		if strings.HasPrefix(frontendURL, "http://") || strings.HasPrefix(frontendURL, "https://") {
-			allowedOrigins = append(allowedOrigins, frontendURL)
-		} else {
-			log.Printf("Warning: FRONTEND_URL '%s' does not have http:// or https:// prefix, skipping", frontendURL)
-		}
+		allowedOrigins = append(allowedOrigins, frontendURL)
 	}
 
 	router.Use(cors.New(cors.Config{
@@ -215,6 +209,7 @@ func main() {
 		api.POST("/duels", duelHandler.CreateDuel)
 		api.GET("/duels", duelHandler.GetPlayerDuels)
 		api.GET("/duels/stats", duelHandler.GetPlayerStatistics)
+		api.GET("/duels/config", duelHandler.GetConfig)
 		api.GET("/duels/available", duelHandler.GetAvailableDuels)
 		api.GET("/duels/user/:userId", duelHandler.GetUserDuels)
 		api.POST("/duels/confirm-transaction", duelHandler.ConfirmTransaction)
