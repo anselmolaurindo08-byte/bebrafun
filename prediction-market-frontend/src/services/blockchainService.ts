@@ -6,6 +6,7 @@ import {
   Transaction,
   SystemProgram,
   TransactionInstruction,
+  Keypair,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -265,6 +266,91 @@ class BlockchainService {
       priceImpact,
       minimumReceived,
     };
+  }
+
+  // ============================================================================
+  // POOL CREATION
+  // ============================================================================
+
+  async createPool(
+    marketId: string,
+    initialLiquidity: number,
+    walletPublicKey: PublicKey,
+    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+  ): Promise<string> {
+    try {
+      // 1. Generate dummy mints
+      const yesMint = Keypair.generate().publicKey.toString();
+      const noMint = Keypair.generate().publicKey.toString();
+      const programId = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb').toString(); // Memo Program for simulation
+
+      // 2. Fetch latest blockhash
+      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+
+      // 3. Construct Transaction
+      // Simulating pool creation with a self-transfer + memo
+      const transaction = new Transaction({
+        blockhash,
+        lastValidBlockHeight,
+        feePayer: walletPublicKey,
+      });
+
+      // Memo instruction to record intent
+      transaction.add(
+        new TransactionInstruction({
+          keys: [{ pubkey: walletPublicKey, isSigner: true, isWritable: true }],
+          programId: new PublicKey(programId),
+          data: Buffer.from(`PUMPSLY:CREATE_POOL:${marketId}:${initialLiquidity}`, 'utf-8'),
+        })
+      );
+
+      // Simulate spending initial liquidity (sending to self)
+      // In a real program, this would transfer SOL/Tokens to the pool PDA
+      const lamports = Math.floor(initialLiquidity * LAMPORTS_PER_SOL);
+      if (lamports > 0) {
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: walletPublicKey,
+            toPubkey: walletPublicKey,
+            lamports: lamports,
+          })
+        );
+      }
+
+      // 4. Send Transaction
+      const signature = await sendTransaction(transaction, this.connection);
+
+      // 5. Monitor Confirmation
+      const result = await this.monitorTransaction(signature);
+
+      if (result.status === 'failed') {
+        throw new Error(result.error || 'Pool creation transaction failed');
+      }
+
+      // 6. Create Pool in Backend
+      // Convert initialLiquidity (SOL) to internal units if needed, but backend expects 'int64'
+      // Assuming backend expects lamports for reserves
+      const reserveAmount = Math.floor(initialLiquidity * LAMPORTS_PER_SOL);
+
+      const pool = await apiService.createPool({
+        market_id: parseInt(marketId),
+        program_id: programId,
+        authority: walletPublicKey.toString(),
+        yes_mint: yesMint,
+        no_mint: noMint,
+        yes_reserve: reserveAmount,
+        no_reserve: reserveAmount,
+        fee_percentage: 50, // 0.5% fee (50 basis points)
+      });
+
+      return pool.id;
+
+    } catch (error: any) {
+      throw this.createError(
+        BlockchainErrorType.TRANSACTION_FAILED,
+        `Failed to create pool: ${error.message || error}`,
+      );
+    }
   }
 
   // ============================================================================
