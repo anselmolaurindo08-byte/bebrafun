@@ -18,7 +18,6 @@ type DuelService struct {
 	repo              *repository.Repository
 	escrowContract    *blockchain.EscrowContract
 	solanaClient      *blockchain.SolanaClient
-	priceService      *PriceService
 	duelMatchingQueue chan *models.DuelQueue
 }
 
@@ -31,15 +30,11 @@ func NewDuelService(
 		repo:              repo,
 		escrowContract:    escrowContract,
 		solanaClient:      solanaClient,
-		priceService:      NewPriceService(),
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
 
 	// Start matching goroutine
 	go ds.matchDuels()
-
-	// Start resolution monitor (Server-side Oracle)
-	go ds.monitorActiveDuels()
 
 	return ds
 }
@@ -55,36 +50,20 @@ func (ds *DuelService) CreateDuel(
 		return nil, errors.New("bet amount must be positive")
 	}
 
-	// Check if player already has too many active duels
-	activeCount, err := ds.repo.CountPlayerActiveDuels(ctx, playerID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count active duels: %w", err)
-	}
-
-	if activeCount >= 5 {
-		return nil, errors.New("maximum 5 active duels allowed")
-	}
+	// TODO: Check player wallet balance
+	// This requires WalletConnection integration
+	// For now, we'll skip balance validation and let blockchain handle it
 
 	// Generate duel ID
 	duelID := time.Now().UnixNano()
-
-	// Convert float to int64 based on currency decimals (simplified for SOL)
-	betAmountInt := int64(req.BetAmount * 1e9) // Assuming SOL (9 decimals)
-
-	// Map string currency to int16
-	var currencyCode int16 = 0 // Default to SOL
-	if req.Currency == "PUMP" {
-		currencyCode = 1
-	}
 
 	// Create duel in database
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
 		Player1ID:        playerID,
-		BetAmount:        betAmountInt,
-		Player1Amount:    betAmountInt,
-		Currency:         currencyCode,
+		BetAmount:        req.BetAmount,
+		Player1Amount:    req.BetAmount,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
@@ -103,7 +82,7 @@ func (ds *DuelService) CreateDuel(
 	queueItem := &models.DuelQueue{
 		ID:               uuid.New(),
 		PlayerID:         playerID,
-		BetAmount:        betAmountInt,
+		BetAmount:        req.BetAmount,
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
@@ -166,8 +145,26 @@ func (ds *DuelService) matchDuels() {
 			continue
 		}
 
-		// NOTE: Escrow Initialization is now triggered by Frontend
-		// Backend just waits for transaction hash confirmation via DepositToDuel
+		// Initialize escrow on blockchain
+		escrowTxHash, err := ds.escrowContract.InitializeEscrow(
+			ctx,
+			duel1.DuelID,
+			duel1.Player1ID,
+			*duel1.Player2ID,
+			duel1.BetAmount,
+		)
+
+		if err != nil {
+			log.Printf("Error initializing escrow: %v", err)
+			// Don't fail the match if escrow fails, just log it
+			// In production, you might want to handle this differently
+		} else {
+			duel1.EscrowTxHash = &escrowTxHash
+			err = ds.repo.UpdateDuel(ctx, duel1)
+			if err != nil {
+				log.Printf("Error updating escrow hash: %v", err)
+			}
+		}
 
 		log.Printf("Matched duel %d: %d vs %d", duel1.DuelID, duel1.Player1ID, *duel1.Player2ID)
 	}
@@ -212,12 +209,32 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
 
+	// Initialize escrow on blockchain
+	escrowTxHash, err := ds.escrowContract.InitializeEscrow(
+		ctx,
+		duel.DuelID,
+		duel.Player1ID,
+		*duel.Player2ID,
+		duel.BetAmount,
+	)
+
+	if err != nil {
+		log.Printf("Error initializing escrow: %v", err)
+		// Continue even if escrow initialization fails
+	} else {
+		// Save escrow transaction hash
+		duel.EscrowTxHash = &escrowTxHash
+		if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+			log.Printf("Error updating escrow hash: %v", err)
+		}
+	}
+
 	log.Printf("Player %d joined duel %d (created by player %d)", playerID, duel.DuelID, duel.Player1ID)
 
 	return duel, nil
 }
 
-// DepositToDuel verifies the escrow deposit transaction from frontend
+// DepositToDuel deposits tokens to escrow for a duel
 func (ds *DuelService) DepositToDuel(
 	ctx context.Context,
 	duelID uuid.UUID,
@@ -231,20 +248,18 @@ func (ds *DuelService) DepositToDuel(
 	}
 
 	// Verify duel status
-	// Allow Pending (Player 1 depositing before match), Matched (Both players), or Active (Already active, maybe retry/late confirmation)
-	if duel.Status != models.DuelStatusPending && duel.Status != models.DuelStatusMatched && duel.Status != models.DuelStatusActive {
-		return fmt.Errorf("duel is not in pending/matched/active status, current status: %s", duel.Status)
+	if duel.Status != models.DuelStatusMatched {
+		return fmt.Errorf("duel is not in matched status, current status: %s", duel.Status)
 	}
 
-	// Verify transaction on blockchain
-	// Pass the expected bet amount (lamports) to the verification logic
-	confirmed, err := ds.escrowContract.VerifyDuelTransaction(ctx, signature, uint64(duel.BetAmount))
+	// Verify transaction on blockchain (require at least 1 confirmation)
+	confirmed, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
 	if err != nil {
 		return fmt.Errorf("failed to verify transaction: %w", err)
 	}
 
 	if !confirmed {
-		return errors.New("transaction not confirmed on blockchain or amount mismatch")
+		return errors.New("transaction not confirmed on blockchain")
 	}
 
 	// Determine player ID
@@ -284,26 +299,12 @@ func (ds *DuelService) DepositToDuel(
 	if len(deposits) == 2 {
 		// Both players have deposited, update duel status to active
 		duel.Status = models.DuelStatusActive
-		now := time.Now()
-		duel.StartedAt = &now
-
-		// Capture Start Price Server-Side
-		// TODO: Support DOGE or other pairs based on duel config. Default to SOLUSDT for demo.
-		symbol := "SOLUSDT"
-		if startPrice, err := ds.priceService.GetCurrentPrice(symbol); err == nil {
-			duel.PriceAtStart = &startPrice
-			log.Printf("Captured Start Price for Duel %d: %f", duel.DuelID, startPrice)
-		} else {
-			log.Printf("Warning: Failed to capture start price for Duel %d: %v", duel.DuelID, err)
-			// Fallback? Or fail start? For MVP, we proceed, resolution might need handling.
-		}
-
 		err = ds.repo.UpdateDuel(ctx, duel)
 		if err != nil {
 			return fmt.Errorf("failed to update duel status: %w", err)
 		}
 
-		log.Printf("Duel %d is now active - both players deposited. StartedAt: %v", duel.DuelID, now)
+		log.Printf("Duel %d is now active - both players deposited", duel.DuelID)
 	} else {
 		log.Printf("Duel %d waiting for deposits: %d/2", duel.DuelID, len(deposits))
 	}
@@ -334,25 +335,24 @@ func (ds *DuelService) ResolveDuel(
 		return errors.New("winner must be one of the duel players")
 	}
 
-	// Trigger Blockchain Release via Server Authority
-	// The client might send a hash, but we ideally want the server to perform the payout
-	// from the escrow account.
-
-	// Fetch real address from User model
-	winnerUser, err := ds.repo.GetUserByID(ctx, winnerID)
-	if err != nil {
-		return fmt.Errorf("failed to get winner user: %w", err)
+	// Determine winner number
+	var winnerNumber uint8
+	if winnerID == duel.Player1ID {
+		winnerNumber = 1
+	} else {
+		winnerNumber = 2
 	}
-	winnerPubKey := winnerUser.WalletAddress
 
-	// Calculate total prize (2x bet amount)
-	totalPrize := uint64(duel.BetAmount * 2)
+	// Release tokens from escrow to winner
+	txHash, err := ds.escrowContract.ReleaseToWinner(
+		ctx,
+		duel.DuelID,
+		winnerNumber,
+		winnerAmount,
+	)
 
-	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey, totalPrize)
 	if err != nil {
-		log.Printf("Error signing release transaction: %v", err)
-		// We might want to retry or mark for manual intervention
-		return fmt.Errorf("failed to release funds on-chain: %w", err)
+		return fmt.Errorf("failed to release tokens: %w", err)
 	}
 
 	// Update duel
@@ -390,7 +390,7 @@ func (ds *DuelService) ResolveDuel(
 		log.Printf("Error updating statistics: %v", err)
 	}
 
-	log.Printf("Duel %d resolved. Winner: %d, Amount: %d, Tx: %s", duel.DuelID, winnerID, winnerAmount, txHash)
+	log.Printf("Duel %d resolved. Winner: %d, Amount: %d", duel.DuelID, winnerID, winnerAmount)
 
 	return nil
 }
@@ -466,10 +466,13 @@ func (ds *DuelService) CancelDuel(ctx context.Context, duelID uuid.UUID, playerI
 		return errors.New("cannot cancel active or resolved duel")
 	}
 
-	// Cancel escrow if matched (Trigger server cancellation or verify user cancellation)
+	// Cancel escrow if matched
 	if duel.Status == models.DuelStatusMatched && duel.EscrowTxHash != nil {
-		// Verify cancellation on chain? For now assume user cancels on frontend and notifies us
-		// Or we trigger it if we are admin
+		_, err := ds.escrowContract.CancelEscrow(ctx, duel.DuelID)
+		if err != nil {
+			log.Printf("Warning: failed to cancel escrow: %v", err)
+			// Continue with cancellation even if blockchain fails
+		}
 	}
 
 	// Update duel status
@@ -492,85 +495,6 @@ func (ds *DuelService) GetActiveDuels(ctx context.Context, limit int) ([]*models
 // ExpirePendingDuels marks expired pending duels as expired
 func (ds *DuelService) ExpirePendingDuels(ctx context.Context) error {
 	return ds.repo.ExpirePendingDuels(ctx)
-}
-
-// monitorActiveDuels background job to auto-resolve duels
-func (ds *DuelService) monitorActiveDuels() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		ctx := context.Background()
-		activeDuels, err := ds.repo.GetActiveDuels(ctx, 100) // Batch process
-		if err != nil {
-			log.Printf("Error fetching active duels: %v", err)
-			continue
-		}
-
-		for _, duel := range activeDuels {
-			// Only process ACTIVE duels that have started
-			if duel.Status != models.DuelStatusActive || duel.StartedAt == nil {
-				continue
-			}
-
-			// Check if duration passed (60 seconds)
-			elapsed := time.Since(*duel.StartedAt)
-			if elapsed >= 60*time.Second {
-				ds.resolveDuelAutomatically(ctx, duel)
-			}
-		}
-	}
-}
-
-func (ds *DuelService) resolveDuelAutomatically(ctx context.Context, duel *models.Duel) {
-	log.Printf("Auto-resolving Duel %d...", duel.DuelID)
-
-	symbol := "SOLUSDT"
-	if duel.Currency == 1 { // 1 = PUMP
-		symbol = "PUMPUSDT"
-	}
-
-	exitPrice, err := ds.priceService.GetCurrentPrice(symbol)
-	if err != nil {
-		log.Printf("Failed to get exit price for duel %d (%s): %v. Retrying next tick.", duel.DuelID, symbol, err)
-		return
-	}
-
-	startPrice := 0.0
-	if duel.PriceAtStart != nil {
-		startPrice = *duel.PriceAtStart
-	} else {
-		// Fallback: If start price wasn't captured, use exit price (Push/Tie) or error?
-		// For demo, we might just use exitPrice, resulting in 0 change.
-		// Ideally we should have persistent candles.
-		log.Printf("Warning: No start price for duel %d", duel.DuelID)
-	}
-
-	// Determine Winner Logic
-	// Player 1 (Creator) predicts.
-	// Direction: 0 = UP, 1 = DOWN (from duel struct, assuming mapped)
-	// Map string "UP"/"DOWN" to internal if needed.
-	// The model has PredictedOutcome string.
-
-	isUpPrediction := duel.PredictedOutcome != nil && *duel.PredictedOutcome == "UP"
-	wentUp := exitPrice > startPrice
-	wentDown := exitPrice < startPrice
-
-	var winnerID uint
-	if (isUpPrediction && wentUp) || (!isUpPrediction && wentDown) {
-		winnerID = duel.Player1ID
-	} else if duel.Player2ID != nil {
-		winnerID = *duel.Player2ID
-	} else {
-		winnerID = duel.Player1ID // Fallback if single player (shouldn't happen in active)
-	}
-
-	// Execute Resolution
-	// We reuse ResolveDuelWithPrice but ignore the client hash argument
-	_, err = ds.ResolveDuelWithPrice(ctx, duel.ID, winnerID, exitPrice, "SERVER_AUTO_RESOLUTION")
-	if err != nil {
-		log.Printf("Error auto-resolving duel %d: %v", duel.DuelID, err)
-	}
 }
 
 // ============================================================================
@@ -645,7 +569,7 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	duelID uuid.UUID,
 	winnerID uint,
 	exitPrice float64,
-	clientTxHash string,
+	txHash string,
 ) (*models.DuelResult, error) {
 	duel, err := ds.repo.GetDuelByID(ctx, duelID)
 	if err != nil {
@@ -667,22 +591,6 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		loserID = duel.Player1ID
 	} else {
 		return nil, errors.New("winner must be one of the duel players")
-	}
-
-	// Trigger Blockchain Release via Server Authority
-	// The client might send a hash, but we ideally want the server to perform the payout
-	// from the escrow account.
-	winnerPubKey := "WinnerWalletAddressPlaceholder" // TODO: Fetch real address from User model
-
-	txHash, err := ds.escrowContract.ReleaseToWinner(ctx, duel.DuelID, winnerPubKey, uint64(duel.BetAmount * 2))
-	if err != nil {
-		log.Printf("Error releasing funds: %v", err)
-		// Fallback to client hash if server release fails (e.g. simulation mode)
-		if clientTxHash != "" {
-			txHash = clientTxHash
-		} else {
-			return nil, fmt.Errorf("failed to release funds on-chain: %w", err)
-		}
 	}
 
 	// Calculate price data
@@ -832,11 +740,6 @@ func (ds *DuelService) GenerateShareURL(
 	)
 
 	return shareURL, tweetText
-}
-
-// GetEscrowWalletAddress returns the server's wallet address for deposits
-func (ds *DuelService) GetEscrowWalletAddress() string {
-	return ds.solanaClient.GetServerWalletPublicKey()
 }
 
 // Helper functions

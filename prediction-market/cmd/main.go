@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -48,10 +47,9 @@ func main() {
 	userService := services.NewUserService(database.GetDB())
 	blockchainService := services.NewBlockchainService(
 		database.GetDB(),
-		cfg.Solana.Network, // Use "mainnet-beta" for production
-		"",                 // Token mint address (configure later)
-		"",                 // Escrow contract address (configure later)
-		cfg.Solana.ServerWalletPrivateKey,
+		"devnet", // Use "mainnet-beta" for production
+		"",       // Token mint address (configure later)
+		"",       // Escrow contract address (configure later)
 	)
 
 	// Initialize repository
@@ -59,10 +57,9 @@ func main() {
 
 	// Initialize Solana client
 	solanaClient := blockchain.NewSolanaClient(
-		cfg.Solana.Network,
-		"", // Token mint address (configure later)
-		"", // Escrow contract address (configure later)
-		cfg.Solana.ServerWalletPrivateKey,
+		"devnet", // network
+		"",       // Token mint address (configure later)
+		"",       // Escrow contract address (configure later)
 	)
 
 	// Initialize escrow contract
@@ -82,6 +79,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	marketHandler := handlers.NewMarketHandler(database.GetDB())
+	tradingHandler := handlers.NewTradingHandler(database.GetDB())
 	referralHandler := handlers.NewReferralHandler(database.GetDB())
 	adminHandler := handlers.NewAdminHandler(database.GetDB())
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
@@ -113,12 +111,7 @@ func main() {
 	}
 	// Add additional frontend URL from environment if provided
 	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
-		// Validate that the URL has proper protocol
-		if strings.HasPrefix(frontendURL, "http://") || strings.HasPrefix(frontendURL, "https://") {
-			allowedOrigins = append(allowedOrigins, frontendURL)
-		} else {
-			log.Printf("Warning: FRONTEND_URL '%s' does not have http:// or https:// prefix, skipping", frontendURL)
-		}
+		allowedOrigins = append(allowedOrigins, frontendURL)
 	}
 
 	router.Use(cors.New(cors.Config{
@@ -164,16 +157,23 @@ func main() {
 		userRoutes := api.Group("/user")
 		{
 			userRoutes.GET("/profile", userHandler.GetProfile)
-			// userRoutes.GET("/balance", userHandler.GetBalance) // Virtual balance removed
+			userRoutes.GET("/balance", userHandler.GetBalance)
 			userRoutes.GET("/invite-codes", userHandler.GetInviteCodes)
 			userRoutes.GET("/referrals", userHandler.GetReferrals)
 		}
+
+		// Trading endpoints (protected) - must come before :id routes
+		api.POST("/orders", tradingHandler.PlaceOrder)
+		api.DELETE("/orders/:id", tradingHandler.CancelOrder)
+		api.GET("/orders", tradingHandler.GetUserOrders)
 
 		// Market endpoints (protected)
 		api.POST("/markets", marketHandler.CreateMarket)
 		api.POST("/markets/propose", marketHandler.ProposeMarket)
 		api.GET("/markets/proposals/pending", marketHandler.GetPendingProposals)
 		api.POST("/markets/proposals/:id/moderate", marketHandler.ModerateProposal)
+		api.GET("/trading/portfolio/:market_id", tradingHandler.GetUserPortfolio)
+		api.GET("/trading/pnl/:market_id", tradingHandler.GetUserPnL)
 		api.POST("/markets/:id/resolve", marketHandler.ResolveMarket)
 
 		// Referral endpoints (protected)
@@ -186,6 +186,11 @@ func main() {
 		// Social share endpoints (protected)
 		api.POST("/social/share/twitter", referralHandler.ShareWinOnTwitter)
 		api.GET("/social/shares", referralHandler.GetSocialShares)
+
+		// Contest endpoints (for users)
+		api.GET("/contests", adminHandler.GetActiveContests)
+		api.POST("/contests/:id/join", adminHandler.JoinContest)
+		api.GET("/contests/:id/leaderboard", adminHandler.GetContestLeaderboard)
 
 		// Wallet/Blockchain endpoints (protected)
 		api.POST("/wallet/connect", blockchainHandler.ConnectWallet)
@@ -204,6 +209,7 @@ func main() {
 		api.POST("/duels", duelHandler.CreateDuel)
 		api.GET("/duels", duelHandler.GetPlayerDuels)
 		api.GET("/duels/stats", duelHandler.GetPlayerStatistics)
+		api.GET("/duels/config", duelHandler.GetConfig)
 		api.GET("/duels/available", duelHandler.GetAvailableDuels)
 		api.GET("/duels/user/:userId", duelHandler.GetUserDuels)
 		api.POST("/duels/confirm-transaction", duelHandler.ConfirmTransaction)
@@ -214,8 +220,6 @@ func main() {
 		api.POST("/duels/:id/deposit", duelHandler.DepositToDuel)
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
-		api.GET("/duels/status/active", duelHandler.GetActiveDuels)
-		api.GET("/duels/config", duelHandler.GetConfig)
 
 		// AMM endpoints (protected)
 		amm := api.Group("/amm")
@@ -250,16 +254,27 @@ func main() {
 		admin.POST("/users/restrict", adminHandler.RestrictUser)
 		admin.DELETE("/users/restrictions/:id", adminHandler.RemoveRestriction)
 		admin.GET("/users/:id/restrictions", adminHandler.GetUserRestrictions)
+		admin.POST("/users/balance", adminHandler.UpdateUserBalance)
 		admin.POST("/users/promote", adminHandler.PromoteToAdmin)
 
 		// Market management
 		admin.GET("/markets", adminHandler.GetMarkets)
 		admin.PUT("/markets/:id/status", adminHandler.UpdateMarketStatus)
 
+		// Contest management
+		admin.GET("/contests", adminHandler.GetContests)
+		admin.POST("/contests", adminHandler.CreateContest)
+		admin.GET("/contests/:id", adminHandler.GetContest)
+		admin.POST("/contests/:id/start", adminHandler.StartContest)
+		admin.POST("/contests/:id/end", adminHandler.EndContest)
+
 		// Duel management
 		admin.POST("/duels/:id/resolve", duelHandler.ResolveDuel)
-		// admin.GET("/duels/active", duelHandler.GetActiveDuels) // Moved to general API
+		admin.GET("/duels/active", duelHandler.GetActiveDuels)
 	}
+
+	// Public order book route
+	router.GET("/api/trading/orderbook/:market_id/:event_id", tradingHandler.GetOrderBook)
 
 	// Create HTTP server
 	srv := &http.Server{
