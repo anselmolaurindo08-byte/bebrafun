@@ -87,6 +87,14 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked --force
           anchor --version
 
+      - name: Fix Edition 2024 Compatibility
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Install and run solana-edition-fixer to downgrade incompatible dependencies
+          npx -y solana-edition-fixer --fix
+          echo "=== Fixed dependencies ==="
+          cat Cargo.toml
+
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
         env:
