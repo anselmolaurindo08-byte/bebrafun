@@ -1,45 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../store/userStore';
-import { duelService } from '../../services/duelService';
 import { DuelCard } from '../../components/duels/DuelCard';
 import AuthModal from '../../components/AuthModal';
-import type { Duel } from '../../types/duel';
+import { useActiveDuelsPolling } from '../../hooks/useDuelPolling';
 
 export const DuelsPage: React.FC = () => {
   const navigate = useNavigate();
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
-  const [duels, setDuels] = useState<Duel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchDuels = async () => {
-      try {
-        setLoading(true);
-        // Fetch ALL active duels instead of just the player's own duels
-        const { duels } = await duelService.getActiveDuels();
-
-        // Deduplicate duels by ID just in case
-        const uniqueDuels = Array.from(
-          new Map(duels.map(d => [d.id, d])).values()
-        );
-
-        setDuels(uniqueDuels);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to fetch duels:', err);
-        setError(err.response?.data?.error || err.message || 'Failed to fetch duels');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDuels();
-  }, [isAuthenticated]);
+  // Use polling hook for automatic updates (every 5 seconds)
+  const { duels, loading, error } = useActiveDuelsPolling(5000, isAuthenticated);
 
   const handleCreateDuel = () => {
     if (!isAuthenticated) {

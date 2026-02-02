@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
 import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
+import { useDuelPolling } from '../../hooks/useDuelPolling';
 
 interface DuelArenaProps {
   duel: Duel;
@@ -13,27 +14,15 @@ interface DuelArenaProps {
 
 export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResolved }) => {
   const { user } = useUserStore();
-  // Removed unused hook usage
-  // const { fetchDuel } = useDuel();
-  const [duel, setDuel] = useState<Duel>(initialDuel);
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Poll for duel updates
-  useEffect(() => {
-    const intervalId = setInterval(async () => {
-      try {
-        if (!duel.id) return;
-        const updatedDuel = await duelService.getDuel(duel.id);
-        setDuel(updatedDuel);
-      } catch (err) {
-        console.error("Failed to poll duel updates", err);
-      }
-    }, 5000); // Poll every 5 seconds
+  // Use polling hook for automatic updates (every 3 seconds)
+  const { duel: polledDuel } = useDuelPolling(initialDuel.id, 3000, true);
 
-    return () => clearInterval(intervalId);
-  }, [duel.id]);
+  // Use polled duel if available, otherwise use initial
+  const duel = polledDuel || initialDuel;
 
   const currentUserId = user?.id?.toString();
   const isPlayer1 = currentUserId === String(duel.player1Id);
