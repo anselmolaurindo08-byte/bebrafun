@@ -69,10 +69,10 @@ jobs:
         run: |
           rustc --version
           cargo --version
-          # Download prebuilt Anchor CLI binary instead of compiling with cargo
-          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
-          sudo mv /tmp/anchor /usr/local/bin/anchor
-          sudo chmod +x /usr/local/bin/anchor
+          # Install cargo-binstall for faster binary installation
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          # Install Anchor CLI using cargo-binstall (uses prebuilt binaries when available)
+          cargo binstall --no-confirm anchor-cli@${{ env.ANCHOR_VERSION }}
           anchor --version
 
       - name: Build Programs
@@ -143,10 +143,10 @@ jobs:
         run: |
           rustc --version
           cargo --version
-          # Download prebuilt Anchor CLI binary instead of compiling with cargo
-          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
-          sudo mv /tmp/anchor /usr/local/bin/anchor
-          sudo chmod +x /usr/local/bin/anchor
+          # Install cargo-binstall for faster binary installation
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          # Install Anchor CLI using cargo-binstall (uses prebuilt binaries when available)
+          cargo binstall --no-confirm anchor-cli@${{ env.ANCHOR_VERSION }}
           anchor --version
 
       - name: Install Dependencies
@@ -193,10 +193,10 @@ jobs:
         run: |
           rustc --version
           cargo --version
-          # Download prebuilt Anchor CLI binary instead of compiling with cargo
-          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
-          sudo mv /tmp/anchor /usr/local/bin/anchor
-          sudo chmod +x /usr/local/bin/anchor
+          # Install cargo-binstall for faster binary installation
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          # Install Anchor CLI using cargo-binstall (uses prebuilt binaries when available)
+          cargo binstall --no-confirm anchor-cli@${{ env.ANCHOR_VERSION }}
           anchor --version
 
       - name: Setup Solana Wallet
