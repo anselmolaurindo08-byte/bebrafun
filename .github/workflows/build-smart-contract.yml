@@ -265,8 +265,11 @@ jobs:
       - name: Setup Solana Wallet
         run: |
           echo "${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}" > deployer-keypair.json
-          solana config set --url devnet
+          solana config set --url https://api.devnet.solana.com
           solana config set --keypair ./deployer-keypair.json
+          echo "=== Solana Config ==="
+          solana config get
+          echo "=== Wallet Balance ==="
           solana balance
 
       - name: Fix Edition 2024 Compatibility
