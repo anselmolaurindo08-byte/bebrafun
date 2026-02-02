@@ -116,8 +116,10 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.85.0
           override: true
+          profile: minimal
+          components: rustfmt, clippy
 
       - name: Install Solana
         run: |
@@ -153,8 +155,10 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.85.0
           override: true
+          profile: minimal
+          components: rustfmt, clippy
 
       - name: Install Solana
         run: |
