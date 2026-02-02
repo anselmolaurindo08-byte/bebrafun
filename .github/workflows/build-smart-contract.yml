@@ -44,16 +44,40 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
-      - name: Build with Docker (Anchor Official Image)
+      - name: Setup Rust 1.85.0
+        run: |
+          # Remove any existing Rust installation
+          rustup self uninstall -y || true
+          # Install rustup
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
+          # Add to PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # Verify installation
+          rustc --version
+          cargo --version
+
+      - name: Install Solana
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+
+      - name: Install Anchor CLI
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # Install Anchor CLI from source with Rust 1.85.0
+          cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked --force
+          anchor --version
+
+      - name: Build Programs
         working-directory: prediction-market/duels_escrow
         run: |
-          # Use official Anchor Docker image with Rust 1.85.0
-          docker run --rm \
-            -v $(pwd):/workspace \
-            -w /workspace \
-            --platform linux/amd64 \
-            projectserum/build:v0.32.1 \
-            anchor build
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build
           
       - name: List Build Artifacts
         working-directory: prediction-market/duels_escrow
