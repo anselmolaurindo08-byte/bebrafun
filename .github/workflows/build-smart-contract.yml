@@ -44,41 +44,16 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.85.0
-          override: true
-          profile: minimal
-          components: rustfmt, clippy
-
-      - name: Verify Rust Version
-        run: |
-          rustc --version
-          cargo --version
-          echo "Rust toolchain installed successfully"
-
-      - name: Install Solana
-        run: |
-          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
-
-      - name: Install Anchor CLI
-        run: |
-          rustc --version
-          cargo --version
-          # Install cargo-binstall for faster binary installation
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          # Install Anchor CLI using cargo-binstall (uses prebuilt binaries when available)
-          cargo binstall --no-confirm anchor-cli@${{ env.ANCHOR_VERSION }}
-          anchor --version
-
-      - name: Build Programs
+      - name: Build with Docker (Anchor Official Image)
         working-directory: prediction-market/duels_escrow
         run: |
-          anchor build
+          # Use official Anchor Docker image with Rust 1.85.0
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            --platform linux/amd64 \
+            projectserum/build:v0.32.1 \
+            anchor build
           
       - name: List Build Artifacts
         working-directory: prediction-market/duels_escrow
