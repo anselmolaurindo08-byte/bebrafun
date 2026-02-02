@@ -203,7 +203,6 @@ jobs:
         run: |
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
-          solana config set --url localnet
           solana config set --keypair ~/.config/solana/id.json
 
       - name: Fix Edition 2024 Compatibility
