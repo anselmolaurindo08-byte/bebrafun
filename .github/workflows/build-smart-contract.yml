@@ -65,15 +65,14 @@ jobs:
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
 
-      - name: Install Anchor
+      - name: Install Anchor CLI
         run: |
           rustc --version
           cargo --version
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
-          echo "$HOME/.avm/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.avm/bin:$PATH"
+          # Download prebuilt Anchor CLI binary instead of compiling with cargo
+          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
+          sudo mv /tmp/anchor /usr/local/bin/anchor
+          sudo chmod +x /usr/local/bin/anchor
           anchor --version
 
       - name: Build Programs
@@ -140,14 +139,15 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor
+      - name: Install Anchor CLI
         run: |
           rustc --version
           cargo --version
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
-          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          # Download prebuilt Anchor CLI binary instead of compiling with cargo
+          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
+          sudo mv /tmp/anchor /usr/local/bin/anchor
+          sudo chmod +x /usr/local/bin/anchor
+          anchor --version
 
       - name: Install Dependencies
         working-directory: prediction-market/duels_escrow
@@ -189,14 +189,15 @@ jobs:
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
 
-      - name: Install Anchor
+      - name: Install Anchor CLI
         run: |
           rustc --version
           cargo --version
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
-          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          # Download prebuilt Anchor CLI binary instead of compiling with cargo
+          curl -LsSf https://github.com/coral-xyz/anchor/releases/download/v${{ env.ANCHOR_VERSION }}/anchor-cli-x86_64-unknown-linux-gnu.tar.gz | tar -xzv -C /tmp
+          sudo mv /tmp/anchor /usr/local/bin/anchor
+          sudo chmod +x /usr/local/bin/anchor
+          anchor --version
 
       - name: Setup Solana Wallet
         run: |
