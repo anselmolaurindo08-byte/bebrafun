@@ -32,17 +32,17 @@ jobs:
             ~/.local/share/solana
           key: solana-${{ env.SOLANA_VERSION }}-${{ runner.os }}
 
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
+      # TEMPORARILY DISABLED: Cache is causing Cargo 1.79.0 to persist
+      # - name: Cache Cargo Registry
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ~/.cargo/registry
+      #       ~/.cargo/git
+      #       target
+      #     key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+      #     restore-keys: |
+      #       cargo-${{ runner.os }}-
 
       - name: Install System Dependencies
         run: |
@@ -55,16 +55,22 @@ jobs:
 
       - name: Setup Rust 1.85.0
         run: |
-          # Remove any existing Rust installation
+          # Aggressively remove ALL Rust installations
           rustup self uninstall -y || true
-          # Install rustup
+          rm -rf ~/.rustup || true
+          rm -rf ~/.cargo || true
+          # Install rustup fresh
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
-          # Add to PATH
+          # Source cargo env
+          source "$HOME/.cargo/env"
+          # Add to PATH for subsequent steps
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.cargo/bin:$PATH"
           # Verify installation
           rustc --version
           cargo --version
+          # Ensure we see 1.85.0
+          rustc --version | grep "1.85.0" || (echo "ERROR: Wrong Rust version!" && exit 1)
+          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version!" && exit 1)
 
       - name: Install Solana
         run: |
