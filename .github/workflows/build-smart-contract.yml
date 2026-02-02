@@ -201,7 +201,7 @@ jobs:
 
       - name: Run Tests
         working-directory: prediction-market/duels_escrow
-        run: anchor test --skip-build
+        run: anchor test
 
   deploy-devnet:
     name: Deploy to Devnet
