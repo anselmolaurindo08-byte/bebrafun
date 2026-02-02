@@ -99,7 +99,7 @@ jobs:
           
           # Now downgrade incompatible dependencies
           cargo update -p blake3 --precise 1.8.2
-          cargo update -p indexmap --precise 2.10.0
+          cargo update -p indexmap --precise 2.11.4
           
           echo "=== Cargo.lock versions ==="
           grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
