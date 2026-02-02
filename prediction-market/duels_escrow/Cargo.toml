@@ -4,9 +4,10 @@ members = [
 ]
 resolver = "2"
 
-# Force compatible blake3 version (1.8.3 requires edition2024)
+# Force compatible versions for Solana's rustc 1.79.0-dev
 [patch.crates-io]
 blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", tag = "1.8.2" }
+indexmap = "=2.10.0"  # 2.13.0 requires rustc 1.82
 
 [profile.release]
 overflow-checks = true
