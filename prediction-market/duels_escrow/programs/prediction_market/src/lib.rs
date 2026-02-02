@@ -161,9 +161,10 @@ pub mod prediction_market {
         // Transfer winnings to winner (both deposits)
         let total_payout = duel.amount.checked_mul(2).unwrap();
         
+        let duel_id_bytes = duel.duel_id.to_le_bytes();
         let seeds = &[
             b"duel_vault",
-            duel.duel_id.to_le_bytes().as_ref(),
+            duel_id_bytes.as_ref(),
             duel.token_mint.as_ref(),
             &[duel.bump],
         ];
@@ -399,9 +400,10 @@ pub mod prediction_market {
         require!(winning_tokens > 0, PredictionMarketError::NoWinnings);
 
         // Transfer winnings (1:1 payout for winning tokens)
+        let pool_id_bytes = pool.pool_id.to_le_bytes();
         let seeds = &[
             b"pool_vault",
-            pool.pool_id.to_le_bytes().as_ref(),
+            pool_id_bytes.as_ref(),
             pool.token_mint.as_ref(),
             &[pool.bump],
         ];
