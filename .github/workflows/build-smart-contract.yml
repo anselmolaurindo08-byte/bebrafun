@@ -165,8 +165,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: prediction-market/duels_escrow/yarn.lock
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -199,7 +197,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: prediction-market/duels_escrow
-        run: yarn install --frozen-lockfile
+        run: npm install
 
       - name: Run Tests
         working-directory: prediction-market/duels_escrow
