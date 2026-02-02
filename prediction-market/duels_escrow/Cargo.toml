@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "programs/*"
+    "programs/prediction_market"
 ]
 resolver = "2"
 

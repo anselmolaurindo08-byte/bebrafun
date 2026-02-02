@@ -77,10 +77,10 @@ jobs:
         working-directory: prediction-market/duels_escrow
         run: |
           echo "=== Built Programs ==="
-          ls -lh target/deploy/*.so
+          ls -lh target/deploy/prediction_market.so
           echo ""
           echo "=== IDL Files ==="
-          ls -lh target/idl/*.json
+          ls -lh target/idl/prediction_market.json
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
