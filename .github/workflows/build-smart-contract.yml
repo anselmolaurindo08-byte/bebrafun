@@ -90,6 +90,8 @@ jobs:
       - name: Fix Edition 2024 Compatibility
         working-directory: prediction-market/duels_escrow
         run: |
+          # Generate Cargo.lock first
+          cargo generate-lockfile
           # Install and run solana-edition-fixer to downgrade incompatible dependencies
           npx -y solana-edition-fixer --fix
           echo "=== Fixed dependencies ==="
