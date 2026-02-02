@@ -97,11 +97,13 @@ jobs:
           # First, let anchor/cargo generate initial Cargo.lock
           cargo generate-lockfile || true
           
-          # Now downgrade blake3 to 1.8.2 (compatible with Solana's rustc 1.79)
+          # Now downgrade incompatible dependencies
           cargo update -p blake3 --precise 1.8.2
+          cargo update -p indexmap --precise 2.10.0
           
-          echo "=== Cargo.lock blake3 version ==="
+          echo "=== Cargo.lock versions ==="
           grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
+          grep -A 2 "name = \"indexmap\"" Cargo.lock || echo "No indexmap in Cargo.lock yet"
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
