@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
 import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
+import { useDuelPolling } from '../../hooks/useDuelPolling';
 
 interface DuelArenaProps {
   duel: Duel;
@@ -13,27 +14,15 @@ interface DuelArenaProps {
 
 export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResolved }) => {
   const { user } = useUserStore();
-  // Removed unused hook usage
-  // const { fetchDuel } = useDuel();
-  const [duel, setDuel] = useState<Duel>(initialDuel);
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Poll for duel updates
-  useEffect(() => {
-    const intervalId = setInterval(async () => {
-      try {
-        if (!duel.id) return;
-        const updatedDuel = await duelService.getDuel(duel.id);
-        setDuel(updatedDuel);
-      } catch (err) {
-        console.error("Failed to poll duel updates", err);
-      }
-    }, 5000); // Poll every 5 seconds
+  // Use polling hook for automatic updates (every 3 seconds)
+  const { duel: polledDuel } = useDuelPolling(initialDuel.id, 3000, true);
 
-    return () => clearInterval(intervalId);
-  }, [duel.id]);
+  // Use polled duel if available, otherwise use initial
+  const duel = polledDuel || initialDuel;
 
   const currentUserId = user?.id?.toString();
   const isPlayer1 = currentUserId === String(duel.player1Id);
@@ -63,7 +52,35 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
     try {
       setIsJoining(true);
       setError(null);
-      await duelService.joinDuel(duel.id);
+
+      // Import wallet functions
+      const { useBlockchainWallet } = await import('../../hooks/useBlockchainWallet');
+      const walletHook = useBlockchainWallet();
+
+      if (!walletHook.publicKey || !walletHook.sendTransaction) {
+        setError('Please connect your wallet first');
+        return;
+      }
+
+      // Step 1: Get server wallet address
+      const config = await duelService.getConfig();
+      const { PublicKey } = await import('@solana/web3.js');
+      const serverWallet = new PublicKey(config.serverWallet);
+
+      // Step 2: Send SOL transaction FIRST
+      const { sendDuelDeposit } = await import('../../utils/solanaTransactions');
+      const signature = await sendDuelDeposit(
+        walletHook.blockchainService.getConnection(),
+        walletHook.publicKey,
+        serverWallet,
+        duel.betAmount / 1e9, // Convert lamports to SOL
+        walletHook.sendTransaction
+      );
+
+      console.log('Join deposit transaction sent:', signature);
+
+      // Step 3: Join duel WITH signature
+      await duelService.joinDuel(duel.id, signature);
       window.location.reload();
     } catch (err: any) {
       console.error('Failed to join duel:', err);
@@ -79,7 +96,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   if (showDepositFlow) {
     return (
       <DepositFlow
-        duel={{...duel, betAmount: displayAmount}} // Pass formatted amount
+        duel={{ ...duel, betAmount: displayAmount }} // Pass formatted amount
         onComplete={handleDepositComplete}
         onCancel={() => setShowDepositFlow(false)}
       />
@@ -88,14 +105,14 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
 
   // Active Game View
   if (isActive) {
-      return (
-          <div className="bg-pump-gray-darker border-2 border-pump-green rounded-lg p-8">
-              <h2 className="text-2xl font-mono font-bold text-pump-white mb-4 text-center">
-                  DUEL IN PROGRESS
-              </h2>
-              <DuelGameView duel={duel} onResolved={onResolved} />
-          </div>
-      );
+    return (
+      <div className="bg-pump-gray-darker border-2 border-pump-green rounded-lg p-8">
+        <h2 className="text-2xl font-mono font-bold text-pump-white mb-4 text-center">
+          DUEL IN PROGRESS
+        </h2>
+        <DuelGameView duel={duel} onResolved={onResolved} />
+      </div>
+    );
   }
 
   return (
@@ -121,9 +138,9 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
             <p className="text-2xl font-mono font-bold text-pump-green">{displayAmount} {duel.currency}</p>
           </div>
           {player1Deposited && (
-             <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
-                <p className="text-pump-green font-sans text-sm">✓ Ready</p>
-             </div>
+            <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
+              <p className="text-pump-green font-sans text-sm">✓ Ready</p>
+            </div>
           )}
         </div>
 
@@ -153,10 +170,10 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
             )}
           </div>
         ) : (
-            <div className="bg-pump-black rounded-lg p-6 border-2 border-dashed border-pump-gray-dark flex flex-col items-center justify-center min-h-[200px]">
-                <p className="text-pump-gray font-sans mb-4">Waiting for opponent...</p>
-                <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow"></div>
-            </div>
+          <div className="bg-pump-black rounded-lg p-6 border-2 border-dashed border-pump-gray-dark flex flex-col items-center justify-center min-h-[200px]">
+            <p className="text-pump-gray font-sans mb-4">Waiting for opponent...</p>
+            <div className="w-12 h-12 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow"></div>
+          </div>
         )}
       </div>
 
@@ -167,11 +184,11 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}
         </p>
         {isParticipant && !isActive && (
-            <p className="text-sm text-pump-gray-light mt-2">
-                {iHaveDeposited
-                    ? "Waiting for opponent to deposit..."
-                    : "Action required: Deposit funds to start!"}
-            </p>
+          <p className="text-sm text-pump-gray-light mt-2">
+            {iHaveDeposited
+              ? "Waiting for opponent to deposit..."
+              : "Action required: Deposit funds to start!"}
+          </p>
         )}
       </div>
 

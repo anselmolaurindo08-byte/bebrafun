@@ -47,6 +47,7 @@ export class DuelApiService {
         market_id: data.marketId,
         event_id: data.eventId,
         predicted_outcome: data.predictedOutcome,
+        signature: data.signature, // Include signature
       },
     );
     if (!response.data.success || !response.data.data) {
@@ -75,7 +76,7 @@ export class DuelApiService {
   async joinDuel(data: JoinDuelRequest): Promise<Duel> {
     const response = await this.api.post<DuelApiResponse<Duel>>(
       `/api/duels/${data.duelId}/join`,
-      data,
+      { signature: data.signature }, // Include signature
     );
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.error || 'Failed to join duel');

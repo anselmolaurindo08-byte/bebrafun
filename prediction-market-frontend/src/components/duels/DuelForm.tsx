@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import { duelService } from '../../services/duelService';
 import { DuelCurrency } from '../../types/duel';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
@@ -10,7 +11,7 @@ interface DuelFormProps {
 }
 
 export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) => {
-  const { balance } = useBlockchainWallet();
+  const { balance, publicKey, sendTransaction, blockchainService } = useBlockchainWallet();
   const [betAmount, setBetAmount] = useState<string>('0.1');
   const [selectedToken, setSelectedToken] = useState<DuelCurrency>(DuelCurrency.SOL);
   const [prediction, setPrediction] = useState<'UP' | 'DOWN'>('UP');
@@ -31,15 +32,37 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       return;
     }
 
+    if (!publicKey || !sendTransaction) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Convert SOL to lamports/units logic usually happens in service, passing float for now
+      // Step 1: Get server wallet address from config
+      const config = await duelService.getConfig();
+      const serverWallet = new PublicKey(config.serverWallet);
+
+      // Step 2: Send SOL transaction FIRST
+      const { sendDuelDeposit } = await import('../../utils/solanaTransactions');
+      const signature = await sendDuelDeposit(
+        blockchainService.getConnection(),
+        publicKey,
+        serverWallet,
+        amount,
+        sendTransaction
+      );
+
+      console.log('Deposit transaction sent:', signature);
+
+      // Step 3: Create duel WITH signature
       const request: CreateDuelRequest = {
         betAmount: amount,
         currency: selectedToken,
-        predictedOutcome: prediction
+        predictedOutcome: prediction,
+        signature, // Include transaction signature
       };
 
       const duel = await duelService.createDuel(request);
@@ -62,28 +85,28 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         {/* Token Selection */}
         <div>
           <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
-            Select Price Feed (Asset to Predict)
+            Select Price Feed (Chart to Predict)
           </label>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setSelectedToken(DuelCurrency.SOL)}
               className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${selectedToken === DuelCurrency.SOL
-                  ? 'bg-pump-purple text-white border-2 border-pump-purple'
-                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-purple'
+                ? 'bg-pump-purple text-white border-2 border-pump-purple'
+                : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-purple'
                 }`}
             >
-              SOL/USDT
+              SOL/USDC
             </button>
             <button
               type="button"
               onClick={() => setSelectedToken(DuelCurrency.PUMP)}
               className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${selectedToken === DuelCurrency.PUMP
-                  ? 'bg-pump-green text-pump-black border-2 border-pump-green'
-                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
+                ? 'bg-pump-green text-pump-black border-2 border-pump-green'
+                : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
                 }`}
             >
-              PUMP/USDT
+              PUMP/USDC
             </button>
           </div>
         </div>
@@ -98,8 +121,8 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
               type="button"
               onClick={() => setPrediction('UP')}
               className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${prediction === 'UP'
-                  ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
-                  : 'bg-pump-black text-pump-green border-2 border-pump-gray-dark hover:border-pump-green'
+                ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
+                : 'bg-pump-black text-pump-green border-2 border-pump-gray-dark hover:border-pump-green'
                 }`}
             >
               ▲ HIGHER
@@ -108,8 +131,8 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
               type="button"
               onClick={() => setPrediction('DOWN')}
               className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${prediction === 'DOWN'
-                  ? 'bg-pump-red text-white border-2 border-pump-red'
-                  : 'bg-pump-black text-pump-red border-2 border-pump-gray-dark hover:border-pump-red'
+                ? 'bg-pump-red text-white border-2 border-pump-red'
+                : 'bg-pump-black text-pump-red border-2 border-pump-gray-dark hover:border-pump-red'
                 }`}
             >
               ▼ LOWER
