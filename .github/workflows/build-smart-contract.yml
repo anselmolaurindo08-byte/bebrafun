@@ -90,12 +90,18 @@ jobs:
       - name: Fix Edition 2024 Compatibility
         working-directory: prediction-market/duels_escrow
         run: |
-          # Manually add blake3 1.8.2 to workspace Cargo.toml to force downgrade
-          echo "" >> Cargo.toml
-          echo "[patch.crates-io]" >> Cargo.toml
-          echo "blake3 = \"=1.8.2\"" >> Cargo.toml
-          echo "=== Patched Cargo.toml ===" 
-          cat Cargo.toml
+          # Use Solana's cargo to generate lockfile and downgrade blake3
+          # This must use Solana's cargo-build-sbf toolchain, not system cargo
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          
+          # First, let anchor/cargo generate initial Cargo.lock
+          cargo generate-lockfile || true
+          
+          # Now downgrade blake3 to 1.8.2 (compatible with Solana's rustc 1.79)
+          cargo update -p blake3 --precise 1.8.2
+          
+          echo "=== Cargo.lock blake3 version ==="
+          grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
