@@ -263,6 +263,18 @@ jobs:
           solana config set --keypair ./deployer-keypair.json
           solana balance
 
+      - name: Fix Edition 2024 Compatibility
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Generate lockfile and downgrade incompatible dependencies
+          cargo generate-lockfile || true
+          cargo update -p blake3 --precise 1.8.2
+          cargo update -p indexmap --precise 2.11.4
+          
+          echo "=== Cargo.lock versions ==="
+          grep -A 2 "name = \"blake3\"" Cargo.lock
+          grep -A 2 "name = \"indexmap\"" Cargo.lock
+
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
         run: anchor build
