@@ -52,6 +52,12 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
 
+      - name: Verify Rust Version
+        run: |
+          rustc --version
+          cargo --version
+          echo "Rust toolchain installed successfully"
+
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
@@ -61,6 +67,8 @@ jobs:
 
       - name: Install Anchor
         run: |
+          rustc --version
+          cargo --version
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
           avm install ${{ env.ANCHOR_VERSION }}
           avm use ${{ env.ANCHOR_VERSION }}
@@ -121,6 +129,12 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
 
+      - name: Verify Rust Version
+        run: |
+          rustc --version
+          cargo --version
+          echo "Rust toolchain installed successfully"
+
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
@@ -128,6 +142,8 @@ jobs:
 
       - name: Install Anchor
         run: |
+          rustc --version
+          cargo --version
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
           avm install ${{ env.ANCHOR_VERSION }}
           avm use ${{ env.ANCHOR_VERSION }}
@@ -160,6 +176,12 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
 
+      - name: Verify Rust Version
+        run: |
+          rustc --version
+          cargo --version
+          echo "Rust toolchain installed successfully"
+
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
@@ -169,6 +191,8 @@ jobs:
 
       - name: Install Anchor
         run: |
+          rustc --version
+          cargo --version
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
           avm install ${{ env.ANCHOR_VERSION }}
           avm use ${{ env.ANCHOR_VERSION }}
