@@ -199,6 +199,17 @@ jobs:
         working-directory: prediction-market/duels_escrow
         run: npm install
 
+      - name: Fix Edition 2024 Compatibility
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Downgrade incompatible dependencies
+          cargo update -p blake3 --precise 1.8.2
+          cargo update -p indexmap --precise 2.11.4
+          
+          echo "=== Cargo.lock versions ==="
+          grep -A 2 "name = \"blake3\"" Cargo.lock
+          grep -A 2 "name = \"indexmap\"" Cargo.lock
+
       - name: Run Tests
         working-directory: prediction-market/duels_escrow
         run: anchor test
