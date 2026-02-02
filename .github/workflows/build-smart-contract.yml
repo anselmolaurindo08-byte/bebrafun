@@ -89,9 +89,25 @@ jobs:
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
+        env:
+          CARGO: /home/runner/.cargo/bin/cargo
+          RUSTC: /home/runner/.cargo/bin/rustc
         run: |
+          # Explicitly set PATH to use our Rust 1.85.0
           export PATH="$HOME/.cargo/bin:$PATH"
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          # Verify we're using the correct cargo
+          echo "=== Verifying Cargo Version ==="
+          which cargo
+          cargo --version
+          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version in PATH!" && exit 1)
+          # Verify environment variables
+          echo "CARGO=$CARGO"
+          echo "RUSTC=$RUSTC"
+          $CARGO --version
+          $RUSTC --version
+          # Build with correct cargo
+          echo "=== Building Anchor Programs ==="
           anchor build
           
       - name: List Build Artifacts
