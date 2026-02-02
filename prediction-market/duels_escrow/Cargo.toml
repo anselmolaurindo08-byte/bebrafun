@@ -6,7 +6,7 @@ resolver = "2"
 
 # Force compatible blake3 version (1.8.3 requires edition2024)
 [patch.crates-io]
-blake3 = "=1.8.2"
+blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3", tag = "1.8.2" }
 
 [profile.release]
 overflow-checks = true
