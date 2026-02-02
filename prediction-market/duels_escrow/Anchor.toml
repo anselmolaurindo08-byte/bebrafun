@@ -8,19 +8,21 @@ skip-lint = false
 
 [programs.localnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-# TODO: Replace placeholders after `anchor keys list`
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [programs.devnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [programs.mainnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
