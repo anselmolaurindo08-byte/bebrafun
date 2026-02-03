@@ -105,6 +105,19 @@ jobs:
           grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
           grep -A 2 "name = \"indexmap\"" Cargo.lock || echo "No indexmap in Cargo.lock yet"
 
+      - name: Setup Deployer Key
+        run: |
+          mkdir -p ~/.config/solana
+          # Create a new keypair for deployment
+          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json --force
+          # Show the public key
+          echo "=== Deployer Public Key ==="
+          solana-keygen pubkey ~/.config/solana/id.json
+          # Set Solana config to use devnet
+          solana config set --url https://api.devnet.solana.com
+          # Show config
+          solana config get
+
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
         env:
