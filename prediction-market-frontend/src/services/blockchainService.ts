@@ -5,11 +5,13 @@ import {
   clusterApiUrl,
   Transaction,
   TransactionInstruction,
+  SystemProgram,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
+  createSyncNativeInstruction,
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
@@ -381,6 +383,29 @@ class BlockchainService {
         // Wait for confirmation
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
+
+      // 5.5. Wrap SOL - transfer SOL to wrapped SOL account
+      const wrapSolIx = SystemProgram.transfer({
+        fromPubkey: walletPublicKey,
+        toPubkey: tokenAccountInfo.address,
+        lamports: initialLiquidityBN.toNumber(),
+      });
+
+      const syncNativeIx = createSyncNativeInstruction(tokenAccountInfo.address);
+
+      const { blockhash: wrapBlockhash, lastValidBlockHeight: wrapLastValid } =
+        await this.connection.getLatestBlockhash('confirmed');
+
+      const wrapTx = new Transaction({
+        blockhash: wrapBlockhash,
+        lastValidBlockHeight: wrapLastValid,
+        feePayer: walletPublicKey,
+      });
+      wrapTx.add(wrapSolIx, syncNativeIx);
+
+      await sendTransaction(wrapTx, this.connection);
+      // Wait for confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 6. Call Anchor program to create pool
       await anchorProgramService.createPool(
