@@ -112,23 +112,22 @@ jobs:
         run: |
           mkdir -p target/deploy
           # Generate a new keypair for the program
-          # We'll use a simple keypair for devnet (mainnet should use vanity address)
           solana-keygen new --no-bip39-passphrase --force -o target/deploy/pumpsly-keypair.json
-          # Show the generated program ID
-          echo "=== Generated Program ID ==="
+          # Show the program ID
+          echo "=== Program ID ==="
           PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
           echo "Program ID: $PROGRAM_ID"
           # Update declare_id in lib.rs
           echo "=== Updating declare_id in lib.rs ==="
           sed -i "s/declare_id!(\".*\")/declare_id!(\"$PROGRAM_ID\")/" programs/pumpsly/src/lib.rs
-          # Update Anchor.toml
-          echo "=== Updating Anchor.toml ==="
-          sed -i "s/pumpsly = \".*\"/pumpsly = \"$PROGRAM_ID\"/" Anchor.toml
+          # Add pumpsly to Anchor.toml (after prediction_market line in each section)
+          echo "=== Adding pumpsly to Anchor.toml ==="
+          sed -i "/prediction_market = /a pumpsly = \"$PROGRAM_ID\"" Anchor.toml
           # Show updated files
           echo "=== Updated declare_id ==="
-          grep "declare_id" programs/pumpsly/src/lib.rs
-          echo "=== Updated Anchor.toml ==="
-          grep "pumpsly =" Anchor.toml
+          grep "declare_id" programs/pumpsly/src/lib.rs || echo "declare_id not found"
+          echo "=== Updated Anchor.toml (devnet section) ==="
+          sed -n '/\[programs.devnet\]/,/\[/p' Anchor.toml | head -n -1 || echo "devnet section not found"
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
