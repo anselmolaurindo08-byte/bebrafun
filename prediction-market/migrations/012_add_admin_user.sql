@@ -10,16 +10,12 @@
 DELETE FROM duel_transactions;
 DELETE FROM duels WHERE status IN ('PENDING', 'MATCHED', 'ACTIVE');
 
--- Step 2: Delete all market-related data
-DELETE FROM positions WHERE market_id IN (SELECT id FROM markets WHERE status IN ('ACTIVE', 'PENDING'));
-DELETE FROM trades WHERE market_id IN (SELECT id FROM markets WHERE status IN ('ACTIVE', 'PENDING'));
-DELETE FROM amm_pools WHERE market_id IN (SELECT id FROM markets WHERE status IN ('ACTIVE', 'PENDING'));
+-- Step 2: Delete all market-related data  
+DELETE FROM amm_pools;
 DELETE FROM markets WHERE status IN ('ACTIVE', 'PENDING');
 
 -- Step 3: Reset any orphaned data
 DELETE FROM duel_transactions WHERE duel_id NOT IN (SELECT id FROM duels);
-DELETE FROM positions WHERE market_id NOT IN (SELECT id FROM markets);
-DELETE FROM trades WHERE market_id NOT IN (SELECT id FROM markets);
 
 -- ============================================================================
 -- ADMIN USER SECTION - Add admin privileges
