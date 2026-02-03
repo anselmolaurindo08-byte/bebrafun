@@ -582,6 +582,115 @@ class BlockchainService {
   }
 
   // ============================================================================
+  // ADDITIONAL POOL OPERATIONS
+  // ============================================================================
+
+  /**
+   * Sell outcome tokens back to pool
+   * @param poolId - Pool ID
+   * @param outcome - Which outcome to sell ('YES' or 'NO')
+   * @param tokensAmount - Amount of tokens to sell (in lamports)
+   * @param slippagePercent - Maximum acceptable slippage (default 5%)
+   * @returns Transaction signature
+   */
+  async sellOutcome(
+    poolId: number,
+    outcome: 'YES' | 'NO',
+    tokensAmount: number,
+    slippagePercent: number = 5,
+  ): Promise<TransactionSignature> {
+    try {
+      const poolIdBN = new BN(poolId);
+      const tokensAmountBN = new BN(tokensAmount);
+
+      // Get pool data to calculate expected SOL out
+      const pool = await anchorProgramService.getPool(poolIdBN);
+
+      // Calculate minimum SOL out with slippage protection
+      // For now, use a simple estimate - can be improved with actual AMM calculation
+      const minSolOut = new BN(Math.floor(tokensAmount * (1 - slippagePercent / 100)));
+
+      // Get user's token account
+      const walletPublicKey = this.getWalletPublicKey();
+      const tokenAccount = await getAssociatedTokenAddress(
+        NATIVE_MINT,
+        walletPublicKey,
+      );
+
+      return await anchorProgramService.sellOutcome(
+        poolIdBN,
+        outcome === 'YES' ? { yes: {} } : { no: {} },
+        tokensAmountBN,
+        minSolOut,
+        NATIVE_MINT,
+        tokenAccount,
+      );
+    } catch (error) {
+      throw this.createError(
+        'TRANSACTION_FAILED',
+        `Failed to sell ${outcome} tokens: ${error}`,
+        { poolId, outcome, tokensAmount, slippagePercent },
+      );
+    }
+  }
+
+  /**
+   * Cancel duel and refund player 1 (after 5 minute timeout)
+   * @param duelId - Duel ID to cancel
+   * @returns Transaction signature
+   */
+  async cancelDuel(duelId: number): Promise<TransactionSignature> {
+    try {
+      const duelIdBN = new BN(duelId);
+
+      // Get user's token account
+      const walletPublicKey = this.getWalletPublicKey();
+      const tokenAccount = await getAssociatedTokenAddress(
+        NATIVE_MINT,
+        walletPublicKey,
+      );
+
+      return await anchorProgramService.cancelDuel(
+        duelIdBN,
+        NATIVE_MINT,
+        tokenAccount,
+      );
+    } catch (error) {
+      throw this.createError(
+        'TRANSACTION_FAILED',
+        `Failed to cancel duel: ${error}`,
+        { duelId },
+      );
+    }
+  }
+
+  /**
+   * Update pool status (authority only)
+   * @param poolId - Pool ID to update
+   * @param newStatus - New status ('active' or 'resolved')
+   * @returns Transaction signature
+   */
+  async updatePoolStatus(
+    poolId: number,
+    newStatus: 'active' | 'resolved',
+  ): Promise<TransactionSignature> {
+    try {
+      const poolIdBN = new BN(poolId);
+
+      return await anchorProgramService.updatePoolStatus(
+        poolIdBN,
+        newStatus === 'active' ? { active: {} } : { resolved: {} },
+      );
+    } catch (error) {
+      throw this.createError(
+        'TRANSACTION_FAILED',
+        `Failed to update pool status: ${error}`,
+        { poolId, newStatus },
+      );
+    }
+  }
+
+  // ============================================================================
   // ERROR HELPERS
   // ============================================================================
 
