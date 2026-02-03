@@ -1,5 +1,5 @@
 [package]
-name = "prediction-market"
+name = "pumpsly"
 version = "0.1.0"
 description = "Unified prediction market smart contract for duels and AMM pools"
 edition = "2021"
