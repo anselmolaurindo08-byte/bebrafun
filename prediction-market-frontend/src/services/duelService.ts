@@ -5,6 +5,14 @@ import type {
   CreateDuelRequest,
   DepositRequest,
 } from '../types/duel';
+import { PublicKey, Connection, Transaction } from '@solana/web3.js';
+import BN from 'bn.js';
+import anchorProgramService from './anchorProgramService';
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 
 // Map snake_case API response to camelCase Duel
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,14 +45,44 @@ function mapDuel(raw: any): Duel {
 }
 
 export const duelService = {
-  createDuel: async (request: CreateDuelRequest): Promise<Duel> => {
+  createDuel: async (
+    request: CreateDuelRequest,
+    walletPublicKey: PublicKey,
+    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+  ): Promise<Duel> => {
+    // 1. Generate duel ID from timestamp
+    const duelId = new BN(Date.now());
+
+    // 2. Prepare parameters
+    const betAmount = new BN(request.betAmount);
+    const tokenMint = new PublicKey('So11111111111111111111111111111111111111112'); // Native SOL
+
+    // 3. Get or create user's token account
+    const userTokenAccount = await getAssociatedTokenAddress(
+      tokenMint,
+      walletPublicKey
+    );
+
+    // 4. Call Anchor program to initialize duel
+    const signature = await anchorProgramService.initializeDuel(
+      duelId,
+      betAmount,
+      tokenMint,
+      userTokenAccount
+    );
+
+    // 5. Get duel PDA for backend storage
+    const [duelPda] = anchorProgramService.getDuelPda(duelId);
+
+    // 6. Create duel record in backend with on-chain address
     const raw = await api.createDuel({
       bet_amount: request.betAmount,
       market_id: request.marketId,
       event_id: request.eventId,
       predicted_outcome: request.predictedOutcome,
       currency: request.currency,
-      signature: request.signature,
+      signature: signature,
+      duel_address: duelPda.toString(), // Store on-chain address
     });
     return mapDuel(raw);
   },
@@ -80,7 +118,31 @@ export const duelService = {
     await api.cancelDuel(duelId);
   },
 
-  joinDuel: async (duelId: string, signature: string): Promise<Duel> => {
+  joinDuel: async (
+    duelId: string,
+    walletPublicKey: PublicKey,
+    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+  ): Promise<Duel> => {
+    // 1. Convert duel ID to BN
+    const duelIdBN = new BN(duelId);
+
+    // 2. Prepare parameters
+    const tokenMint = new PublicKey('So11111111111111111111111111111111111111112'); // Native SOL
+
+    // 3. Get user's token account
+    const userTokenAccount = await getAssociatedTokenAddress(
+      tokenMint,
+      walletPublicKey
+    );
+
+    // 4. Call Anchor program to join duel
+    const signature = await anchorProgramService.joinDuel(
+      duelIdBN,
+      tokenMint,
+      userTokenAccount
+    );
+
+    // 5. Update backend with join transaction
     const raw = await api.joinDuel(duelId, { signature });
     return mapDuel(raw);
   },

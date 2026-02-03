@@ -151,26 +151,49 @@ class BlockchainService {
 
   async getPoolState(poolId: string): Promise<PoolState> {
     try {
-      const pool = await apiService.getPool(poolId);
+      // Fetch pool data from blockchain
+      const poolIdBN = new BN(poolId);
+      const poolData = await anchorProgramService.getPool(poolIdBN);
+      const [poolPda] = anchorProgramService.getPoolPda(poolIdBN);
 
+      // Convert on-chain data to PoolState format
       return {
-        poolId: String(pool.id),
-        marketId: String(pool.market_id),
-        authority: new PublicKey(pool.authority),
-        yesMint: new PublicKey(pool.yes_mint),
-        noMint: new PublicKey(pool.no_mint),
-        yesReserve: new BN(pool.yes_reserve),
-        noReserve: new BN(pool.no_reserve),
-        totalLiquidity: new BN(pool.total_liquidity),
-        feePercentage: pool.fee_percentage,
-        bump: pool.bump || 0,
-        createdAt: new Date(pool.created_at).getTime(),
+        poolId: poolId,
+        marketId: poolData.marketId?.toString() || poolId,
+        authority: poolData.authority,
+        yesMint: poolData.tokenMint, // Using same mint for both
+        noMint: poolData.tokenMint,
+        yesReserve: new BN(poolData.yesReserve.toString()),
+        noReserve: new BN(poolData.noReserve.toString()),
+        totalLiquidity: new BN(poolData.yesReserve.toString()).add(new BN(poolData.noReserve.toString())),
+        feePercentage: 0.3, // 0.3% fee (30 basis points)
+        bump: poolData.bump || 0,
+        createdAt: poolData.createdAt?.toNumber() || Date.now(),
       };
     } catch (error) {
-      throw this.createError(
-        BlockchainErrorType.INVALID_POOL,
-        `Failed to fetch pool state: ${error}`,
-      );
+      // Fallback to backend if on-chain fetch fails
+      try {
+        const pool = await apiService.getPool(poolId);
+
+        return {
+          poolId: String(pool.id),
+          marketId: String(pool.market_id),
+          authority: new PublicKey(pool.authority),
+          yesMint: new PublicKey(pool.yes_mint),
+          noMint: new PublicKey(pool.no_mint),
+          yesReserve: new BN(pool.yes_reserve),
+          noReserve: new BN(pool.no_reserve),
+          totalLiquidity: new BN(pool.total_liquidity),
+          feePercentage: pool.fee_percentage,
+          bump: pool.bump || 0,
+          createdAt: new Date(pool.created_at).getTime(),
+        };
+      } catch (backendError) {
+        throw this.createError(
+          BlockchainErrorType.INVALID_POOL,
+          `Failed to fetch pool state: ${error}`,
+        );
+      }
     }
   }
 
