@@ -4,9 +4,6 @@ import {
   PublicKey,
   clusterApiUrl,
   Transaction,
-  SystemProgram,
-  TransactionInstruction,
-  Keypair,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
 import {
@@ -16,6 +13,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import BN from 'bn.js';
+import anchorProgramService from './anchorProgramService';
 import type {
   PoolState,
   TradeQuote,
@@ -326,68 +324,63 @@ class BlockchainService {
     sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
   ): Promise<string> {
     try {
-      // 1. Generate dummy mints
-      const yesMint = Keypair.generate().publicKey.toString();
-      const noMint = Keypair.generate().publicKey.toString();
-      const programId = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb').toString(); // Memo Program for simulation
+      // 1. Generate pool ID from market ID
+      const poolId = new BN(marketId);
 
-      // 2. Fetch latest blockhash
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+      // 2. Prepare parameters
+      const question = `Market ${marketId}`;
+      const resolutionTime = new BN(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      const initialLiquidityBN = new BN(Math.floor(initialLiquidity * LAMPORTS_PER_SOL));
 
-      // 3. Construct Transaction
-      // Simulating pool creation with a self-transfer + memo
-      const transaction = new Transaction({
-        blockhash,
-        lastValidBlockHeight,
-        feePayer: walletPublicKey,
-      });
+      // 3. Use native SOL (wrapped SOL mint)
+      const tokenMint = new PublicKey('So11111111111111111111111111111111111111112');
 
-      // Memo instruction to record intent
-      transaction.add(
-        new TransactionInstruction({
-          keys: [{ pubkey: walletPublicKey, isSigner: true, isWritable: true }],
-          programId: new PublicKey(programId),
-          data: Buffer.from(`PUMPSLY:CREATE_POOL:${marketId}:${initialLiquidity}`, 'utf-8'),
-        })
+      // 4. Get or create user's token account
+      const tokenAccountInfo = await this.getOrCreateAssociatedTokenAccount(
+        walletPublicKey,
+        tokenMint,
+        walletPublicKey
       );
 
-      // Simulate spending initial liquidity (sending to self)
-      // In a real program, this would transfer SOL/Tokens to the pool PDA
-      const lamports = Math.floor(initialLiquidity * LAMPORTS_PER_SOL);
-      if (lamports > 0) {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: walletPublicKey,
-            toPubkey: walletPublicKey,
-            lamports: lamports,
-          })
-        );
+      // 5. If token account doesn't exist, create it first
+      if (tokenAccountInfo.instruction) {
+        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+        const createAccountTx = new Transaction({
+          blockhash,
+          lastValidBlockHeight,
+          feePayer: walletPublicKey,
+        });
+        createAccountTx.add(tokenAccountInfo.instruction);
+
+        await sendTransaction(createAccountTx, this.connection);
+        // Wait for confirmation
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // 4. Send Transaction
-      const signature = await sendTransaction(transaction, this.connection);
+      // 6. Call Anchor program to create pool
+      const signature = await anchorProgramService.createPool(
+        poolId,
+        question,
+        resolutionTime,
+        initialLiquidityBN,
+        tokenMint,
+        tokenAccountInfo.address
+      );
 
-      // 5. Monitor Confirmation
-      const result = await this.monitorTransaction(signature);
+      // 7. Get pool PDA for backend storage
+      const [poolPda] = anchorProgramService.getPoolPda(poolId);
 
-      if (result.status === 'failed') {
-        throw new Error(result.error || 'Pool creation transaction failed');
-      }
-
-      // 6. Create Pool in Backend
-      // Convert initialLiquidity (SOL) to internal units if needed, but backend expects 'int64'
-      // Assuming backend expects lamports for reserves
-      const reserveAmount = Math.floor(initialLiquidity * LAMPORTS_PER_SOL);
-
+      // 8. Create pool record in backend with on-chain address
       const pool = await apiService.createPool({
         market_id: parseInt(marketId),
-        program_id: programId,
+        program_id: anchorProgramService.getProgramId().toString(),
         authority: walletPublicKey.toString(),
-        yes_mint: yesMint,
-        no_mint: noMint,
-        yes_reserve: reserveAmount,
-        no_reserve: reserveAmount,
-        fee_percentage: 50, // 0.5% fee (50 basis points)
+        pool_address: poolPda.toString(), // Store on-chain address
+        yes_mint: tokenMint.toString(), // Using native SOL
+        no_mint: tokenMint.toString(),
+        yes_reserve: initialLiquidityBN.toString(),
+        no_reserve: initialLiquidityBN.toString(),
+        fee_percentage: 30, // 0.3% fee (30 basis points)
       });
 
       return pool.id;
@@ -416,80 +409,69 @@ class BlockchainService {
         throw new Error(validation.error);
       }
 
-      // 2. Fetch latest blockhash
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+      // 2. Prepare parameters
+      const poolId = new BN(params.poolId);
+      const outcome = params.tradeType === 'BUY_YES' ? { yes: {} } : { no: {} };
+      const amount = params.inputAmount;
+      const minTokensOut = params.minOutputAmount;
 
-      // 3. Construct Transaction
-      // Since AMM contract is not deployed, we simulate with a Transfer + Memo
-      // In production, this would call Anchor program instructions (swap)
-      const transaction = new Transaction({
-        blockhash,
-        lastValidBlockHeight,
-        feePayer: walletPublicKey,
-      });
+      // 3. Use native SOL
+      const tokenMint = new PublicKey('So11111111111111111111111111111111111111112');
 
-      // Add Memo instruction to record intent on-chain (verifiable by backend)
-      transaction.add(
-        new TransactionInstruction({
-          keys: [{ pubkey: walletPublicKey, isSigner: true, isWritable: true }],
-          programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcQb'),
-          data: Buffer.from(`PUMPSLY:AMM_SWAP:${params.poolId}:${params.tradeType}:${params.inputAmount.toString()}`, 'utf-8'),
-        })
+      // 4. Get or create user's token account
+      const tokenAccountInfo = await this.getOrCreateAssociatedTokenAccount(
+        walletPublicKey,
+        tokenMint,
+        walletPublicKey
       );
 
-      // Add a small transfer to self (or fee wallet) to make it a valid state-changing tx (optional, but good for testing)
-      // Sending 0 SOL or dust to self
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: walletPublicKey,
-          toPubkey: walletPublicKey,
-          lamports: params.inputAmount.toNumber(), // Simulate spending input amount (sending to self for now)
-        })
+      // 5. If token account doesn't exist, create it first
+      if (tokenAccountInfo.instruction) {
+        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+        const createAccountTx = new Transaction({
+          blockhash,
+          lastValidBlockHeight,
+          feePayer: walletPublicKey,
+        });
+        createAccountTx.add(tokenAccountInfo.instruction);
+
+        await sendTransaction(createAccountTx, this.connection);
+        // Wait for confirmation
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // 6. Call Anchor program to buy outcome
+      const signature = await anchorProgramService.buyOutcome(
+        poolId,
+        outcome,
+        amount,
+        minTokensOut,
+        tokenMint,
+        tokenAccountInfo.address
       );
 
-      // 4. Send Transaction
-      const signature = await sendTransaction(transaction, this.connection);
-
-      // 5. Monitor Confirmation
+      // 7. Monitor confirmation
       const result = await this.monitorTransaction(signature);
 
       if (result.status === 'failed') {
         throw new Error(result.error || 'Transaction failed');
       }
 
-      // 6. Record Trade in Backend
-      let outputAmount = params.expectedOutputAmount;
-      let feeAmount = params.feeAmount;
+      // 8. Get actual output from on-chain state
+      const userPosition = await anchorProgramService.getUserPosition(poolId, walletPublicKey);
+      const outputAmount = userPosition
+        ? (params.tradeType === 'BUY_YES'
+          ? new BN(userPosition.yesTokens)
+          : new BN(userPosition.noTokens))
+        : params.minOutputAmount;
 
-      if (!outputAmount || !feeAmount) {
-        // Fallback: Calculate if not provided (ensures robustness)
-        try {
-          const poolState = await this.getPoolState(params.poolId);
-          const quote = this.calculateTradeQuote(
-            poolState,
-            params.inputAmount,
-            params.tradeType,
-            params.slippageTolerance
-          );
-          outputAmount = quote.outputAmount;
-          feeAmount = quote.feeAmount;
-        } catch (e) {
-          // If calculation fails, fallback to minOutputAmount (safeguard)
-          console.warn(
-            'Failed to calculate actual output amount for trade record, using minOutputAmount',
-            e
-          );
-          outputAmount = params.minOutputAmount;
-          feeAmount = new BN(0);
-        }
-      }
-
+      // 9. Record trade in backend
       await apiService.recordTrade({
         pool_id: params.poolId,
         trade_type: params.tradeType,
         input_amount: params.inputAmount.toString(),
         output_amount: outputAmount.toString(),
-        fee_amount: feeAmount.toString(),
+        fee_amount: params.feeAmount?.toString() || '0',
         transaction_signature: signature,
       });
 
