@@ -95,10 +95,16 @@ func (s *AMMService) CreatePool(ctx context.Context, req *models.CreatePoolReque
 
 	totalLiquidity := int64(math.Sqrt(float64(req.YesReserve) * float64(req.NoReserve)))
 
+	var poolAddress *string
+	if req.PoolAddress != "" {
+		poolAddress = &req.PoolAddress
+	}
+
 	pool := &models.AMMPool{
 		MarketID:       req.MarketID,
 		ProgramID:      req.ProgramID,
 		Authority:      req.Authority,
+		PoolAddress:    poolAddress,
 		YesMint:        req.YesMint,
 		NoMint:         req.NoMint,
 		YesReserve:     req.YesReserve,

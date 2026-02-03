@@ -43,6 +43,7 @@ const (
 type Duel struct {
 	ID               uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	DuelID           int64      `gorm:"uniqueIndex;not null" json:"duel_id"`
+	DuelAddress      *string    `gorm:"size:255;uniqueIndex" json:"duel_address"` // On-chain duel PDA address
 	Player1ID        uint       `gorm:"not null;index" json:"player_1_id"`
 	Player1Username  string     `gorm:"size:255" json:"player_1_username"`
 	Player1Avatar    *string    `gorm:"size:500" json:"player_1_avatar"`
@@ -197,6 +198,7 @@ type CreateDuelRequest struct {
 	PredictedOutcome *string `json:"predicted_outcome"`
 	Opponent         *uint   `json:"opponent"`
 	Signature        string  `json:"signature" binding:"required"` // Transaction signature for deposit
+	DuelAddress      string  `json:"duel_address"`                 // On-chain duel PDA address
 }
 
 // DuelResponse represents a duel in API responses

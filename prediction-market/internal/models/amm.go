@@ -41,6 +41,7 @@ type AMMPool struct {
 	MarketID       *uint      `gorm:"index" json:"market_id"`
 	ProgramID      string     `gorm:"size:255;uniqueIndex;not null" json:"program_id"`
 	Authority      string     `gorm:"size:255;not null" json:"authority"`
+	PoolAddress    *string    `gorm:"size:255;uniqueIndex" json:"pool_address"` // On-chain pool PDA address
 	YesMint        string     `gorm:"size:255;not null" json:"yes_mint"`
 	NoMint         string     `gorm:"size:255;not null" json:"no_mint"`
 	YesReserve     int64      `gorm:"not null;default:0" json:"yes_reserve"`
@@ -120,6 +121,7 @@ type CreatePoolRequest struct {
 	MarketID      *uint  `json:"market_id"`
 	ProgramID     string `json:"program_id" binding:"required"`
 	Authority     string `json:"authority" binding:"required"`
+	PoolAddress   string `json:"pool_address"` // On-chain pool PDA address
 	YesMint       string `json:"yes_mint" binding:"required"`
 	NoMint        string `json:"no_mint" binding:"required"`
 	YesReserve    int64  `json:"yes_reserve" binding:"required,min=1"`
@@ -155,19 +157,19 @@ type RecordTradeRequest struct {
 
 // PoolResponse is the API response for a pool
 type PoolResponse struct {
-	ID             string     `json:"id"`
-	MarketID       *uint      `json:"market_id"`
-	ProgramID      string     `json:"program_id"`
-	Authority      string     `json:"authority"`
-	YesMint        string     `json:"yes_mint"`
-	NoMint         string     `json:"no_mint"`
-	YesReserve     int64      `json:"yes_reserve"`
-	NoReserve      int64      `json:"no_reserve"`
-	FeePercentage  int16      `json:"fee_percentage"`
-	TotalLiquidity int64      `json:"total_liquidity"`
-	YesPrice       float64    `json:"yes_price"`
-	NoPrice        float64    `json:"no_price"`
-	Status         string     `json:"status"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID             string    `json:"id"`
+	MarketID       *uint     `json:"market_id"`
+	ProgramID      string    `json:"program_id"`
+	Authority      string    `json:"authority"`
+	YesMint        string    `json:"yes_mint"`
+	NoMint         string    `json:"no_mint"`
+	YesReserve     int64     `json:"yes_reserve"`
+	NoReserve      int64     `json:"no_reserve"`
+	FeePercentage  int16     `json:"fee_percentage"`
+	TotalLiquidity int64     `json:"total_liquidity"`
+	YesPrice       float64   `json:"yes_price"`
+	NoPrice        float64   `json:"no_price"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }

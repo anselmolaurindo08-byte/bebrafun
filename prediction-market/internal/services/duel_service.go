@@ -74,10 +74,17 @@ func (ds *DuelService) CreateDuel(
 	// Generate duel ID
 	duelID := time.Now().UnixNano()
 
+	// Prepare duel address if provided
+	var duelAddress *string
+	if req.DuelAddress != "" {
+		duelAddress = &req.DuelAddress
+	}
+
 	// Create duel in database with PENDING status (waiting for opponent)
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
+		DuelAddress:      duelAddress,
 		Player1ID:        playerID,
 		BetAmount:        betAmountLamports,
 		Player1Amount:    betAmountLamports,
