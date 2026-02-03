@@ -444,10 +444,15 @@ class BlockchainService {
       // 7. Call Anchor program to create pool
       try {
         console.log('Creating pool on-chain...');
+
+        // Set resolution time to 7 days from now
+        const resolutionTime = new BN(Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60));
+        const question = `Market ${marketId}`;
+
         await anchorProgramService.createPool(
           poolId,
-          marketId,
-          initialLiquidityBN,
+          question,
+          resolutionTime,
           initialLiquidityBN,
           tokenMint,
           tokenAccountInfo.address
