@@ -156,8 +156,8 @@ class ApiService {
 
     async getPools(marketId?: string): Promise<any[]> {
         const params = marketId ? `?market_id=${marketId}` : '';
-        const response = await this.api.get<ApiResponse<any[]>>(`/api/amm/pools${params}`);
-        return response.data.data || [];
+        const response = await this.api.get<any>(`/api/amm/pools${params}`);
+        return response.data.pools || [];
     }
 
     async getPool(poolId: string): Promise<any> {
