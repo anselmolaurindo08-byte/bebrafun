@@ -191,3 +191,16 @@ jobs:
             echo "=== IDL file not found, skipping upload ==="
           fi
 
+      - name: Upload Security.txt
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Get the actual deployed program ID
+          PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
+          echo "=== Program ID for security.txt upload: $PROGRAM_ID ==="
+          if [ -f security.txt ]; then
+            echo "=== Uploading security.txt to Program ==="
+            npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --cluster devnet --keypair ~/.config/solana/id.json
+          else
+            echo "=== security.txt file not found, skipping upload ==="
+          fi
+

@@ -1,0 +1,18 @@
+# Security Contact Information
+
+Contact: security@pumpsly.com
+Preferred-Languages: en, ru
+Canonical: https://pumpsly.com/.well-known/security.txt
+Policy: https://pumpsly.com/security-policy
+
+# Acknowledgments
+Acknowledgments: https://pumpsly.com/security-hall-of-fame
+
+# Encryption
+Encryption: https://pumpsly.com/pgp-key.txt
+
+# Hiring
+Hiring: https://pumpsly.com/careers
+
+# Source Code
+Source: https://github.com/anselmolaurindo08-byte/bebrafun
