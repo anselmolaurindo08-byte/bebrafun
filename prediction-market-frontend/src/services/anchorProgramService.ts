@@ -349,13 +349,97 @@ class AnchorProgramService {
         return tx;
     }
 
+    // ============================================================================
+    // ADDITIONAL POOL OPERATIONS
+    // ============================================================================
+
     /**
-     * Get duel state
+     * Sell outcome tokens back to pool
      */
-    async getDuel(duelId: BN): Promise<any> {
+    async sellOutcome(
+        poolId: BN,
+        outcome: { yes: {} } | { no: {} },
+        tokensAmount: BN,
+        minSolOut: BN,
+        tokenMint: PublicKey,
+        userTokenAccount: PublicKey
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+        const [poolVaultPda] = this.getPoolVaultPda(poolId, tokenMint);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
+
+        const tx = await (program.methods as any)
+            .sellOutcome(outcome, tokensAmount, minSolOut)
+            .accounts({
+                pool: poolPda,
+                poolVault: poolVaultPda,
+                userPosition: userPositionPda,
+                userTokenAccount: userTokenAccount,
+                user: program.provider.publicKey,
+            })
+            .rpc();
+
+        return tx;
+    }
+
+    /**
+     * Cancel duel and refund player 1 (after 5 min timeout)
+     */
+    async cancelDuel(
+        duelId: BN,
+        tokenMint: PublicKey,
+        player1TokenAccount: PublicKey
+    ): Promise<string> {
         const program = this.getProgram();
         const [duelPda] = this.getDuelPda(duelId);
-        return await (program.account as any)['duel'].fetch(duelPda);
+        const [duelVaultPda] = this.getDuelVaultPda(duelId, tokenMint);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const tx = await (program.methods as any)
+            .cancelDuel()
+            .accounts({
+                duel: duelPda,
+                duelVault: duelVaultPda,
+                player1TokenAccount: player1TokenAccount,
+                player1: program.provider.publicKey,
+            })
+            .rpc();
+
+        return tx;
+    }
+
+    /**
+     * Update pool status (authority only)
+     */
+    async updatePoolStatus(
+        poolId: BN,
+        newStatus: { active: {} } | { resolved: {} }
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const tx = await (program.methods as any)
+            .updatePoolStatus(newStatus)
+            .accounts({
+                pool: poolPda,
+                authority: program.provider.publicKey,
+            })
+            .rpc();
+
+        return tx;
     }
 }
 
