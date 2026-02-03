@@ -12,6 +12,7 @@ import {
   createAssociatedTokenAccountInstruction,
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
 } from '@solana/spl-token';
 import BN from 'bn.js';
 import anchorProgramService from './anchorProgramService';
@@ -597,6 +598,7 @@ class BlockchainService {
     poolId: number,
     outcome: 'YES' | 'NO',
     tokensAmount: number,
+    walletPublicKey: PublicKey,
     slippagePercent: number = 5,
   ): Promise<TransactionSignature> {
     try {
@@ -639,12 +641,14 @@ class BlockchainService {
    * @param duelId - Duel ID to cancel
    * @returns Transaction signature
    */
-  async cancelDuel(duelId: number): Promise<TransactionSignature> {
+  async cancelDuel(
+    duelId: number,
+    walletPublicKey: PublicKey,
+  ): Promise<TransactionSignature> {
     try {
       const duelIdBN = new BN(duelId);
 
       // Get user's token account
-      const walletPublicKey = this.getWalletPublicKey();
       const tokenAccount = await getAssociatedTokenAddress(
         NATIVE_MINT,
         walletPublicKey,
@@ -673,6 +677,7 @@ class BlockchainService {
   async updatePoolStatus(
     poolId: number,
     newStatus: 'active' | 'resolved',
+    walletPublicKey: PublicKey,
   ): Promise<TransactionSignature> {
     try {
       const poolIdBN = new BN(poolId);
