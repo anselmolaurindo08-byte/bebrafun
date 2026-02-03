@@ -605,15 +605,11 @@ class BlockchainService {
       const poolIdBN = new BN(poolId);
       const tokensAmountBN = new BN(tokensAmount);
 
-      // Get pool data to calculate expected SOL out
-      const pool = await anchorProgramService.getPool(poolIdBN);
-
       // Calculate minimum SOL out with slippage protection
       // For now, use a simple estimate - can be improved with actual AMM calculation
       const minSolOut = new BN(Math.floor(tokensAmount * (1 - slippagePercent / 100)));
 
       // Get user's token account
-      const walletPublicKey = this.getWalletPublicKey();
       const tokenAccount = await getAssociatedTokenAddress(
         NATIVE_MINT,
         walletPublicKey,
