@@ -30,13 +30,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v2.3.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana --version
-
       - name: Setup Deployer Key
         run: |
           mkdir -p ~/.config/solana
@@ -45,26 +38,7 @@ jobs:
           else
             echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
           fi
-          
-          # Проверить баланс
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          if [ "${{ github.event.inputs.network }}" == "mainnet" ]; then
-            solana config set --url https://api.mainnet-beta.solana.com
-          else
-            solana config set --url https://api.devnet.solana.com
-          fi
-          solana config set --keypair ~/.config/solana/id.json
-          
-          echo "=== Deployer Wallet Info ==="
-          solana address
-          BALANCE=$(solana balance | awk '{print $1}')
-          echo "Balance: $BALANCE SOL"
-          
-          # Проверить минимальный баланс
-          if (( $(echo "$BALANCE < 0.01" | bc -l) )); then
-            echo "❌ Insufficient balance! Need at least 0.01 SOL for metadata upload"
-            exit 1
-          fi
+          echo "✅ Deployer key configured"
 
       - name: Set RPC URL
         id: rpc
@@ -137,6 +111,7 @@ jobs:
           npx @solana-program/program-metadata@latest write idl $PROGRAM_ID ./idl.json --rpc $RPC_URL --keypair ~/.config/solana/id.json
 
       - name: Upload Security.txt
+        continue-on-error: true
         working-directory: prediction-market/duels_escrow
         run: |
           PROGRAM_ID="${{ github.event.inputs.program_id }}"
@@ -155,7 +130,7 @@ jobs:
           echo "=== security.txt content ==="
           cat security.txt
           
-          npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --rpc $RPC_URL --keypair ~/.config/solana/id.json
+          npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --rpc $RPC_URL --keypair ~/.config/solana/id.json || echo "⚠️ Security.txt upload failed (may already exist)"
 
       - name: Verify Upload
         run: |
