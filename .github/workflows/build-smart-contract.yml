@@ -166,7 +166,6 @@ jobs:
           anchor keys list
 
       - name: Deploy to Devnet
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         working-directory: prediction-market/duels_escrow
         run: |
           echo "=== Deploying to Devnet ==="
