@@ -379,6 +379,7 @@ class BlockchainService {
       // 6. Call Anchor program to create pool
       await anchorProgramService.createPool(
         poolId,
+        marketId,
         initialLiquidityBN,
         initialLiquidityBN,
         tokenMint,
@@ -482,8 +483,7 @@ class BlockchainService {
       // 9. Record trade in backend
       await apiService.recordTrade({
         pool_id: params.poolId,
-        user_id: params.userId,
-        trade_type: params.tradeType.toString(),
+        trade_type: params.tradeType,
         input_amount: params.inputAmount.toString(),
         output_amount: outputAmount.toString(),
         fee_amount: params.feeAmount?.toString() || '0',
