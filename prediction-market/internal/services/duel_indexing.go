@@ -1,3 +1,14 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"prediction-market/internal/models"
+
+	"github.com/google/uuid"
+)
 
 // IndexDuelCreation indexes a duel creation from an on-chain transaction
 // This is called after the frontend creates a duel via Anchor
