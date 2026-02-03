@@ -9,6 +9,12 @@ import {
   Keypair,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import BN from 'bn.js';
 import type {
   PoolState,
@@ -97,6 +103,47 @@ class BlockchainService {
         `Failed to get user account: ${error}`,
       );
     }
+  }
+
+  // ============================================================================
+  // TOKEN ACCOUNT MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get or create associated token account
+   * Returns existing account or creates new one if needed
+   */
+  async getOrCreateAssociatedTokenAccount(
+    payer: PublicKey,
+    mint: PublicKey,
+    owner: PublicKey
+  ): Promise<{ address: PublicKey; instruction?: TransactionInstruction }> {
+    const associatedToken = await getAssociatedTokenAddress(
+      mint,
+      owner,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    // Check if account exists
+    const accountInfo = await this.connection.getAccountInfo(associatedToken);
+
+    if (accountInfo) {
+      return { address: associatedToken };
+    }
+
+    // Create instruction if doesn't exist
+    const instruction = createAssociatedTokenAccountInstruction(
+      payer,
+      associatedToken,
+      owner,
+      mint,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    return { address: associatedToken, instruction };
   }
 
   // ============================================================================
