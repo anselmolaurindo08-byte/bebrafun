@@ -1,29 +1,48 @@
 [toolchain]
 anchor_version = "0.32.1"
-solana_version = "2.3.0"
+solana_version = "2.1.15"
 
 [features]
 seeds = false
 skip-lint = false
 
 [programs.localnet]
-pumpsly = "11111111111111111111111111111111"
+duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [programs.devnet]
-pumpsly = "11111111111111111111111111111111"
+duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [programs.mainnet]
-pumpsly = "11111111111111111111111111111111"
+duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+duels_program = "11111111111111111111111111111111"
+prediction_market = "11111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-# test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [test]
 startup_wait = 10000
+
+[[test.genesis]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+program = "spl_token.so"
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"

@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  SOLANA_VERSION: '2.3.0'
+  SOLANA_VERSION: '2.1.15'
   ANCHOR_VERSION: '0.32.1'
 
 jobs:
@@ -32,125 +32,55 @@ jobs:
             ~/.local/share/solana
           key: solana-${{ env.SOLANA_VERSION }}-${{ runner.os }}
 
-      # TEMPORARILY DISABLED: Cache is causing Cargo 1.79.0 to persist
-      # - name: Cache Cargo Registry
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ~/.cargo/registry
-      #       ~/.cargo/git
-      #       target
-      #     key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-      #     restore-keys: |
-      #       cargo-${{ runner.os }}-
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            pkg-config \
-            libudev-dev \
-            libssl-dev \
-            build-essential
-
-      - name: Setup Rust 1.85.0
-        run: |
-          # Aggressively remove ALL Rust installations
-          rustup self uninstall -y || true
-          rm -rf ~/.rustup || true
-          rm -rf ~/.cargo || true
-          # Install rustup fresh
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
-          # Source cargo env
-          source "$HOME/.cargo/env"
-          # Add to PATH for subsequent steps
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # Verify installation
-          rustc --version
-          cargo --version
-          # Ensure we see 1.85.0
-          rustc --version | grep "1.85.0" || (echo "ERROR: Wrong Rust version!" && exit 1)
-          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version!" && exit 1)
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+          components: rustfmt, clippy
 
       - name: Install Solana
         run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
           export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
 
-      - name: Install Anchor CLI
+      - name: Install Anchor
         run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          # Install Anchor CLI from source with Rust 1.85.0
-          cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked --force
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install ${{ env.ANCHOR_VERSION }}
+          avm use ${{ env.ANCHOR_VERSION }}
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.avm/bin:$PATH"
           anchor --version
-
-      - name: Fix Edition 2024 Compatibility
-        working-directory: prediction-market/duels_escrow
-        run: |
-          # Use Solana's cargo to generate lockfile and downgrade blake3
-          # This must use Solana's cargo-build-sbf toolchain, not system cargo
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          
-          # First, let anchor/cargo generate initial Cargo.lock
-          cargo generate-lockfile || true
-          
-          # Now downgrade incompatible dependencies
-          cargo update -p blake3 --precise 1.8.2
-          cargo update -p indexmap --precise 2.11.4
-          
-          echo "=== Cargo.lock versions ==="
-          grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
-          grep -A 2 "name = \"indexmap\"" Cargo.lock || echo "No indexmap in Cargo.lock yet"
-
-      - name: Setup Deployer Key
-        run: |
-          mkdir -p ~/.config/solana
-          # Use the deployer key from GitHub secrets
-          echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
-          # Set Solana config to use devnet
-          solana config set --url https://api.devnet.solana.com
-          solana config set --keypair ~/.config/solana/id.json
-          # Show the public key
-          echo "=== Deployer Public Key ==="
-          solana-keygen pubkey ~/.config/solana/id.json
-          # Show balance
-          echo "=== Deployer Balance ==="
-          solana balance
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
-        env:
-          CARGO: /home/runner/.cargo/bin/cargo
-          RUSTC: /home/runner/.cargo/bin/rustc
         run: |
-          # Explicitly set PATH to use our Rust 1.85.0
-          export PATH="$HOME/.cargo/bin:$PATH"
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          # Verify we're using the correct cargo
-          echo "=== Verifying Cargo Version ==="
-          which cargo
-          cargo --version
-          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version in PATH!" && exit 1)
-          # Verify environment variables
-          echo "CARGO=$CARGO"
-          echo "RUSTC=$RUSTC"
-          $CARGO --version
-          $RUSTC --version
-          # Build with correct cargo
-          echo "=== Building Anchor Programs ==="
           anchor build
           
       - name: List Build Artifacts
         working-directory: prediction-market/duels_escrow
         run: |
           echo "=== Built Programs ==="
-          ls -lh target/deploy/pumpsly.so
+          ls -lh target/deploy/*.so
           echo ""
           echo "=== IDL Files ==="
-          ls -lh target/idl/pumpsly.json
+          ls -lh target/idl/*.json
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -167,10 +97,112 @@ jobs:
           echo "=== Program IDs ==="
           anchor keys list
 
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: prediction-market/duels_escrow/yarn.lock
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install Solana
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install ${{ env.ANCHOR_VERSION }}
+          avm use ${{ env.ANCHOR_VERSION }}
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Install Dependencies
+        working-directory: prediction-market/duels_escrow
+        run: yarn install --frozen-lockfile
+
+      - name: Run Tests
+        working-directory: prediction-market/duels_escrow
+        run: anchor test --skip-build
+
+  deploy-devnet:
+    name: Deploy to Devnet
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    environment: devnet
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install Solana
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install ${{ env.ANCHOR_VERSION }}
+          avm use ${{ env.ANCHOR_VERSION }}
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Setup Solana Wallet
+        run: |
+          echo "${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}" > deployer-keypair.json
+          solana config set --url devnet
+          solana config set --keypair ./deployer-keypair.json
+          solana balance
+
+      - name: Build Programs
+        working-directory: prediction-market/duels_escrow
+        run: anchor build
+
       - name: Deploy to Devnet
         working-directory: prediction-market/duels_escrow
         run: |
           echo "=== Deploying to Devnet ==="
-          anchor deploy --provider.cluster devnet
+          anchor deploy --provider.cluster devnet --program-name pumpsly --program-keypair target/deploy/pumpsly-keypair.json
           echo "=== Deployed Program IDs ==="
           anchor keys list
+
+      - name: Upload IDL
+        working-directory: prediction-market/duels_escrow
+        run: |
+          echo "=== Uploading IDL to Program ==="
+          npx @solana-program/program-metadata@latest write idl 9Lvncjd2KiHGLrCHWJ9CJM3vcijDfP3CFpS33t6dfcZe target/idl/pumpsly.json --cluster devnet --keypair ~/.config/solana/id.json
+
+      - name: Save Program IDs
+        working-directory: prediction-market/duels_escrow
+        run: |
+          anchor keys list > program-ids.txt
+          cat program-ids.txt
+
+      - name: Upload Program IDs
+        uses: actions/upload-artifact@v4
+        with:
+          name: program-ids-devnet
+          path: prediction-market/duels_escrow/program-ids.txt
