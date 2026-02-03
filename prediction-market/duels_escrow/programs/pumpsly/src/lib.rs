@@ -8,12 +8,11 @@ use solana_security_txt::security_txt;
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
     name: "Pumpsly",
-    project_url: "https://github.com/anselmolaurindo08-byte/bebrafun",
+    project_url: "https://pumpsly.fun",
     contacts: "link:https://x.com/pumpslyfun",
-    policy: "https://github.com/anselmolaurindo08-byte/bebrafun/blob/master/SECURITY.md",
+    policy: "https://github.com/pumpslydev/pumpslyfun/blob/master/SECURITY.md",
     preferred_languages: "en",
-    source_code: "https://github.com/anselmolaurindo08-byte/bebrafun",
-    auditors: "None"
+    source_code: "https://github.com/pumpslydev/pumpslyfun"
 }
 
 declare_id!("BT5nEboLbcFYsSzqNsZpDCeR1n6BhMKzLCAJK8mdXiMi");
