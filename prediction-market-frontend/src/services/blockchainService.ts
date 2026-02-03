@@ -397,29 +397,45 @@ class BlockchainService {
       // The contract transfers initial_liquidity from authority's token account to pool vault
       // So we need to fund the authority's WSOL account with initial_liquidity amount
       try {
-        console.log(`Wrapping ${initialLiquidity} SOL...`);
-        const { blockhash: wrapBlockhash, lastValidBlockHeight: wrapLastValid } =
-          await this.connection.getLatestBlockhash('confirmed');
-        const wrapTx = new Transaction({
-          blockhash: wrapBlockhash,
-          lastValidBlockHeight: wrapLastValid,
-          feePayer: walletPublicKey,
-        });
+        console.log(`Checking WSOL balance...`);
 
-        // Transfer SOL to token account and sync
-        wrapTx.add(
-          SystemProgram.transfer({
-            fromPubkey: walletPublicKey,
-            toPubkey: tokenAccountInfo.address,
-            lamports: initialLiquidityBN.toNumber(),
-          }),
-          createSyncNativeInstruction(tokenAccountInfo.address)
-        );
+        // Check current balance of token account
+        const tokenAccountBalance = await this.connection.getTokenAccountBalance(tokenAccountInfo.address);
+        const currentBalance = new BN(tokenAccountBalance.value.amount);
 
-        const wrapSig = await sendTransaction(wrapTx, this.connection);
-        console.log('✅ SOL wrapped:', wrapSig);
-        // Wait for SOL wrapping to complete
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`Current WSOL balance: ${currentBalance.toString()} lamports`);
+        console.log(`Required: ${initialLiquidityBN.toString()} lamports`);
+
+        // Only wrap if we don't have enough
+        if (currentBalance.lt(initialLiquidityBN)) {
+          const amountToWrap = initialLiquidityBN.sub(currentBalance);
+          console.log(`Wrapping ${amountToWrap.toNumber() / LAMPORTS_PER_SOL} SOL...`);
+
+          const { blockhash: wrapBlockhash, lastValidBlockHeight: wrapLastValid } =
+            await this.connection.getLatestBlockhash('confirmed');
+          const wrapTx = new Transaction({
+            blockhash: wrapBlockhash,
+            lastValidBlockHeight: wrapLastValid,
+            feePayer: walletPublicKey,
+          });
+
+          // Transfer SOL to token account and sync
+          wrapTx.add(
+            SystemProgram.transfer({
+              fromPubkey: walletPublicKey,
+              toPubkey: tokenAccountInfo.address,
+              lamports: amountToWrap.toNumber(),
+            }),
+            createSyncNativeInstruction(tokenAccountInfo.address)
+          );
+
+          const wrapSig = await sendTransaction(wrapTx, this.connection);
+          console.log('✅ SOL wrapped:', wrapSig);
+          // Wait for SOL wrapping to complete
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          console.log('✅ Sufficient WSOL balance, skipping wrap');
+        }
       } catch (error) {
         console.error('❌ Failed to wrap SOL:', error);
         throw new Error(`Failed to wrap SOL for initial liquidity: ${error}`);
