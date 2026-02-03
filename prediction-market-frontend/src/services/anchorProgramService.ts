@@ -151,7 +151,7 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .createPool(poolId, question, resolutionTime, initialLiquidity)
             .accounts({
                 pool: poolPda,
@@ -186,7 +186,7 @@ class AnchorProgramService {
 
         const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .buyOutcome(outcome, amount, minTokensOut)
             .accounts({
                 pool: poolPda,
@@ -246,7 +246,7 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .initializeDuel(duelId, amount, predictedOutcome)
             .accounts({
                 duel: duelPda,
@@ -277,7 +277,7 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .joinDuel(predictedOutcome)
             .accounts({
                 duel: duelPda,
@@ -304,7 +304,7 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .startDuel(entryPrice)
             .accounts({
                 duel: duelPda,
@@ -334,7 +334,7 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        const tx = await program.methods
+        const tx = await (program.methods as any)
             .resolveDuel(exitPrice)
             .accounts({
                 duel: duelPda,
