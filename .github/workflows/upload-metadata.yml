@@ -1,10 +1,10 @@
-name: Upload IDL and Security.txt
+name: Upload IDL
 
 on:
   workflow_dispatch:
     inputs:
       program_id:
-        description: 'Program ID to upload metadata for'
+        description: 'Program ID to upload IDL for'
         required: true
         default: 'BT5nEboLbcFYsSzqNsZpDCeR1n6BhMKzLCAJK8mdXiMi'
       network:
@@ -17,8 +17,8 @@ on:
           - mainnet
 
 jobs:
-  upload-metadata:
-    name: Upload Program Metadata
+  upload-idl:
+    name: Upload Program IDL
     runs-on: ubuntu-latest
     
     steps:
@@ -146,5 +146,4 @@ jobs:
           echo "Network: ${{ github.event.inputs.network }}"
           echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ github.event.inputs.network }}"
           echo ""
-          echo "Note: security.txt is embedded in the program binary"
-          echo "Wait 1-2 minutes for Explorer to update cache"
+          echo "Note: security.txt is embedded in the program binary during build"
