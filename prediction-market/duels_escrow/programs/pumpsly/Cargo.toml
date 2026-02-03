@@ -19,6 +19,7 @@ default = []
 [dependencies]
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = "0.32.1"
+solana-security-txt = "1.1.1"
 
 [dev-dependencies]
 solana-program-test = "2.3.0"

@@ -1,6 +1,21 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+// Neodyme security.txt standard
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Pumpsly",
+    project_url: "https://github.com/anselmolaurindo08-byte/bebrafun",
+    contacts: "link:https://x.com/pumpslyfun",
+    policy: "https://github.com/anselmolaurindo08-byte/bebrafun/blob/master/SECURITY.md",
+    preferred_languages: "en",
+    source_code: "https://github.com/anselmolaurindo08-byte/bebrafun",
+    auditors: "None"
+}
+
 declare_id!("BT5nEboLbcFYsSzqNsZpDCeR1n6BhMKzLCAJK8mdXiMi");
 
 // Fee constants for duel resolution

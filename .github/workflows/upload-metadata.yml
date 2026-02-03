@@ -97,49 +97,48 @@ jobs:
           echo "=== IDL Preview ==="
           head -20 ./idl.json
 
-      - name: Upload IDL
+      - name: Setup Solana and Anchor CLI
+        run: |
+          # Install Solana CLI
+          sh -c "$(curl -sSfL https://release.solana.com/v2.3.0/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          
+          # Install Anchor CLI
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli --locked --force
+          
+          # Verify installations
+          solana --version
+          anchor --version
+
+      - name: Upload IDL with Anchor
         working-directory: .
         run: |
           PROGRAM_ID="${{ github.event.inputs.program_id }}"
           RPC_URL="${{ steps.rpc.outputs.url }}"
           
-          echo "=== Uploading IDL ==="
+          echo "=== Uploading IDL with Anchor CLI ==="
           echo "Program ID: $PROGRAM_ID"
           echo "Network: ${{ github.event.inputs.network }}"
           echo "RPC: $RPC_URL"
           
-          npx @solana-program/program-metadata@latest write idl $PROGRAM_ID ./idl.json --rpc $RPC_URL --keypair ~/.config/solana/id.json
-
-      - name: Upload Security.txt
-        continue-on-error: true
-        working-directory: prediction-market/duels_escrow
-        run: |
-          PROGRAM_ID="${{ github.event.inputs.program_id }}"
-          RPC_URL="${{ steps.rpc.outputs.url }}"
+          # Configure Solana CLI
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana config set --url $RPC_URL
+          solana config set --keypair ~/.config/solana/id.json
           
-          echo "=== Uploading security.txt ==="
-          echo "Program ID: $PROGRAM_ID"
-          echo "Network: ${{ github.event.inputs.network }}"
-          echo "RPC: $RPC_URL"
-          
-          if [ ! -f security.txt ]; then
-            echo "❌ security.txt not found!"
-            exit 1
-          fi
-          
-          echo "=== security.txt content ==="
-          cat security.txt
-          
-          npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --rpc $RPC_URL --keypair ~/.config/solana/id.json || echo "⚠️ Security.txt upload failed (may already exist)"
+          # Upload IDL using Anchor
+          anchor idl init -f ./idl.json $PROGRAM_ID
 
       - name: Verify Upload
         run: |
           PROGRAM_ID="${{ github.event.inputs.program_id }}"
           echo ""
-          echo "✅ METADATA UPLOADED SUCCESSFULLY!"
+          echo "✅ IDL UPLOADED SUCCESSFULLY!"
           echo ""
           echo "Program ID: $PROGRAM_ID"
           echo "Network: ${{ github.event.inputs.network }}"
           echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ github.event.inputs.network }}"
           echo ""
+          echo "Note: security.txt is embedded in the program binary"
           echo "Wait 1-2 minutes for Explorer to update cache"
