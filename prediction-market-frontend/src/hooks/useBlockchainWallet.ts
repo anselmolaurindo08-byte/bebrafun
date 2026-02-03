@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import blockchainService from '../services/blockchainService';
+import anchorProgramService from '../services/anchorProgramService';
 import type {
   UserAccount,
   BlockchainError,
@@ -137,6 +138,7 @@ export function useBlockchainWallet() {
     walletName: wallet?.adapter?.name,
     signTransaction,
     sendTransaction,
+    wallet, // Add wallet object
 
     // Account data (from chain)
     account,
