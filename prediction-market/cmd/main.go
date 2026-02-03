@@ -73,16 +73,16 @@ func main() {
 
 	// Initialize payout service
 	payoutService := services.NewPayoutService(
-		escrowContract,
 		repo,
+		solanaClient,
 		cfg.Solana.PlatformFeePercent,
 	)
 
 	// Initialize duel service
-	duelService := services.NewDuelService(repo, escrowContract, solanaClient, payoutService)
+	duelService := services.NewDuelService(repo, escrowContract, solanaClient, anchorClient, payoutService)
 
 	// Initialize AMM service
-	ammService := services.NewAMMService(database.GetDB(), solanaClient)
+	ammService := services.NewAMMService(database.GetDB(), solanaClient, anchorClient)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
