@@ -213,20 +213,15 @@ func main() {
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
 
-		// AMM endpoints (protected)
+		// AMM endpoints (POST only - protected)
 		amm := api.Group("/amm")
 		{
-			amm.GET("/pools", ammHandler.GetAllPools)
-			amm.GET("/pools/:id", ammHandler.GetPool)
-			amm.GET("/pools/market/:market_id", ammHandler.GetPoolByMarket)
 			amm.POST("/pools", ammHandler.CreatePool)
 			amm.POST("/pools/index", indexingHandler.IndexPoolCreation) // Indexing endpoint
-			amm.GET("/quote", ammHandler.GetTradeQuote)
 			amm.POST("/trades", ammHandler.RecordTrade)
 			amm.GET("/trades/:pool_id", ammHandler.GetTradeHistory)
 			amm.GET("/positions/:pool_id/:user_address", ammHandler.GetUserPosition)
 			amm.GET("/positions/user/:user_address", ammHandler.GetUserPositions)
-			amm.GET("/prices/:pool_id", ammHandler.GetPriceHistory)
 		}
 
 		// Indexing endpoints (protected)
@@ -236,6 +231,13 @@ func main() {
 
 	// Public duel routes
 	router.GET("/api/duels/:id", duelHandler.GetDuel)
+
+	// Public AMM pool routes (GET only - no auth required)
+	router.GET("/api/amm/pools", ammHandler.GetAllPools)
+	router.GET("/api/amm/pools/:id", ammHandler.GetPool)
+	router.GET("/api/amm/pools/market/:market_id", ammHandler.GetPoolByMarket)
+	router.GET("/api/amm/quote", ammHandler.GetTradeQuote)
+	router.GET("/api/amm/prices/:pool_id", ammHandler.GetPriceHistory)
 
 	// Admin routes (protected + admin only)
 	admin := router.Group("/api/admin")
