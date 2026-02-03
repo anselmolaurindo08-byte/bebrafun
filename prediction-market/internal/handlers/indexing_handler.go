@@ -9,9 +9,23 @@ import (
 	"github.com/google/uuid"
 )
 
+// IndexingHandler handles indexing of on-chain events
+type IndexingHandler struct {
+	ammService  *services.AMMService
+	duelService *services.DuelService
+}
+
+// NewIndexingHandler creates a new indexing handler
+func NewIndexingHandler(ammService *services.AMMService, duelService *services.DuelService) *IndexingHandler {
+	return &IndexingHandler{
+		ammService:  ammService,
+		duelService: duelService,
+	}
+}
+
 // IndexPoolCreation indexes a pool creation from an on-chain transaction
 // POST /api/amm/pools/index
-func (h *AMMHandler) IndexPoolCreation(c *gin.Context) {
+func (h *IndexingHandler) IndexPoolCreation(c *gin.Context) {
 	var req struct {
 		TransactionSignature string `json:"transaction_signature" binding:"required"`
 		MarketID             *uint  `json:"market_id"`
@@ -24,27 +38,29 @@ func (h *AMMHandler) IndexPoolCreation(c *gin.Context) {
 
 	pool, err := h.ammService.IndexPoolCreation(c.Request.Context(), req.TransactionSignature, req.MarketID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// Determine appropriate status code based on error
+		statusCode := http.StatusInternalServerError
+		errMsg := err.Error()
+
+		switch {
+		case contains(errMsg, "not found"):
+			statusCode = http.StatusNotFound
+		case contains(errMsg, "not confirmed"):
+			statusCode = http.StatusConflict
+		case contains(errMsg, "invalid"):
+			statusCode = http.StatusBadRequest
+		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 
 	c.JSON(http.StatusCreated, h.ammService.ToPoolResponse(pool))
 }
 
-// DuelHandler struct for duel indexing endpoints
-type DuelIndexHandler struct {
-	duelService *services.DuelService
-}
-
-func NewDuelIndexHandler(duelService *services.DuelService) *DuelIndexHandler {
-	return &DuelIndexHandler{
-		duelService: duelService,
-	}
-}
-
 // IndexDuelCreation indexes a duel creation from an on-chain transaction
 // POST /api/duels/index
-func (h *DuelIndexHandler) IndexDuelCreation(c *gin.Context) {
+func (h *IndexingHandler) IndexDuelCreation(c *gin.Context) {
 	var req struct {
 		TransactionSignature string `json:"transaction_signature" binding:"required"`
 		PlayerID             uint   `json:"player_id" binding:"required"`
@@ -65,7 +81,20 @@ func (h *DuelIndexHandler) IndexDuelCreation(c *gin.Context) {
 		req.EventID,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// Determine appropriate status code based on error
+		statusCode := http.StatusInternalServerError
+		errMsg := err.Error()
+
+		switch {
+		case contains(errMsg, "not found"):
+			statusCode = http.StatusNotFound
+		case contains(errMsg, "not confirmed"):
+			statusCode = http.StatusConflict
+		case contains(errMsg, "invalid"):
+			statusCode = http.StatusBadRequest
+		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 
@@ -74,7 +103,7 @@ func (h *DuelIndexHandler) IndexDuelCreation(c *gin.Context) {
 
 // IndexDuelJoin indexes a duel join from an on-chain transaction
 // POST /api/duels/:id/join/index
-func (h *DuelIndexHandler) IndexDuelJoin(c *gin.Context) {
+func (h *IndexingHandler) IndexDuelJoin(c *gin.Context) {
 	duelID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel id"})
@@ -98,9 +127,36 @@ func (h *DuelIndexHandler) IndexDuelJoin(c *gin.Context) {
 		req.TransactionSignature,
 	)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// Determine appropriate status code based on error
+		statusCode := http.StatusInternalServerError
+		errMsg := err.Error()
+
+		switch {
+		case contains(errMsg, "not found"):
+			statusCode = http.StatusNotFound
+		case contains(errMsg, "not confirmed"):
+			statusCode = http.StatusConflict
+		case contains(errMsg, "invalid"):
+			statusCode = http.StatusBadRequest
+		}
+
+		c.JSON(statusCode, gin.H{"error": errMsg})
 		return
 	}
 
 	c.JSON(http.StatusOK, duel)
+}
+
+// Helper function to check if string contains substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

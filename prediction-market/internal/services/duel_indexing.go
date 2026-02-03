@@ -101,7 +101,12 @@ func (ds *DuelService) IndexDuelJoin(ctx context.Context, duelID uuid.UUID, play
 		return nil, fmt.Errorf("player2 not set on-chain")
 	}
 
-	// 5. Update DB record
+	// 5. Validate bet amount
+	if duelAccount.BetAmount == 0 {
+		return nil, fmt.Errorf("invalid bet amount: 0")
+	}
+
+	// 6. Update DB record
 	duel.Player2ID = &playerID
 	player2Amount := int64(duelAccount.BetAmount)
 	duel.Player2Amount = &player2Amount
