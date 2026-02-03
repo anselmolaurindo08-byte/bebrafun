@@ -33,6 +33,9 @@ COPY --from=builder /app/main .
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
 
+# Copy IDL files (required for Anchor client initialization)
+COPY --from=builder /app/idl ./idl
+
 # Set ownership and switch to non-root user
 RUN chown -R appuser:appgroup /app
 USER appuser

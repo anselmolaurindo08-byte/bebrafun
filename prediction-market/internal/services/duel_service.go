@@ -18,6 +18,7 @@ type DuelService struct {
 	repo              *repository.Repository
 	escrowContract    *blockchain.EscrowContract
 	solanaClient      *blockchain.SolanaClient
+	anchorClient      *blockchain.AnchorClient // NEW: Anchor program client
 	payoutService     *PayoutService
 	duelMatchingQueue chan *models.DuelQueue
 }
@@ -26,12 +27,14 @@ func NewDuelService(
 	repo *repository.Repository,
 	escrowContract *blockchain.EscrowContract,
 	solanaClient *blockchain.SolanaClient,
+	anchorClient *blockchain.AnchorClient,
 	payoutService *PayoutService,
 ) *DuelService {
 	ds := &DuelService{
 		repo:              repo,
 		escrowContract:    escrowContract,
 		solanaClient:      solanaClient,
+		anchorClient:      anchorClient,
 		payoutService:     payoutService,
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
@@ -74,10 +77,17 @@ func (ds *DuelService) CreateDuel(
 	// Generate duel ID
 	duelID := time.Now().UnixNano()
 
+	// Prepare duel address if provided
+	var duelAddress *string
+	if req.DuelAddress != "" {
+		duelAddress = &req.DuelAddress
+	}
+
 	// Create duel in database with PENDING status (waiting for opponent)
 	duel := &models.Duel{
 		ID:               uuid.New(),
 		DuelID:           duelID,
+		DuelAddress:      duelAddress,
 		Player1ID:        playerID,
 		BetAmount:        betAmountLamports,
 		Player1Amount:    betAmountLamports,

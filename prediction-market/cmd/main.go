@@ -17,7 +17,6 @@ import (
 	"prediction-market/internal/config"
 	"prediction-market/internal/database"
 	"prediction-market/internal/handlers"
-	"prediction-market/internal/jobs"
 	"prediction-market/internal/repository"
 	"prediction-market/internal/services"
 )
@@ -71,6 +70,12 @@ func main() {
 		"",                         // Token mint pubkey (configure later)
 	)
 
+	// Initialize Anchor client for on-chain indexing
+	anchorClient, err := blockchain.NewAnchorClient(cfg.Solana.SolanaRPCURL, cfg.Solana.ProgramID, "idl/pumpsly.json")
+	if err != nil {
+		log.Fatalf("Failed to initialize Anchor client: %v", err)
+	}
+
 	// Initialize payout service
 	payoutService := services.NewPayoutService(
 		escrowContract,
@@ -79,10 +84,13 @@ func main() {
 	)
 
 	// Initialize duel service
-	duelService := services.NewDuelService(repo, escrowContract, solanaClient, payoutService)
+	duelService := services.NewDuelService(repo, escrowContract, solanaClient, anchorClient, payoutService)
 
 	// Initialize AMM service
-	ammService := services.NewAMMService(database.GetDB(), solanaClient)
+	ammService := services.NewAMMService(database.GetDB(), solanaClient, anchorClient)
+
+	// Initialize position service
+	positionService := services.NewPositionService(database.GetDB())
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -94,16 +102,8 @@ func main() {
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
 	duelHandler := handlers.NewDuelHandler(duelService)
 	ammHandler := handlers.NewAMMHandler(ammService)
-
-	// Start market parser job (runs every 6 hours)
-	parserJob := jobs.NewMarketParserJob(
-		database.GetDB(),
-		cfg.Polymarket.APIKey,
-		cfg.Polymarket.Secret,
-		cfg.Polymarket.Passphrase,
-	)
-	parserJob.Start(6 * time.Hour)
-	log.Println("Market parser job started")
+	positionHandler := handlers.NewPositionHandler(positionService)
+	indexingHandler := handlers.NewIndexingHandler(ammService, duelService)
 
 	// Set up Gin router
 	router := gin.Default()
@@ -217,24 +217,40 @@ func main() {
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
 
-		// AMM endpoints (protected)
+		// AMM endpoints (POST only - protected)
 		amm := api.Group("/amm")
 		{
-			amm.GET("/pools", ammHandler.GetAllPools)
-			amm.GET("/pools/:id", ammHandler.GetPool)
-			amm.GET("/pools/market/:market_id", ammHandler.GetPoolByMarket)
 			amm.POST("/pools", ammHandler.CreatePool)
-			amm.GET("/quote", ammHandler.GetTradeQuote)
+			amm.POST("/pools/index", indexingHandler.IndexPoolCreation) // Indexing endpoint
 			amm.POST("/trades", ammHandler.RecordTrade)
 			amm.GET("/trades/:pool_id", ammHandler.GetTradeHistory)
 			amm.GET("/positions/:pool_id/:user_address", ammHandler.GetUserPosition)
 			amm.GET("/positions/user/:user_address", ammHandler.GetUserPositions)
-			amm.GET("/prices/:pool_id", ammHandler.GetPriceHistory)
 		}
+
+		// Position endpoints (POST only - protected)
+		api.POST("/positions", positionHandler.CreatePosition)
+		api.POST("/positions/:id/close", positionHandler.ClosePosition)
+
+		// Indexing endpoints (protected)
+		api.POST("/duels/index", indexingHandler.IndexDuelCreation)
+		api.POST("/duels/:id/join/index", indexingHandler.IndexDuelJoin)
 	}
 
 	// Public duel routes
 	router.GET("/api/duels/:id", duelHandler.GetDuel)
+
+	// Public AMM pool routes (GET only - no auth required)
+	router.GET("/api/amm/pools", ammHandler.GetAllPools)
+	router.GET("/api/amm/pools/:id", ammHandler.GetPool)
+	router.GET("/api/amm/pools/market/:market_id", ammHandler.GetPoolByMarket)
+	router.GET("/api/amm/quote", ammHandler.GetTradeQuote)
+	router.GET("/api/amm/prices/:pool_id", ammHandler.GetPriceHistory)
+
+	// Public position routes (GET only - no auth required)
+	router.GET("/api/positions/:user_address", positionHandler.GetUserPositions)
+	router.GET("/api/positions/pool/:pool_id", positionHandler.GetPoolPositions)
+	router.GET("/api/positions/detail/:id", positionHandler.GetPosition)
 
 	// Admin routes (protected + admin only)
 	admin := router.Group("/api/admin")

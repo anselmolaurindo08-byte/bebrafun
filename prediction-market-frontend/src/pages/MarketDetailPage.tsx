@@ -2,20 +2,26 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
 import blockchainService from '../services/blockchainService';
+import anchorProgramService from '../services/anchorProgramService';
 import AMMTradingPanel from '../components/AMMTradingPanel';
 import Portfolio from '../components/Portfolio';
+import SellOutcomeButton from '../components/SellOutcomeButton';
+import AdminPoolControls from '../components/AdminPoolControls';
 import type { Market, User } from '../types/types';
 import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
+import BN from 'bn.js';
 
 export default function MarketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [market, setMarket] = useState<Market | null>(null);
     const [ammPoolId, setAmmPoolId] = useState<string | null>(null);
+    const [pool, setPool] = useState<any>(null);
+    const [userPosition, setUserPosition] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isCreatingPool, setIsCreatingPool] = useState(false);
-    const { connected, publicKey, sendTransaction } = useBlockchainWallet();
+    const { connected, publicKey, sendTransaction, wallet } = useBlockchainWallet();
 
     useEffect(() => {
         fetchMarket();
@@ -45,13 +51,14 @@ export default function MarketDetailPage() {
 
         setIsCreatingPool(true);
         try {
-            // Default initial liquidity: 10 tokens
-            const initialLiquidity = 10;
+            // Default initial liquidity: 0.001 SOL (minimum for testing)
+            const initialLiquidity = 0.001;
             const poolId = await blockchainService.createPool(
                 id,
                 initialLiquidity,
                 publicKey,
-                sendTransaction
+                sendTransaction,
+                wallet?.adapter // Pass wallet adapter
             );
             setAmmPoolId(poolId);
         } catch (error: any) {
@@ -75,10 +82,22 @@ export default function MarketDetailPage() {
 
     const fetchAmmPool = async () => {
         try {
-            const pool = await blockchainService.getPoolByMarketId(id!);
-            setAmmPoolId(pool.poolId);
-        } catch {
+            const poolData = await blockchainService.getPoolByMarketId(id!);
+            setAmmPoolId(poolData.poolId);
+            setPool(poolData);
+
+            // Fetch user position if wallet connected
+            if (connected && publicKey) {
+                try {
+                    const position = await anchorProgramService.getUserPosition(new BN(poolData.poolId), publicKey);
+                    setUserPosition(position);
+                } catch (err) {
+                    console.log('No user position found');
+                }
+            }
+        } catch (error) {
             // No AMM pool for this market
+            console.error('Failed to fetch AMM pool:', error);
         }
     };
 
@@ -143,10 +162,33 @@ export default function MarketDetailPage() {
                 <h2 className="text-2xl font-mono font-bold text-pump-white">Trade</h2>
 
                 {ammPoolId ? (
-                    <AMMTradingPanel
-                        poolId={ammPoolId}
-                        eventTitle={market.title}
-                    />
+                    <>
+                        <AMMTradingPanel
+                            poolId={ammPoolId}
+                            eventTitle={market.title}
+                        />
+
+                        {/* Sell Outcome Tokens */}
+                        {connected && pool && userPosition && (
+                            <SellOutcomeButton
+                                pool={pool}
+                                userPosition={userPosition}
+                                onSuccess={() => {
+                                    fetchAmmPool();
+                                }}
+                            />
+                        )}
+
+                        {/* Admin Controls */}
+                        {connected && pool && (
+                            <AdminPoolControls
+                                pool={pool}
+                                onSuccess={() => {
+                                    fetchAmmPool();
+                                }}
+                            />
+                        )}
+                    </>
                 ) : (
                     <div className="bg-pump-gray-darker border-2 border-pump-yellow/30 rounded-lg p-8 text-center">
                         <div className="text-4xl mb-4">⚠️</div>

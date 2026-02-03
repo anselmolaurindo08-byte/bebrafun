@@ -37,7 +37,10 @@ function mapDuel(raw: any): Duel {
 }
 
 export const duelService = {
-  createDuel: async (request: CreateDuelRequest): Promise<Duel> => {
+  createDuel: async (
+    request: CreateDuelRequest
+  ): Promise<Duel> => {
+    // Create duel record in backend with transaction signature
     const raw = await api.createDuel({
       bet_amount: request.betAmount,
       market_id: request.marketId,
@@ -80,7 +83,11 @@ export const duelService = {
     await api.cancelDuel(duelId);
   },
 
-  joinDuel: async (duelId: string, signature: string): Promise<Duel> => {
+  joinDuel: async (
+    duelId: string,
+    signature: string
+  ): Promise<Duel> => {
+    // Update duel in backend with transaction signature
     const raw = await api.joinDuel(duelId, { signature });
     return mapDuel(raw);
   },

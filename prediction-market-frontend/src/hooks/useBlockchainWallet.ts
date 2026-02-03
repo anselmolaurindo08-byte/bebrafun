@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import blockchainService from '../services/blockchainService';
+import anchorProgramService from '../services/anchorProgramService';
 import type {
   UserAccount,
   BlockchainError,
@@ -50,17 +51,17 @@ export function useBlockchainWallet() {
       setBalance(userAccount.totalBalance);
     } catch (err: unknown) {
       if (retries > 0) {
-          // Retry after delay
-          setTimeout(() => refreshBalance(retries - 1), 1000);
+        // Retry after delay
+        setTimeout(() => refreshBalance(retries - 1), 1000);
       } else {
-          const message =
-            err instanceof Error ? err.message : 'Failed to fetch balance';
-          setError(
-            blockchainService.createError(
-              BlockchainErrorType.NETWORK_ERROR,
-              message,
-            ),
-          );
+        const message =
+          err instanceof Error ? err.message : 'Failed to fetch balance';
+        setError(
+          blockchainService.createError(
+            BlockchainErrorType.NETWORK_ERROR,
+            message,
+          ),
+        );
       }
     } finally {
       setLoading(false);
@@ -70,20 +71,29 @@ export function useBlockchainWallet() {
   // Auto-refresh when wallet connects/disconnects
   useEffect(() => {
     if (connected && publicKey) {
+      // Initialize Anchor program with wallet
+      try {
+        if (wallet?.adapter) {
+          anchorProgramService.initializeProgram(wallet.adapter as any);
+        }
+      } catch (error) {
+        console.warn('Failed to initialize Anchor program:', error);
+      }
+
       refreshBalance();
     } else {
       setAccount(null);
       setBalance(null);
     }
-  }, [connected, publicKey, refreshBalance]);
+  }, [connected, publicKey, wallet, refreshBalance]);
 
   // Poll balance periodically
   useEffect(() => {
-      if (!connected || !publicKey) return;
-      const interval = setInterval(() => {
-          refreshBalance(0); // No retries on polling to avoid spam
-      }, 10000);
-      return () => clearInterval(interval);
+    if (!connected || !publicKey) return;
+    const interval = setInterval(() => {
+      refreshBalance(0); // No retries on polling to avoid spam
+    }, 10000);
+    return () => clearInterval(interval);
   }, [connected, publicKey, refreshBalance]);
 
   const connectWallet = useCallback(async () => {
@@ -128,6 +138,7 @@ export function useBlockchainWallet() {
     walletName: wallet?.adapter?.name,
     signTransaction,
     sendTransaction,
+    wallet, // Add wallet object
 
     // Account data (from chain)
     account,

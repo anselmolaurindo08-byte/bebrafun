@@ -10,13 +10,13 @@ skip-lint = false
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
-prediction_market = "11111111111111111111111111111111"
+prediction_market = "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf"
 
 [programs.devnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
-prediction_market = "11111111111111111111111111111111"
+prediction_market = "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf"
 
 [programs.mainnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"

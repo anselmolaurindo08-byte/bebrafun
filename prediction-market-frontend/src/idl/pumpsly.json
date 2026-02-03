@@ -1,0 +1,1452 @@
+{
+  "address": "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf",
+  "metadata": {
+    "name": "pumpsly",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Unified prediction market smart contract for duels and AMM pools"
+  },
+  "instructions": [
+    {
+      "name": "buy_outcome",
+      "docs": [
+        "Buy YES or NO outcome tokens"
+      ],
+      "discriminator": [
+        23,
+        167,
+        228,
+        249,
+        105,
+        241,
+        139,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "pool_vault",
+          "writable": true
+        },
+        {
+          "name": "user_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.pool_id",
+                "account": "Pool"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": {
+            "defined": {
+              "name": "Outcome"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_tokens_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_duel",
+      "docs": [
+        "Cancel duel and refund player 1 if player 2 hasn't joined"
+      ],
+      "discriminator": [
+        83,
+        124,
+        224,
+        237,
+        235,
+        44,
+        38,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true
+        },
+        {
+          "name": "duel_vault",
+          "writable": true
+        },
+        {
+          "name": "player_1_token_account",
+          "writable": true
+        },
+        {
+          "name": "player_1",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_winnings",
+      "docs": [
+        "Claim winnings from resolved pool"
+      ],
+      "discriminator": [
+        161,
+        215,
+        24,
+        59,
+        14,
+        236,
+        242,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "pool"
+        },
+        {
+          "name": "pool_vault",
+          "writable": true
+        },
+        {
+          "name": "user_position",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_pool",
+      "docs": [
+        "Create a new AMM prediction market pool"
+      ],
+      "discriminator": [
+        233,
+        146,
+        209,
+        142,
+        207,
+        104,
+        64,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "pool_id"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "authority_token_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pool_id",
+          "type": "u64"
+        },
+        {
+          "name": "question",
+          "type": "string"
+        },
+        {
+          "name": "resolution_time",
+          "type": "i64"
+        },
+        {
+          "name": "initial_liquidity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_duel",
+      "docs": [
+        "Initialize a new 1v1 duel with player 1's deposit"
+      ],
+      "discriminator": [
+        197,
+        5,
+        158,
+        89,
+        174,
+        188,
+        134,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "duel_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "player_1_token_account",
+          "writable": true
+        },
+        {
+          "name": "player_1",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "predicted_outcome",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "join_duel",
+      "docs": [
+        "Player 2 joins the duel with their deposit"
+      ],
+      "discriminator": [
+        7,
+        247,
+        76,
+        103,
+        101,
+        139,
+        254,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true
+        },
+        {
+          "name": "duel_vault",
+          "writable": true
+        },
+        {
+          "name": "player_2_token_account",
+          "writable": true
+        },
+        {
+          "name": "player_2",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "predicted_outcome",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resolve_duel",
+      "docs": [
+        "Resolve the duel and pay out winner"
+      ],
+      "discriminator": [
+        213,
+        162,
+        203,
+        235,
+        151,
+        236,
+        178,
+        64
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true
+        },
+        {
+          "name": "duel_vault",
+          "writable": true
+        },
+        {
+          "name": "player_1_token_account",
+          "writable": true
+        },
+        {
+          "name": "player_2_token_account",
+          "writable": true
+        },
+        {
+          "name": "fee_collector",
+          "docs": [
+            "Platform fee collector account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "exit_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_pool",
+      "docs": [
+        "Resolve the pool and set outcome"
+      ],
+      "discriminator": [
+        191,
+        164,
+        190,
+        142,
+        178,
+        198,
+        162,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": {
+            "defined": {
+              "name": "Outcome"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sell_outcome",
+      "docs": [
+        "Sell YES or NO outcome tokens back to pool"
+      ],
+      "discriminator": [
+        78,
+        3,
+        14,
+        78,
+        71,
+        181,
+        114,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "pool_vault",
+          "writable": true
+        },
+        {
+          "name": "user_position",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": {
+            "defined": {
+              "name": "Outcome"
+            }
+          }
+        },
+        {
+          "name": "tokens_amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_sol_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "start_duel",
+      "docs": [
+        "Start the duel after countdown (called by server)"
+      ],
+      "discriminator": [
+        188,
+        143,
+        206,
+        111,
+        77,
+        207,
+        62,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "entry_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_pool_status",
+      "docs": [
+        "Manually update pool status (close pool early)"
+      ],
+      "discriminator": [
+        130,
+        87,
+        108,
+        6,
+        46,
+        224,
+        117,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_status",
+          "type": {
+            "defined": {
+              "name": "PoolStatus"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Duel",
+      "discriminator": [
+        126,
+        229,
+        210,
+        60,
+        177,
+        135,
+        124,
+        224
+      ]
+    },
+    {
+      "name": "Pool",
+      "discriminator": [
+        241,
+        154,
+        109,
+        4,
+        17,
+        177,
+        109,
+        188
+      ]
+    },
+    {
+      "name": "UserPosition",
+      "discriminator": [
+        251,
+        248,
+        209,
+        245,
+        83,
+        234,
+        17,
+        27
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DuelCancelled",
+      "discriminator": [
+        138,
+        79,
+        20,
+        163,
+        207,
+        11,
+        111,
+        213
+      ]
+    },
+    {
+      "name": "DuelCreated",
+      "discriminator": [
+        137,
+        77,
+        22,
+        196,
+        90,
+        147,
+        23,
+        37
+      ]
+    },
+    {
+      "name": "DuelJoined",
+      "discriminator": [
+        44,
+        42,
+        14,
+        246,
+        9,
+        32,
+        169,
+        167
+      ]
+    },
+    {
+      "name": "DuelResolved",
+      "discriminator": [
+        224,
+        245,
+        214,
+        212,
+        111,
+        151,
+        50,
+        5
+      ]
+    },
+    {
+      "name": "DuelStarted",
+      "discriminator": [
+        208,
+        108,
+        140,
+        40,
+        155,
+        133,
+        112,
+        94
+      ]
+    },
+    {
+      "name": "OutcomePurchased",
+      "discriminator": [
+        87,
+        22,
+        99,
+        224,
+        88,
+        247,
+        15,
+        181
+      ]
+    },
+    {
+      "name": "OutcomeSold",
+      "discriminator": [
+        169,
+        12,
+        147,
+        165,
+        8,
+        11,
+        50,
+        142
+      ]
+    },
+    {
+      "name": "PoolCreated",
+      "discriminator": [
+        202,
+        44,
+        41,
+        88,
+        104,
+        220,
+        157,
+        82
+      ]
+    },
+    {
+      "name": "PoolResolved",
+      "discriminator": [
+        37,
+        148,
+        82,
+        156,
+        128,
+        131,
+        201,
+        171
+      ]
+    },
+    {
+      "name": "PoolStatusUpdated",
+      "discriminator": [
+        54,
+        220,
+        85,
+        46,
+        3,
+        37,
+        43,
+        233
+      ]
+    },
+    {
+      "name": "WinningsClaimed",
+      "discriminator": [
+        187,
+        184,
+        29,
+        196,
+        54,
+        117,
+        70,
+        150
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidOutcome",
+      "msg": "Invalid outcome"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidDuelStatus",
+      "msg": "Invalid duel status"
+    },
+    {
+      "code": 6003,
+      "name": "DuelAlreadyJoined",
+      "msg": "Duel already joined"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidPrice",
+      "msg": "Invalid price"
+    },
+    {
+      "code": 6005,
+      "name": "QuestionTooLong",
+      "msg": "Question too long"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidResolutionTime",
+      "msg": "Invalid resolution time"
+    },
+    {
+      "code": 6007,
+      "name": "PoolNotActive",
+      "msg": "Pool not active"
+    },
+    {
+      "code": 6008,
+      "name": "PoolExpired",
+      "msg": "Pool expired"
+    },
+    {
+      "code": 6009,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6010,
+      "name": "InsufficientLiquidity",
+      "msg": "Insufficient liquidity"
+    },
+    {
+      "code": 6011,
+      "name": "SlippageExceeded",
+      "msg": "Slippage exceeded"
+    },
+    {
+      "code": 6012,
+      "name": "PoolNotResolved",
+      "msg": "Pool not resolved"
+    },
+    {
+      "code": 6013,
+      "name": "PoolNotExpired",
+      "msg": "Pool not expired"
+    },
+    {
+      "code": 6014,
+      "name": "NoWinnings",
+      "msg": "No winnings to claim"
+    },
+    {
+      "code": 6015,
+      "name": "InsufficientTokens",
+      "msg": "Insufficient tokens"
+    },
+    {
+      "code": 6016,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6017,
+      "name": "CancelTooEarly",
+      "msg": "Cancel too early - must wait 5 minutes"
+    }
+  ],
+  "types": [
+    {
+      "name": "Duel",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "player_1",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_2",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_1_prediction",
+            "type": "u8"
+          },
+          {
+            "name": "player_2_prediction",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "entry_price",
+            "type": "u64"
+          },
+          {
+            "name": "exit_price",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "DuelStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "started_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "resolved_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "refund_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "player_1",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "prediction",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelJoined",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "player_2",
+            "type": "pubkey"
+          },
+          {
+            "name": "prediction",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "exit_price",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "entry_price",
+            "type": "u64"
+          },
+          {
+            "name": "started_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "WaitingForPlayer2"
+          },
+          {
+            "name": "Countdown"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Resolved"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutcomePurchased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "amount_paid",
+            "type": "u64"
+          },
+          {
+            "name": "tokens_received",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutcomeSold",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "tokens_sold",
+            "type": "u64"
+          },
+          {
+            "name": "sol_received",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "question",
+            "type": "string"
+          },
+          {
+            "name": "resolution_time",
+            "type": "i64"
+          },
+          {
+            "name": "yes_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "no_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "total_liquidity",
+            "type": "u64"
+          },
+          {
+            "name": "base_yes_liquidity",
+            "docs": [
+              "Base liquidity for YES side (for price stability)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "base_no_liquidity",
+            "docs": [
+              "Base liquidity for NO side (for price stability)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "Outcome"
+                }
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "PoolStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "question",
+            "type": "string"
+          },
+          {
+            "name": "resolution_time",
+            "type": "i64"
+          },
+          {
+            "name": "initial_liquidity",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Resolved"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolStatusUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "new_status",
+            "type": {
+              "defined": {
+                "name": "PoolStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "yes_tokens",
+            "type": "u64"
+          },
+          {
+            "name": "no_tokens",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WinningsClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

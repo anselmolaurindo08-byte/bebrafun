@@ -10,11 +10,10 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Database   DatabaseConfig
-	Server     ServerConfig
-	App        AppConfig
-	Polymarket PolymarketConfig
-	Solana     SolanaConfig
+	Database DatabaseConfig
+	Server   ServerConfig
+	App      AppConfig
+	Solana   SolanaConfig
 }
 
 // DatabaseConfig holds database connection settings
@@ -38,16 +37,11 @@ type AppConfig struct {
 	InviteCodesPerUser    string
 }
 
-// PolymarketConfig holds Polymarket API settings
-type PolymarketConfig struct {
-	APIKey     string
-	Secret     string
-	Passphrase string
-}
-
 // SolanaConfig holds Solana network settings
 type SolanaConfig struct {
 	Network                string
+	SolanaRPCURL           string
+	ProgramID              string
 	ServerWalletPrivateKey string
 	ServerWalletPublicKey  string
 	EscrowProgramID        string
@@ -75,13 +69,10 @@ func Load() (*Config, error) {
 			InitialVirtualBalance: getEnv("INITIAL_VIRTUAL_BALANCE", "1000.00"),
 			InviteCodesPerUser:    getEnv("INVITE_CODES_PER_USER", "5"),
 		},
-		Polymarket: PolymarketConfig{
-			APIKey:     getEnv("POLYMARKET_API_KEY", ""),
-			Secret:     getEnv("POLYMARKET_SECRET", ""),
-			Passphrase: getEnv("POLYMARKET_PASSPHRASE", ""),
-		},
 		Solana: SolanaConfig{
 			Network:                getEnv("SOLANA_NETWORK", "devnet"),
+			SolanaRPCURL:           getEnv("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
+			ProgramID:              getEnv("PROGRAM_ID", "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf"),
 			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
 			ServerWalletPublicKey:  getEnv("SERVER_WALLET_PUBLIC_KEY", ""),
 			EscrowProgramID:        getEnv("ESCROW_PROGRAM_ID", "F1CFijTZ6QEWPEoSTZ9BfYc4bhD6ejK5oRZhK5YYH9SY"),

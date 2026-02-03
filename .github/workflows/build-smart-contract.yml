@@ -1,0 +1,208 @@
+name: Build Smart Contract
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'prediction-market/duels_escrow/**'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'prediction-market/duels_escrow/**'
+  workflow_dispatch:
+
+env:
+  SOLANA_VERSION: '2.3.0'
+  ANCHOR_VERSION: '0.32.1'
+
+jobs:
+  build:
+    name: Build Anchor Programs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Solana
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/solana
+            ~/.local/share/solana
+          key: solana-${{ env.SOLANA_VERSION }}-${{ runner.os }}
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libudev-dev \
+            libssl-dev \
+            build-essential
+
+      - name: Setup Rust 1.85.0
+        run: |
+          # Aggressively remove ALL Rust installations
+          rustup self uninstall -y || true
+          rm -rf ~/.rustup || true
+          rm -rf ~/.cargo || true
+          # Install rustup fresh
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.85.0
+          # Source cargo env
+          source "$HOME/.cargo/env"
+          # Add to PATH for subsequent steps
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # Verify installation
+          rustc --version
+          cargo --version
+          # Ensure we see 1.85.0
+          rustc --version | grep "1.85.0" || (echo "ERROR: Wrong Rust version!" && exit 1)
+          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version!" && exit 1)
+
+      - name: Install Solana
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+
+      - name: Install Anchor CLI
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # Install Anchor CLI from source with Rust 1.85.0
+          cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked --force
+          anchor --version
+
+      - name: Fix Edition 2024 Compatibility
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Use Solana's cargo to generate lockfile and downgrade blake3
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          
+          # First, let anchor/cargo generate initial Cargo.lock
+          cargo generate-lockfile || true
+          
+          # Now downgrade incompatible dependencies
+          cargo update -p blake3 --precise 1.8.2
+          cargo update -p indexmap --precise 2.11.4
+          
+          echo "=== Cargo.lock versions ==="
+          grep -A 2 "name = \"blake3\"" Cargo.lock || echo "No blake3 in Cargo.lock yet"
+          grep -A 2 "name = \"indexmap\"" Cargo.lock || echo "No indexmap in Cargo.lock yet"
+
+      - name: Setup Deployer Key
+        run: |
+          mkdir -p ~/.config/solana
+          # Use the deployer key from GitHub secrets
+          echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
+          # Set Solana config to use devnet
+          solana config set --url https://api.devnet.solana.com
+          solana config set --keypair ~/.config/solana/id.json
+          # Show the public key
+          echo "=== Deployer Public Key ==="
+          solana-keygen pubkey ~/.config/solana/id.json
+          # Show balance
+          echo "=== Deployer Balance ==="
+          solana balance
+
+      - name: Create Program Keypair
+        working-directory: prediction-market/duels_escrow
+        run: |
+          mkdir -p target/deploy
+          # Generate a new keypair for the program
+          solana-keygen new --no-bip39-passphrase --force -o target/deploy/pumpsly-keypair.json
+          # Show the program ID
+          echo "=== Program ID ==="
+          PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
+          echo "Program ID: $PROGRAM_ID"
+          # Update declare_id in lib.rs
+          echo "=== Updating declare_id in lib.rs ==="
+          sed -i "s/declare_id!(\".*\")/declare_id!(\"$PROGRAM_ID\")/" programs/pumpsly/src/lib.rs
+          # Update or add pumpsly to Anchor.toml (replace existing entries)
+          echo "=== Updating Anchor.toml ==="
+          sed -i "s/^pumpsly = .*/pumpsly = \"$PROGRAM_ID\"/" Anchor.toml
+          # Show updated files
+          echo "=== Updated declare_id ==="
+          grep "declare_id" programs/pumpsly/src/lib.rs || echo "declare_id not found"
+          echo "=== Updated Anchor.toml (devnet section) ==="
+          sed -n '/\[programs.devnet\]/,/\[/p' Anchor.toml | head -n -1 || echo "devnet section not found"
+
+      - name: Build Programs
+        working-directory: prediction-market/duels_escrow
+        env:
+          CARGO: /home/runner/.cargo/bin/cargo
+          RUSTC: /home/runner/.cargo/bin/rustc
+        run: |
+          # Explicitly set PATH to use our Rust 1.85.0
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          # Verify we're using the correct cargo
+          echo "=== Verifying Cargo Version ==="
+          which cargo
+          cargo --version
+          cargo --version | grep "1.85.0" || (echo "ERROR: Wrong Cargo version in PATH!" && exit 1)
+          # Verify environment variables
+          echo "CARGO=$CARGO"
+          echo "RUSTC=$RUSTC"
+          $CARGO --version
+          $RUSTC --version
+          # Build with correct cargo
+          echo "=== Building Anchor Programs ==="
+          anchor build
+          
+      - name: List Build Artifacts
+        working-directory: prediction-market/duels_escrow
+        run: |
+          echo "=== Built Programs ==="
+          ls -lh target/deploy/pumpsly.so
+          echo ""
+          echo "=== IDL Files ==="
+          ls -lh target/idl/*.json || echo "No IDL files generated"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-contract-artifacts
+          path: |
+            prediction-market/duels_escrow/target/deploy/*.so
+            prediction-market/duels_escrow/target/idl/*.json
+          retention-days: 30
+
+      - name: Deploy to Devnet
+        working-directory: prediction-market/duels_escrow
+        run: |
+          echo "=== Deploying to Devnet ==="
+          anchor deploy --provider.cluster devnet --program-name pumpsly
+          echo "=== Deployed Program IDs ==="
+          anchor keys list
+
+      - name: Upload IDL
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Get the actual deployed program ID
+          PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
+          echo "=== Program ID for IDL upload: $PROGRAM_ID ==="
+          if [ -f target/idl/pumpsly.json ]; then
+            echo "=== Uploading IDL to Program ==="
+            # New syntax: no --cluster flag, use RPC URL directly
+            npx @solana-program/program-metadata@latest write idl $PROGRAM_ID target/idl/pumpsly.json --rpc https://api.devnet.solana.com --keypair ~/.config/solana/id.json
+          else
+            echo "=== IDL file not found, skipping upload ==="
+          fi
+
+      - name: Upload Security.txt
+        working-directory: prediction-market/duels_escrow
+        run: |
+          # Get the actual deployed program ID
+          PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
+          echo "=== Program ID for security.txt upload: $PROGRAM_ID ==="
+          if [ -f security.txt ]; then
+            echo "=== Uploading security.txt to Program ==="
+            # New syntax: no --cluster flag, use RPC URL directly
+            npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --rpc https://api.devnet.solana.com --keypair ~/.config/solana/id.json
+          else
+            echo "=== security.txt file not found, skipping upload ==="
+          fi
+
