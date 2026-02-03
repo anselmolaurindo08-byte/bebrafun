@@ -469,20 +469,27 @@ class BlockchainService {
       // 8. Create pool record in backend with on-chain address
       try {
         console.log('Saving pool to backend...');
-        const pool = await apiService.createPool({
+
+        const poolData = {
           market_id: parseInt(marketId),
           program_id: anchorProgramService.getProgramId().toString(),
           authority: walletPublicKey.toString(),
-          yes_mint: tokenMint.toString(), // Using native SOL
+          yes_mint: tokenMint.toString(),
           no_mint: tokenMint.toString(),
           yes_reserve: parseInt(initialLiquidityBN.toString()),
           no_reserve: parseInt(initialLiquidityBN.toString()),
-          fee_percentage: 30, // 0.3% fee (30 basis points)
-        });
+          fee_percentage: 30,
+        };
+
+        console.log('Pool data being sent:', JSON.stringify(poolData, null, 2));
+
+        const pool = await apiService.createPool(poolData);
         console.log('✅ Pool saved to backend:', pool.id);
         return pool.id;
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Failed to save pool to backend:', error);
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
         // Pool was created on-chain but failed to save to backend
         // Return poolId anyway so user can see it was created
         console.warn('Pool created on-chain but not saved to backend. Using poolId:', poolId.toString());
