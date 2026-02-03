@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DuelArena } from '../../components/duels/DuelArena';
+import CancelDuelButton from '../../components/CancelDuelButton';
 import { useDuel } from '../../hooks/useDuel';
 import { useDuelStore } from '../../store/duelStore';
 
@@ -56,6 +57,12 @@ export const ActiveDuelPage: React.FC = () => {
         </button>
 
         <DuelArena duel={activeDuel} onResolved={() => navigate('/duels')} />
+
+        {/* Cancel Duel Button (only for player 1 after 5 min) */}
+        <CancelDuelButton
+          duel={activeDuel}
+          onSuccess={() => navigate('/duels')}
+        />
 
         {error && (
           <div className="bg-pump-gray-darker border-2 border-pump-red rounded-lg p-4 mt-6">
