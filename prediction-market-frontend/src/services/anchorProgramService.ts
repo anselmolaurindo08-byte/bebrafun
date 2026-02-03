@@ -4,7 +4,7 @@ import type { AnchorWallet } from '@solana/wallet-adapter-react';
 import idl from '../idl/pumpsly.json';
 
 // Program ID from deployed contract
-const PROGRAM_ID = new PublicKey('46XLMDdrHBaV1YeX1nuUwtRM1KNMF1XKEp5DBVSrHcbY');
+const PROGRAM_ID = new PublicKey('FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf');
 const RPC_ENDPOINT = import.meta.env.VITE_SOLANA_RPC_URL || clusterApiUrl('devnet');
 
 /**

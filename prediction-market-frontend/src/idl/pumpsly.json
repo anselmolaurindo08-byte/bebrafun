@@ -1,7 +1,7 @@
 {
-  "address": "46XLMDdrHBaV1YeX1nuUwtRM1KNMF1XKEp5DBVSrHcbY",
+  "address": "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf",
   "metadata": {
-    "name": "prediction_market",
+    "name": "pumpsly",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Unified prediction market smart contract for duels and AMM pools"
@@ -97,6 +97,45 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "cancel_duel",
+      "docs": [
+        "Cancel duel and refund player 1 if player 2 hasn't joined"
+      ],
+      "discriminator": [
+        83,
+        124,
+        224,
+        237,
+        235,
+        44,
+        38,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true
+        },
+        {
+          "name": "duel_vault",
+          "writable": true
+        },
+        {
+          "name": "player_1_token_account",
+          "writable": true
+        },
+        {
+          "name": "player_1",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
     },
     {
       "name": "claim_winnings",
@@ -489,6 +528,66 @@
       ]
     },
     {
+      "name": "sell_outcome",
+      "docs": [
+        "Sell YES or NO outcome tokens back to pool"
+      ],
+      "discriminator": [
+        78,
+        3,
+        14,
+        78,
+        71,
+        181,
+        114,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "pool_vault",
+          "writable": true
+        },
+        {
+          "name": "user_position",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": {
+            "defined": {
+              "name": "Outcome"
+            }
+          }
+        },
+        {
+          "name": "tokens_amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_sol_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "start_duel",
       "docs": [
         "Start the duel after countdown (called by server)"
@@ -517,6 +616,42 @@
         {
           "name": "entry_price",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_pool_status",
+      "docs": [
+        "Manually update pool status (close pool early)"
+      ],
+      "discriminator": [
+        130,
+        87,
+        108,
+        6,
+        46,
+        224,
+        117,
+        123
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_status",
+          "type": {
+            "defined": {
+              "name": "PoolStatus"
+            }
+          }
         }
       ]
     }
@@ -563,6 +698,19 @@
     }
   ],
   "events": [
+    {
+      "name": "DuelCancelled",
+      "discriminator": [
+        138,
+        79,
+        20,
+        163,
+        207,
+        11,
+        111,
+        213
+      ]
+    },
     {
       "name": "DuelCreated",
       "discriminator": [
@@ -629,6 +777,19 @@
       ]
     },
     {
+      "name": "OutcomeSold",
+      "discriminator": [
+        169,
+        12,
+        147,
+        165,
+        8,
+        11,
+        50,
+        142
+      ]
+    },
+    {
       "name": "PoolCreated",
       "discriminator": [
         202,
@@ -652,6 +813,19 @@
         131,
         201,
         171
+      ]
+    },
+    {
+      "name": "PoolStatusUpdated",
+      "discriminator": [
+        54,
+        220,
+        85,
+        46,
+        3,
+        37,
+        43,
+        233
       ]
     },
     {
@@ -743,6 +917,21 @@
       "code": 6014,
       "name": "NoWinnings",
       "msg": "No winnings to claim"
+    },
+    {
+      "code": 6015,
+      "name": "InsufficientTokens",
+      "msg": "Insufficient tokens"
+    },
+    {
+      "code": 6016,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6017,
+      "name": "CancelTooEarly",
+      "msg": "Cancel too early - must wait 5 minutes"
     }
   ],
   "types": [
@@ -824,6 +1013,22 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "refund_amount",
+            "type": "u64"
           }
         ]
       }
@@ -940,6 +1145,9 @@
           },
           {
             "name": "Resolved"
+          },
+          {
+            "name": "Cancelled"
           }
         ]
       }
@@ -986,6 +1194,46 @@
           {
             "name": "tokens_received",
             "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OutcomeSold",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "tokens_sold",
+            "type": "u64"
+          },
+          {
+            "name": "sol_received",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
           }
         ]
       }
@@ -1025,6 +1273,20 @@
           },
           {
             "name": "total_liquidity",
+            "type": "u64"
+          },
+          {
+            "name": "base_yes_liquidity",
+            "docs": [
+              "Base liquidity for YES side (for price stability)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "base_no_liquidity",
+            "docs": [
+              "Base liquidity for NO side (for price stability)"
+            ],
             "type": "u64"
           },
           {
@@ -1118,6 +1380,26 @@
           },
           {
             "name": "Resolved"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolStatusUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool_id",
+            "type": "u64"
+          },
+          {
+            "name": "new_status",
+            "type": {
+              "defined": {
+                "name": "PoolStatus"
+              }
+            }
           }
         ]
       }
