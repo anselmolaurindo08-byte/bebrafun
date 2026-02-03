@@ -7,6 +7,9 @@ declare_id!("11111111111111111111111111111111");
 const DUEL_FEE_BPS: u64 = 250;  // 2.5% fee
 const BPS_DIVISOR: u64 = 10_000;
 
+// Fee constants for AMM pool trades
+const POOL_FEE_BPS: u64 = 30;  // 0.3% fee (like Uniswap)
+
 #[program]
 pub mod pumpsly {
     use super::*;
@@ -327,8 +330,19 @@ pub mod pumpsly {
         let tokens_out_u64 = u64::try_from(tokens_out)
             .map_err(|_| PredictionMarketError::MathOverflow)?;
 
+        // Calculate and deduct fee (0.3%)
+        let fee = tokens_out_u64
+            .checked_mul(POOL_FEE_BPS)
+            .ok_or(PredictionMarketError::MathOverflow)?
+            .checked_div(BPS_DIVISOR)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let tokens_out_after_fee = tokens_out_u64
+            .checked_sub(fee)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
         require!(
-            tokens_out_u64 >= min_tokens_out,
+            tokens_out_after_fee >= min_tokens_out,
             PredictionMarketError::SlippageExceeded
         );
 
@@ -368,8 +382,8 @@ pub mod pumpsly {
         }
 
         match outcome {
-            Outcome::Yes => position.yes_tokens += tokens_out_u64,
-            Outcome::No => position.no_tokens += tokens_out_u64,
+            Outcome::Yes => position.yes_tokens += tokens_out_after_fee,
+            Outcome::No => position.no_tokens += tokens_out_after_fee,
         }
 
         emit!(OutcomePurchased {
@@ -377,7 +391,8 @@ pub mod pumpsly {
             user: ctx.accounts.user.key(),
             outcome,
             amount_paid: amount,
-            tokens_received: tokens_out_u64,
+            tokens_received: tokens_out_after_fee,
+            fee,
         });
 
         Ok(())
@@ -519,8 +534,19 @@ pub mod pumpsly {
         let sol_out_u64 = u64::try_from(sol_out)
             .map_err(|_| PredictionMarketError::MathOverflow)?;
 
+        // Calculate and deduct fee (0.3%)
+        let fee = sol_out_u64
+            .checked_mul(POOL_FEE_BPS)
+            .ok_or(PredictionMarketError::MathOverflow)?
+            .checked_div(BPS_DIVISOR)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let sol_out_after_fee = sol_out_u64
+            .checked_sub(fee)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
         require!(
-            sol_out_u64 >= min_sol_out,
+            sol_out_after_fee >= min_sol_out,
             PredictionMarketError::SlippageExceeded
         );
 
@@ -562,7 +588,7 @@ pub mod pumpsly {
                 },
                 signer_seeds,
             ),
-            sol_out_u64,
+            sol_out_after_fee,
         )?;
 
         emit!(OutcomeSold {
@@ -570,7 +596,8 @@ pub mod pumpsly {
             user: ctx.accounts.user.key(),
             outcome,
             tokens_sold: tokens_amount,
-            sol_received: sol_out_u64,
+            sol_received: sol_out_after_fee,
+            fee,
         });
 
         Ok(())
@@ -890,6 +917,7 @@ pub struct OutcomePurchased {
     pub outcome: Outcome,
     pub amount_paid: u64,
     pub tokens_received: u64,
+    pub fee: u64,
 }
 
 #[event]
@@ -899,6 +927,7 @@ pub struct OutcomeSold {
     pub outcome: Outcome,
     pub tokens_sold: u64,
     pub sol_received: u64,
+    pub fee: u64,
 }
 
 #[event]
