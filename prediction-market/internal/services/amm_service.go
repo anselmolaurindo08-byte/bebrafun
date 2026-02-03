@@ -208,6 +208,7 @@ func (s *AMMService) ToPoolResponse(pool *models.AMMPool) *models.PoolResponse {
 		MarketID:       pool.MarketID,
 		ProgramID:      pool.ProgramID,
 		Authority:      pool.Authority,
+		PoolAddress:    pool.PoolAddress, // On-chain pool address
 		YesMint:        pool.YesMint,
 		NoMint:         pool.NoMint,
 		YesReserve:     pool.YesReserve,

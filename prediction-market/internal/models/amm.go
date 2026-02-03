@@ -161,6 +161,7 @@ type PoolResponse struct {
 	MarketID       *uint     `json:"market_id"`
 	ProgramID      string    `json:"program_id"`
 	Authority      string    `json:"authority"`
+	PoolAddress    *string   `json:"pool_address,omitempty"` // On-chain pool address
 	YesMint        string    `json:"yes_mint"`
 	NoMint         string    `json:"no_mint"`
 	YesReserve     int64     `json:"yes_reserve"`
