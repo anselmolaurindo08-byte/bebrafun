@@ -113,7 +113,7 @@ jobs:
           mkdir -p target/deploy
           # Generate a new keypair for the program
           # We'll use a simple keypair for devnet (mainnet should use vanity address)
-          solana-keygen new --no-bip39-passphrase -o target/deploy/pumpsly-keypair.json
+          solana-keygen new --no-bip39-passphrase --force -o target/deploy/pumpsly-keypair.json
           # Show the generated program ID
           echo "=== Generated Program ID ==="
           PROGRAM_ID=$(solana-keygen pubkey target/deploy/pumpsly-keypair.json)
