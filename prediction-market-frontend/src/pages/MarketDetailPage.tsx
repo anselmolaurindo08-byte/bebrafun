@@ -51,8 +51,8 @@ export default function MarketDetailPage() {
 
         setIsCreatingPool(true);
         try {
-            // Default initial liquidity: 10 tokens
-            const initialLiquidity = 10;
+            // Default initial liquidity: 0.001 SOL (minimum for testing)
+            const initialLiquidity = 0.001;
             const poolId = await blockchainService.createPool(
                 id,
                 initialLiquidity,
