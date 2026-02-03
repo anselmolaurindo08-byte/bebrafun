@@ -673,7 +673,6 @@ class BlockchainService {
   async updatePoolStatus(
     poolId: number,
     newStatus: 'active' | 'resolved',
-    walletPublicKey: PublicKey,
   ): Promise<TransactionSignature> {
     try {
       const poolIdBN = new BN(poolId);

@@ -32,8 +32,7 @@ function AdminPoolControls({ pool, onSuccess }: AdminPoolControlsProps) {
         try {
             const tx = await blockchainService.updatePoolStatus(
                 pool.id,
-                'resolved',
-                publicKey as PublicKey
+                'resolved'
             );
 
             console.log('✅ Pool closed:', tx);
@@ -65,8 +64,7 @@ function AdminPoolControls({ pool, onSuccess }: AdminPoolControlsProps) {
         try {
             const tx = await blockchainService.updatePoolStatus(
                 pool.id,
-                'active',
-                publicKey as PublicKey
+                'active'
             );
 
             console.log('✅ Pool reopened:', tx);
