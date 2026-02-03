@@ -4,6 +4,7 @@ import {
   PublicKey,
   clusterApiUrl,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
 import {
