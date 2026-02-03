@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import blockchainService from '../services/blockchainService';
 import './AdminPoolControls.css';
 
