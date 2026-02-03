@@ -20,12 +20,17 @@ import (
 type AMMService struct {
 	db           *gorm.DB
 	solanaClient *blockchain.SolanaClient
-	fetchCache   sync.Map // Stores last fetch timestamp for pools
+	anchorClient *blockchain.AnchorClient // NEW: Anchor program client
+	fetchCache   sync.Map                 // Stores last fetch timestamp for pools
 }
 
 // NewAMMService creates a new AMM service
-func NewAMMService(db *gorm.DB, solanaClient *blockchain.SolanaClient) *AMMService {
-	return &AMMService{db: db, solanaClient: solanaClient}
+func NewAMMService(db *gorm.DB, solanaClient *blockchain.SolanaClient, anchorClient *blockchain.AnchorClient) *AMMService {
+	return &AMMService{
+		db:           db,
+		solanaClient: solanaClient,
+		anchorClient: anchorClient,
+	}
 }
 
 // ============================================================================
@@ -116,6 +121,74 @@ func (s *AMMService) CreatePool(ctx context.Context, req *models.CreatePoolReque
 
 	if err := s.db.WithContext(ctx).Create(pool).Error; err != nil {
 		return nil, fmt.Errorf("failed to create pool: %w", err)
+	}
+
+	return pool, nil
+}
+
+// IndexPoolCreation indexes a pool creation from an on-chain transaction
+// This is called after the frontend creates a pool via Anchor
+func (s *AMMService) IndexPoolCreation(ctx context.Context, txSignature string, marketID *uint) (*models.AMMPool, error) {
+	if s.anchorClient == nil {
+		return nil, fmt.Errorf("anchor client not initialized")
+	}
+
+	// 1. Verify transaction exists and is confirmed
+	txDetails, err := s.solanaClient.VerifyTransaction(ctx, txSignature, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify transaction: %w", err)
+	}
+
+	if !txDetails.Confirmed {
+		return nil, fmt.Errorf("transaction not confirmed")
+	}
+
+	// 2. TODO: Parse PoolCreated event from logs to get pool_id
+	// For now, we'll derive pool_id from market_id or timestamp
+	// This is a temporary solution until we implement event parsing
+	var poolID uint64
+	if marketID != nil {
+		poolID = uint64(*marketID)
+	} else {
+		// Use timestamp as fallback
+		poolID = uint64(time.Now().Unix())
+	}
+
+	// 3. Fetch pool account from chain
+	poolAccount, err := s.anchorClient.GetPool(ctx, poolID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch pool from chain: %w", err)
+	}
+
+	// 4. Derive pool PDA
+	poolPda, _, err := s.anchorClient.GetPoolPDA(poolID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive pool PDA: %w", err)
+	}
+
+	// 5. Calculate total liquidity
+	totalLiquidity := int64(math.Sqrt(float64(poolAccount.YesReserve) * float64(poolAccount.NoReserve)))
+
+	poolAddress := poolPda.String()
+	programID := s.anchorClient.GetProgramID().String()
+
+	// 6. Create DB record
+	pool := &models.AMMPool{
+		MarketID:       marketID,
+		ProgramID:      programID,
+		Authority:      poolAccount.Authority.String(),
+		PoolAddress:    &poolAddress,
+		YesMint:        poolAccount.TokenMint.String(),
+		NoMint:         poolAccount.TokenMint.String(),
+		YesReserve:     int64(poolAccount.YesReserve),
+		NoReserve:      int64(poolAccount.NoReserve),
+		FeePercentage:  int(poolAccount.FeePercentage),
+		TotalLiquidity: totalLiquidity,
+		Status:         models.PoolStatusActive,
+	}
+
+	if err := s.db.WithContext(ctx).Create(pool).Error; err != nil {
+		return nil, fmt.Errorf("failed to create pool in DB: %w", err)
 	}
 
 	return pool, nil
