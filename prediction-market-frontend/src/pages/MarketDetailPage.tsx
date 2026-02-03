@@ -95,8 +95,9 @@ export default function MarketDetailPage() {
                     console.log('No user position found');
                 }
             }
-        } catch {
+        } catch (error) {
             // No AMM pool for this market
+            console.error('Failed to fetch AMM pool:', error);
         }
     };
 
