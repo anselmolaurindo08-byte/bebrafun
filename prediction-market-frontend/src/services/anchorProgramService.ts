@@ -1,5 +1,5 @@
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
+import { AnchorProvider, Program, BN } from '@coral-xyz/anchor';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
 import idl from '../idl/pumpsly.json';
 
@@ -18,7 +18,7 @@ const RPC_ENDPOINT = import.meta.env.VITE_SOLANA_RPC_URL || clusterApiUrl('devne
  */
 class AnchorProgramService {
     private connection: Connection;
-    private program: Program | null = null;
+    private program: Program<any> | null = null;
 
     constructor() {
         this.connection = new Connection(RPC_ENDPOINT, 'confirmed');
@@ -27,7 +27,7 @@ class AnchorProgramService {
     /**
      * Initialize Anchor program with wallet
      */
-    initializeProgram(wallet: AnchorWallet): Program {
+    initializeProgram(wallet: AnchorWallet): Program<any> {
         const provider = new AnchorProvider(
             this.connection,
             wallet,
@@ -41,7 +41,7 @@ class AnchorProgramService {
     /**
      * Get program instance (must call initializeProgram first)
      */
-    getProgram(): Program {
+    getProgram(): Program<any> {
         if (!this.program) {
             throw new Error('Program not initialized. Call initializeProgram with wallet first.');
         }
@@ -147,6 +147,10 @@ class AnchorProgramService {
         const [poolPda] = this.getPoolPda(poolId);
         const [poolVaultPda] = this.getPoolVaultPda(poolId, tokenMint);
 
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
         const tx = await program.methods
             .createPool(poolId, question, resolutionTime, initialLiquidity)
             .accounts({
@@ -175,7 +179,12 @@ class AnchorProgramService {
         const program = this.getProgram();
         const [poolPda] = this.getPoolPda(poolId);
         const [poolVaultPda] = this.getPoolVaultPda(poolId, tokenMint);
-        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey!);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
 
         const tx = await program.methods
             .buyOutcome(outcome, amount, minTokensOut)
@@ -197,7 +206,7 @@ class AnchorProgramService {
     async getPool(poolId: BN): Promise<any> {
         const program = this.getProgram();
         const [poolPda] = this.getPoolPda(poolId);
-        return await program.account.pool.fetch(poolPda);
+        return await (program.account as any)['pool'].fetch(poolPda);
     }
 
     /**
@@ -208,7 +217,7 @@ class AnchorProgramService {
         const [userPositionPda] = this.getUserPositionPda(poolId, user);
 
         try {
-            return await program.account.userPosition.fetch(userPositionPda);
+            return await (program.account as any)['userPosition'].fetch(userPositionPda);
         } catch (error) {
             // Position doesn't exist yet
             return null;
@@ -232,6 +241,10 @@ class AnchorProgramService {
         const program = this.getProgram();
         const [duelPda] = this.getDuelPda(duelId);
         const [duelVaultPda] = this.getDuelVaultPda(duelId, tokenMint);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
 
         const tx = await program.methods
             .initializeDuel(duelId, amount, predictedOutcome)
@@ -260,6 +273,10 @@ class AnchorProgramService {
         const [duelPda] = this.getDuelPda(duelId);
         const [duelVaultPda] = this.getDuelVaultPda(duelId, tokenMint);
 
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
         const tx = await program.methods
             .joinDuel(predictedOutcome)
             .accounts({
@@ -282,6 +299,10 @@ class AnchorProgramService {
     ): Promise<string> {
         const program = this.getProgram();
         const [duelPda] = this.getDuelPda(duelId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
 
         const tx = await program.methods
             .startDuel(entryPrice)
@@ -309,6 +330,10 @@ class AnchorProgramService {
         const [duelPda] = this.getDuelPda(duelId);
         const [duelVaultPda] = this.getDuelVaultPda(duelId, tokenMint);
 
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
         const tx = await program.methods
             .resolveDuel(exitPrice)
             .accounts({
@@ -330,7 +355,7 @@ class AnchorProgramService {
     async getDuel(duelId: BN): Promise<any> {
         const program = this.getProgram();
         const [duelPda] = this.getDuelPda(duelId);
-        return await program.account.duel.fetch(duelPda);
+        return await (program.account as any)['duel'].fetch(duelPda);
     }
 }
 
