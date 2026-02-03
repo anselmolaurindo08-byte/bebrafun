@@ -18,6 +18,7 @@ type DuelService struct {
 	repo              *repository.Repository
 	escrowContract    *blockchain.EscrowContract
 	solanaClient      *blockchain.SolanaClient
+	anchorClient      *blockchain.AnchorClient // NEW: Anchor program client
 	payoutService     *PayoutService
 	duelMatchingQueue chan *models.DuelQueue
 }
@@ -26,12 +27,14 @@ func NewDuelService(
 	repo *repository.Repository,
 	escrowContract *blockchain.EscrowContract,
 	solanaClient *blockchain.SolanaClient,
+	anchorClient *blockchain.AnchorClient,
 	payoutService *PayoutService,
 ) *DuelService {
 	ds := &DuelService{
 		repo:              repo,
 		escrowContract:    escrowContract,
 		solanaClient:      solanaClient,
+		anchorClient:      anchorClient,
 		payoutService:     payoutService,
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
