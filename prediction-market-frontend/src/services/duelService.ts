@@ -42,43 +42,16 @@ function mapDuel(raw: any): Duel {
 
 export const duelService = {
   createDuel: async (
-    request: CreateDuelRequest,
-    walletPublicKey: PublicKey,
-    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+    request: CreateDuelRequest
   ): Promise<Duel> => {
-    // 1. Generate duel ID from timestamp
-    const duelId = new BN(Date.now());
-
-    // 2. Prepare parameters
-    const betAmount = new BN(request.betAmount);
-    const tokenMint = new PublicKey('So11111111111111111111111111111111111111112'); // Native SOL
-
-    // 3. Get or create user's token account
-    const userTokenAccount = await getAssociatedTokenAddress(
-      tokenMint,
-      walletPublicKey
-    );
-
-    // 4. Call Anchor program to initialize duel
-    const signature = await anchorProgramService.initializeDuel(
-      duelId,
-      betAmount,
-      tokenMint,
-      userTokenAccount
-    );
-
-    // 5. Get duel PDA for backend storage
-    const [duelPda] = anchorProgramService.getDuelPda(duelId);
-
-    // 6. Create duel record in backend with on-chain address
+    // Create duel record in backend with transaction signature
     const raw = await api.createDuel({
       bet_amount: request.betAmount,
       market_id: request.marketId,
       event_id: request.eventId,
       predicted_outcome: request.predictedOutcome,
       currency: request.currency,
-      signature: signature,
-      duel_address: duelPda.toString(), // Store on-chain address
+      signature: request.signature,
     });
     return mapDuel(raw);
   },
@@ -116,29 +89,9 @@ export const duelService = {
 
   joinDuel: async (
     duelId: string,
-    walletPublicKey: PublicKey,
-    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+    signature: string
   ): Promise<Duel> => {
-    // 1. Convert duel ID to BN
-    const duelIdBN = new BN(duelId);
-
-    // 2. Prepare parameters
-    const tokenMint = new PublicKey('So11111111111111111111111111111111111111112'); // Native SOL
-
-    // 3. Get user's token account
-    const userTokenAccount = await getAssociatedTokenAddress(
-      tokenMint,
-      walletPublicKey
-    );
-
-    // 4. Call Anchor program to join duel
-    const signature = await anchorProgramService.joinDuel(
-      duelIdBN,
-      tokenMint,
-      userTokenAccount
-    );
-
-    // 5. Update backend with join transaction
+    // Update duel in backend with transaction signature
     const raw = await api.joinDuel(duelId, { signature });
     return mapDuel(raw);
   },

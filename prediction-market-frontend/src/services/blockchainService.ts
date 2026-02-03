@@ -154,7 +154,6 @@ class BlockchainService {
       // Fetch pool data from blockchain
       const poolIdBN = new BN(poolId);
       const poolData = await anchorProgramService.getPool(poolIdBN);
-      const [poolPda] = anchorProgramService.getPoolPda(poolIdBN);
 
       // Convert on-chain data to PoolState format
       return {
@@ -436,8 +435,8 @@ class BlockchainService {
       // 2. Prepare parameters
       const poolId = new BN(params.poolId);
       const outcome = params.tradeType === 'BUY_YES' ? { yes: {} } : { no: {} };
-      const amount = params.inputAmount;
-      const minTokensOut = params.minOutputAmount;
+      const amount = new BN(params.inputAmount);
+      const minTokensOut = new BN(params.minOutputAmount);
 
       // 3. Use native SOL
       const tokenMint = new PublicKey('So11111111111111111111111111111111111111112');
