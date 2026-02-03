@@ -71,10 +71,16 @@ func main() {
 		"",                         // Token mint pubkey (configure later)
 	)
 
+	// Initialize Anchor client
+	anchorClient, err := blockchain.NewAnchorClient(cfg.SolanaRPCURL, cfg.Solana.ProgramID, "idl/pumpsly.json")
+	if err != nil {
+		log.Fatalf("Failed to initialize Anchor client: %v", err)
+	}
+
 	// Initialize payout service
 	payoutService := services.NewPayoutService(
+		escrowContract,
 		repo,
-		solanaClient,
 		cfg.Solana.PlatformFeePercent,
 	)
 
