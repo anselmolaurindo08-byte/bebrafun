@@ -72,7 +72,6 @@ export function useBlockchainWallet() {
     if (connected && publicKey) {
       // Initialize Anchor program with wallet
       try {
-        const anchorProgramService = require('../services/anchorProgramService').default;
         if (wallet?.adapter) {
           anchorProgramService.initializeProgram(wallet.adapter as any);
         }

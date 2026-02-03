@@ -15,7 +15,7 @@ export default function MarketDetailPage() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isCreatingPool, setIsCreatingPool] = useState(false);
-    const { connected, publicKey, sendTransaction } = useBlockchainWallet();
+    const { connected, publicKey, sendTransaction, wallet } = useBlockchainWallet();
 
     useEffect(() => {
         fetchMarket();
@@ -51,7 +51,8 @@ export default function MarketDetailPage() {
                 id,
                 initialLiquidity,
                 publicKey,
-                sendTransaction
+                sendTransaction,
+                wallet?.adapter // Pass wallet adapter
             );
             setAmmPoolId(poolId);
         } catch (error: any) {
