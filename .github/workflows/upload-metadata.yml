@@ -1,0 +1,143 @@
+name: Upload IDL and Security.txt
+
+on:
+  workflow_dispatch:
+    inputs:
+      program_id:
+        description: 'Program ID to upload metadata for'
+        required: true
+        default: 'BT5nEboLbcFYsSzqNsZpDCeR1n6BhMKzLCAJK8mdXiMi'
+      network:
+        description: 'Network (devnet or mainnet)'
+        required: true
+        default: 'devnet'
+        type: choice
+        options:
+          - devnet
+          - mainnet
+
+jobs:
+  upload-metadata:
+    name: Upload Program Metadata
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Deployer Key
+        run: |
+          mkdir -p ~/.config/solana
+          if [ "${{ github.event.inputs.network }}" == "mainnet" ]; then
+            echo '${{ secrets.SOLANA_MAINNET_DEPLOYER_KEY }}' > ~/.config/solana/id.json
+          else
+            echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
+          fi
+
+      - name: Set RPC URL
+        id: rpc
+        run: |
+          if [ "${{ github.event.inputs.network }}" == "mainnet" ]; then
+            echo "url=https://api.mainnet-beta.solana.com" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://api.devnet.solana.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Latest Artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: build-smart-contract.yml
+          name: smart-contract-artifacts
+          path: ./artifacts
+
+      - name: List Downloaded Files
+        run: |
+          echo "=== Downloaded Artifacts ==="
+          ls -lah ./artifacts/
+          if [ -f ./artifacts/idl/prediction_market.json ]; then
+            echo "✅ Found prediction_market.json"
+          fi
+          if [ -f ./artifacts/idl/pumpsly.json ]; then
+            echo "✅ Found pumpsly.json"
+          fi
+
+      - name: Prepare IDL File
+        run: |
+          # Проверяем какой IDL файл есть
+          if [ -f ./artifacts/idl/pumpsly.json ]; then
+            echo "Using pumpsly.json"
+            cp ./artifacts/idl/pumpsly.json ./idl.json
+          elif [ -f ./artifacts/idl/prediction_market.json ]; then
+            echo "Using prediction_market.json (renaming to pumpsly)"
+            cp ./artifacts/idl/prediction_market.json ./idl.json
+          else
+            echo "❌ No IDL file found!"
+            exit 1
+          fi
+          
+          # Обновляем program ID в IDL
+          PROGRAM_ID="${{ github.event.inputs.program_id }}"
+          echo "=== Updating IDL with Program ID: $PROGRAM_ID ==="
+          
+          # Используем jq для обновления address поля
+          if command -v jq &> /dev/null; then
+            jq --arg pid "$PROGRAM_ID" '.address = $pid' ./idl.json > ./idl_updated.json
+            mv ./idl_updated.json ./idl.json
+          else
+            # Fallback: простая замена через sed
+            sed -i "s/\"address\": \"[^\"]*\"/\"address\": \"$PROGRAM_ID\"/" ./idl.json
+          fi
+          
+          echo "=== IDL Preview ==="
+          head -20 ./idl.json
+
+      - name: Upload IDL
+        working-directory: .
+        run: |
+          PROGRAM_ID="${{ github.event.inputs.program_id }}"
+          RPC_URL="${{ steps.rpc.outputs.url }}"
+          
+          echo "=== Uploading IDL ==="
+          echo "Program ID: $PROGRAM_ID"
+          echo "Network: ${{ github.event.inputs.network }}"
+          echo "RPC: $RPC_URL"
+          
+          npx @solana-program/program-metadata@latest write idl $PROGRAM_ID ./idl.json --rpc $RPC_URL --keypair ~/.config/solana/id.json
+
+      - name: Upload Security.txt
+        working-directory: prediction-market/duels_escrow
+        run: |
+          PROGRAM_ID="${{ github.event.inputs.program_id }}"
+          RPC_URL="${{ steps.rpc.outputs.url }}"
+          
+          echo "=== Uploading security.txt ==="
+          echo "Program ID: $PROGRAM_ID"
+          echo "Network: ${{ github.event.inputs.network }}"
+          echo "RPC: $RPC_URL"
+          
+          if [ ! -f security.txt ]; then
+            echo "❌ security.txt not found!"
+            exit 1
+          fi
+          
+          echo "=== security.txt content ==="
+          cat security.txt
+          
+          npx @solana-program/program-metadata@latest write security-txt $PROGRAM_ID security.txt --rpc $RPC_URL --keypair ~/.config/solana/id.json
+
+      - name: Verify Upload
+        run: |
+          PROGRAM_ID="${{ github.event.inputs.program_id }}"
+          echo ""
+          echo "✅ METADATA UPLOADED SUCCESSFULLY!"
+          echo ""
+          echo "Program ID: $PROGRAM_ID"
+          echo "Network: ${{ github.event.inputs.network }}"
+          echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ github.event.inputs.network }}"
+          echo ""
+          echo "Wait 1-2 minutes for Explorer to update cache"
