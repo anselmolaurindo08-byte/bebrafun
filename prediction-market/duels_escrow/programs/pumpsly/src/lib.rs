@@ -25,7 +25,7 @@ const BPS_DIVISOR: u64 = 10_000;
 const POOL_FEE_BPS: u64 = 30;  // 0.3% fee (like Uniswap)
 
 #[program]
-pub mod prediction_market {
+pub mod pumpsly {
     use super::*;
 
     // ========================================================================
