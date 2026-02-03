@@ -30,6 +30,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v2.3.0/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+
       - name: Setup Deployer Key
         run: |
           mkdir -p ~/.config/solana
@@ -37,6 +44,26 @@ jobs:
             echo '${{ secrets.SOLANA_MAINNET_DEPLOYER_KEY }}' > ~/.config/solana/id.json
           else
             echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
+          fi
+          
+          # Проверить баланс
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          if [ "${{ github.event.inputs.network }}" == "mainnet" ]; then
+            solana config set --url https://api.mainnet-beta.solana.com
+          else
+            solana config set --url https://api.devnet.solana.com
+          fi
+          solana config set --keypair ~/.config/solana/id.json
+          
+          echo "=== Deployer Wallet Info ==="
+          solana address
+          BALANCE=$(solana balance | awk '{print $1}')
+          echo "Balance: $BALANCE SOL"
+          
+          # Проверить минимальный баланс
+          if (( $(echo "$BALANCE < 0.01" | bc -l) )); then
+            echo "❌ Insufficient balance! Need at least 0.01 SOL for metadata upload"
+            exit 1
           fi
 
       - name: Set RPC URL
