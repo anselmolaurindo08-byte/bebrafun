@@ -89,6 +89,9 @@ func main() {
 	// Initialize AMM service
 	ammService := services.NewAMMService(database.GetDB(), solanaClient, anchorClient)
 
+	// Initialize position service
+	positionService := services.NewPositionService(database.GetDB())
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
@@ -99,6 +102,7 @@ func main() {
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
 	duelHandler := handlers.NewDuelHandler(duelService)
 	ammHandler := handlers.NewAMMHandler(ammService)
+	positionHandler := handlers.NewPositionHandler(positionService)
 	indexingHandler := handlers.NewIndexingHandler(ammService, duelService)
 
 	// Set up Gin router
@@ -224,6 +228,10 @@ func main() {
 			amm.GET("/positions/user/:user_address", ammHandler.GetUserPositions)
 		}
 
+		// Position endpoints (POST only - protected)
+		api.POST("/positions", positionHandler.CreatePosition)
+		api.POST("/positions/:id/close", positionHandler.ClosePosition)
+
 		// Indexing endpoints (protected)
 		api.POST("/duels/index", indexingHandler.IndexDuelCreation)
 		api.POST("/duels/:id/join/index", indexingHandler.IndexDuelJoin)
@@ -238,6 +246,11 @@ func main() {
 	router.GET("/api/amm/pools/market/:market_id", ammHandler.GetPoolByMarket)
 	router.GET("/api/amm/quote", ammHandler.GetTradeQuote)
 	router.GET("/api/amm/prices/:pool_id", ammHandler.GetPriceHistory)
+
+	// Public position routes (GET only - no auth required)
+	router.GET("/api/positions/:user_address", positionHandler.GetUserPositions)
+	router.GET("/api/positions/pool/:pool_id", positionHandler.GetPoolPositions)
+	router.GET("/api/positions/detail/:id", positionHandler.GetPosition)
 
 	// Admin routes (protected + admin only)
 	admin := router.Group("/api/admin")
