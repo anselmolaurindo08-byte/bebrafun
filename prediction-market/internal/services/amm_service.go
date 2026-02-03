@@ -182,7 +182,7 @@ func (s *AMMService) IndexPoolCreation(ctx context.Context, txSignature string, 
 		NoMint:         poolAccount.TokenMint.String(),
 		YesReserve:     int64(poolAccount.YesReserve),
 		NoReserve:      int64(poolAccount.NoReserve),
-		FeePercentage:  int(poolAccount.FeePercentage),
+		FeePercentage:  int16(poolAccount.FeePercentage),
 		TotalLiquidity: totalLiquidity,
 		Status:         models.PoolStatusActive,
 	}
