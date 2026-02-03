@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("ErCo7q7uDZqeCE298u1XshQe4wxcDqdY88jfM9Z3B8rr");
+declare_id!("BT5nEboLbcFYsSzqNsZpDCeR1n6BhMKzLCAJK8mdXiMi");
 
 // Fee constants for duel resolution
 const DUEL_FEE_BPS: u64 = 250;  // 2.5% fee
