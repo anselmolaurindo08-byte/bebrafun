@@ -108,15 +108,17 @@ jobs:
       - name: Setup Deployer Key
         run: |
           mkdir -p ~/.config/solana
-          # Create a new keypair for deployment
-          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json --force
+          # Use the deployer key from GitHub secrets
+          echo '${{ secrets.SOLANA_DEPLOYER_PRIVATE_KEY }}' > ~/.config/solana/id.json
+          # Set Solana config to use devnet
+          solana config set --url https://api.devnet.solana.com
+          solana config set --keypair ~/.config/solana/id.json
           # Show the public key
           echo "=== Deployer Public Key ==="
           solana-keygen pubkey ~/.config/solana/id.json
-          # Set Solana config to use devnet
-          solana config set --url https://api.devnet.solana.com
-          # Show config
-          solana config get
+          # Show balance
+          echo "=== Deployer Balance ==="
+          solana balance
 
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
