@@ -313,6 +313,13 @@ pub mod pumpsly {
         pool.yes_reserve = initial_liquidity / 2;
         pool.no_reserve = initial_liquidity / 2;
         pool.total_liquidity = initial_liquidity;
+        
+        // Set base liquidity for price stability (10 SOL equivalent)
+        // This provides stable pricing even with micro-liquidity pools
+        let base_amount = 10_000_000_000; // 10 SOL in lamports
+        pool.base_yes_liquidity = base_amount / 2;
+        pool.base_no_liquidity = base_amount / 2;
+        
         pool.outcome = None;
         pool.status = PoolStatus::Active;
         pool.created_at = Clock::get()?.unix_timestamp;
@@ -363,25 +370,35 @@ pub mod pumpsly {
         );
 
         // Calculate tokens out using constant product formula
-        let (input_reserve, output_reserve) = match outcome {
-            Outcome::Yes => (pool.no_reserve, pool.yes_reserve),
-            Outcome::No => (pool.yes_reserve, pool.no_reserve),
+        // Use combined reserves (real + base) for stable pricing
+        let (input_reserve, output_reserve, base_input, base_output) = match outcome {
+            Outcome::Yes => (pool.no_reserve, pool.yes_reserve, pool.base_no_liquidity, pool.base_yes_liquidity),
+            Outcome::No => (pool.yes_reserve, pool.no_reserve, pool.base_yes_liquidity, pool.base_no_liquidity),
         };
 
-        let k = (input_reserve as u128)
-            .checked_mul(output_reserve as u128)
+        // Calculate with base liquidity for stable pricing
+        let total_input = (input_reserve as u128)
+            .checked_add(base_input as u128)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+        
+        let total_output = (output_reserve as u128)
+            .checked_add(base_output as u128)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let new_input_reserve = (input_reserve as u128)
+        let k = total_input
+            .checked_mul(total_output)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let new_total_input = total_input
             .checked_add(amount as u128)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let new_output_reserve = k
-            .checked_div(new_input_reserve)
+        let new_total_output = k
+            .checked_div(new_total_input)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let tokens_out = (output_reserve as u128)
-            .checked_sub(new_output_reserve)
+        let tokens_out = total_output
+            .checked_sub(new_total_output)
             .ok_or(PredictionMarketError::InsufficientLiquidity)?;
 
         let tokens_out_u64 = u64::try_from(tokens_out)
@@ -590,25 +607,35 @@ pub mod pumpsly {
         // Calculate SOL out using reverse constant product formula
         // When selling YES: add YES to yes_reserve, remove SOL from no_reserve
         // When selling NO: add NO to no_reserve, remove SOL from yes_reserve
-        let (output_reserve, input_reserve) = match outcome {
-            Outcome::Yes => (pool.no_reserve, pool.yes_reserve),
-            Outcome::No => (pool.yes_reserve, pool.no_reserve),
+        // Use combined reserves (real + base) for stable pricing
+        let (output_reserve, input_reserve, base_output, base_input) = match outcome {
+            Outcome::Yes => (pool.no_reserve, pool.yes_reserve, pool.base_no_liquidity, pool.base_yes_liquidity),
+            Outcome::No => (pool.yes_reserve, pool.no_reserve, pool.base_yes_liquidity, pool.base_no_liquidity),
         };
 
-        let k = (input_reserve as u128)
-            .checked_mul(output_reserve as u128)
+        // Calculate with base liquidity for stable pricing
+        let total_input = (input_reserve as u128)
+            .checked_add(base_input as u128)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+        
+        let total_output = (output_reserve as u128)
+            .checked_add(base_output as u128)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let new_input_reserve = (input_reserve as u128)
+        let k = total_input
+            .checked_mul(total_output)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let new_total_input = total_input
             .checked_add(tokens_amount as u128)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let new_output_reserve = k
-            .checked_div(new_input_reserve)
+        let new_total_output = k
+            .checked_div(new_total_input)
             .ok_or(PredictionMarketError::MathOverflow)?;
 
-        let sol_out = (output_reserve as u128)
-            .checked_sub(new_output_reserve)
+        let sol_out = total_output
+            .checked_sub(new_total_output)
             .ok_or(PredictionMarketError::InsufficientLiquidity)?;
 
         let sol_out_u64 = u64::try_from(sol_out)
@@ -717,6 +744,10 @@ pub struct Pool {
     pub yes_reserve: u64,
     pub no_reserve: u64,
     pub total_liquidity: u64,
+    /// Base liquidity for YES side (for price stability)
+    pub base_yes_liquidity: u64,
+    /// Base liquidity for NO side (for price stability)
+    pub base_no_liquidity: u64,
     pub outcome: Option<Outcome>,
     pub status: PoolStatus,
     pub created_at: i64,
