@@ -97,33 +97,24 @@ jobs:
           echo "=== IDL Preview ==="
           head -20 ./idl.json
 
-      - name: Setup Anchor CLI
-        run: |
-          # Install system dependencies
-          sudo apt-get update
-          sudo apt-get install -y libudev-dev pkg-config
-          
-          # Install AVM (Anchor Version Manager)
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install 0.32.1
-          avm use 0.32.1
-          
-          # Verify installation
-          anchor --version
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Upload IDL with Anchor
+      - name: Upload IDL
         working-directory: .
         run: |
           PROGRAM_ID="${{ github.event.inputs.program_id }}"
           RPC_URL="${{ steps.rpc.outputs.url }}"
           
-          echo "=== Uploading IDL with Anchor CLI ==="
+          echo "=== Uploading IDL ==="
           echo "Program ID: $PROGRAM_ID"
           echo "Network: ${{ github.event.inputs.network }}"
           echo "RPC: $RPC_URL"
           
-          # Upload IDL using Anchor with provider flags
-          anchor idl init \
+          # Upload IDL using npx @coral-xyz/anchor
+          npx -y @coral-xyz/anchor@0.32.1 idl init \
             --filepath ./idl.json \
             --provider.cluster $RPC_URL \
             --provider.wallet ~/.config/solana/id.json \
