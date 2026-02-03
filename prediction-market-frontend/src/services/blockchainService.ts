@@ -398,11 +398,10 @@ class BlockchainService {
         market_id: parseInt(marketId),
         program_id: anchorProgramService.getProgramId().toString(),
         authority: walletPublicKey.toString(),
-        pool_address: poolPda.toString(), // Store on-chain address
         yes_mint: tokenMint.toString(), // Using native SOL
         no_mint: tokenMint.toString(),
-        yes_reserve: initialLiquidityBN.toString(),
-        no_reserve: initialLiquidityBN.toString(),
+        yes_reserve: parseInt(initialLiquidityBN.toString()),
+        no_reserve: parseInt(initialLiquidityBN.toString()),
         fee_percentage: 30, // 0.3% fee (30 basis points)
       });
 
@@ -464,7 +463,7 @@ class BlockchainService {
       }
 
       // 6. Call Anchor program to buy outcome
-      const signature = await anchorProgramService.buyOutcome(
+      const buySignature = await anchorProgramService.buyOutcome(
         poolId,
         outcome,
         amount,
@@ -474,7 +473,7 @@ class BlockchainService {
       );
 
       // 7. Monitor confirmation
-      const result = await this.monitorTransaction(signature);
+      const result = await this.monitorTransaction(buySignature);
 
       if (result.status === 'failed') {
         throw new Error(result.error || 'Transaction failed');
@@ -495,7 +494,7 @@ class BlockchainService {
         input_amount: params.inputAmount.toString(),
         output_amount: outputAmount.toString(),
         fee_amount: params.feeAmount?.toString() || '0',
-        transaction_signature: signature,
+        transaction_signature: buySignature,
       });
 
       return result;

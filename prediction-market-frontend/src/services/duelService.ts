@@ -1,10 +1,5 @@
 import api from './api';
-import type {
-  Duel,
-  DuelStatistics,
-  CreateDuelRequest,
-  DepositRequest,
-} from '../types/duel';
+import type { Duel, CreateDuelRequest, DepositToDuelRequest } from '../types/duel';
 import { PublicKey, Connection, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import anchorProgramService from './anchorProgramService';
