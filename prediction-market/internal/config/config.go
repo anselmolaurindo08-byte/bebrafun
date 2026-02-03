@@ -10,11 +10,10 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Database   DatabaseConfig
-	Server     ServerConfig
-	App        AppConfig
-	Polymarket PolymarketConfig
-	Solana     SolanaConfig
+	Database DatabaseConfig
+	Server   ServerConfig
+	App      AppConfig
+	Solana   SolanaConfig
 }
 
 // DatabaseConfig holds database connection settings
@@ -36,13 +35,6 @@ type AppConfig struct {
 	JWTSecret             string
 	InitialVirtualBalance string
 	InviteCodesPerUser    string
-}
-
-// PolymarketConfig holds Polymarket API settings
-type PolymarketConfig struct {
-	APIKey     string
-	Secret     string
-	Passphrase string
 }
 
 // SolanaConfig holds Solana network settings
@@ -76,11 +68,6 @@ func Load() (*Config, error) {
 			JWTSecret:             getEnv("JWT_SECRET", ""),
 			InitialVirtualBalance: getEnv("INITIAL_VIRTUAL_BALANCE", "1000.00"),
 			InviteCodesPerUser:    getEnv("INVITE_CODES_PER_USER", "5"),
-		},
-		Polymarket: PolymarketConfig{
-			APIKey:     getEnv("POLYMARKET_API_KEY", ""),
-			Secret:     getEnv("POLYMARKET_SECRET", ""),
-			Passphrase: getEnv("POLYMARKET_PASSPHRASE", ""),
 		},
 		Solana: SolanaConfig{
 			Network:                getEnv("SOLANA_NETWORK", "devnet"),

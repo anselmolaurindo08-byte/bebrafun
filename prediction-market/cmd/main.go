@@ -17,7 +17,6 @@ import (
 	"prediction-market/internal/config"
 	"prediction-market/internal/database"
 	"prediction-market/internal/handlers"
-	"prediction-market/internal/jobs"
 	"prediction-market/internal/repository"
 	"prediction-market/internal/services"
 )
@@ -101,16 +100,6 @@ func main() {
 	duelHandler := handlers.NewDuelHandler(duelService)
 	ammHandler := handlers.NewAMMHandler(ammService)
 	indexingHandler := handlers.NewIndexingHandler(ammService, duelService)
-
-	// Start market parser job (runs every 6 hours)
-	parserJob := jobs.NewMarketParserJob(
-		database.GetDB(),
-		cfg.Polymarket.APIKey,
-		cfg.Polymarket.Secret,
-		cfg.Polymarket.Passphrase,
-	)
-	parserJob.Start(6 * time.Hour)
-	log.Println("Market parser job started")
 
 	// Set up Gin router
 	router := gin.Default()
