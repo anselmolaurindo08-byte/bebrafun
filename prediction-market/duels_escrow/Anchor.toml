@@ -11,18 +11,21 @@ duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
 prediction_market = "11111111111111111111111111111111"
+pumpsly = "ErCo7q7uDZqeCE298u1XshQe4wxcDqdY88jfM9Z3B8rr"
 
 [programs.devnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
 prediction_market = "11111111111111111111111111111111"
+pumpsly = "ErCo7q7uDZqeCE298u1XshQe4wxcDqdY88jfM9Z3B8rr"
 
 [programs.mainnet]
 duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 duels_program = "11111111111111111111111111111111"
 prediction_market = "11111111111111111111111111111111"
+pumpsly = "ErCo7q7uDZqeCE298u1XshQe4wxcDqdY88jfM9Z3B8rr"
 
 [registry]
 url = "https://api.apr.dev"
