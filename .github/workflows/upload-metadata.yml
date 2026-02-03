@@ -97,24 +97,18 @@ jobs:
           echo "=== IDL Preview ==="
           head -20 ./idl.json
 
-      - name: Setup Solana and Anchor CLI
+      - name: Setup Anchor CLI
         run: |
           # Install system dependencies
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config
           
-          # Install Solana CLI
-          sh -c "$(curl -sSfL https://release.solana.com/v2.3.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          
-          # Download pre-built Anchor CLI
+          # Install AVM (Anchor Version Manager)
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
           avm install 0.32.1
           avm use 0.32.1
           
-          # Verify installations
-          solana --version
+          # Verify installation
           anchor --version
 
       - name: Upload IDL with Anchor
@@ -128,13 +122,12 @@ jobs:
           echo "Network: ${{ github.event.inputs.network }}"
           echo "RPC: $RPC_URL"
           
-          # Configure Solana CLI
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          solana config set --url $RPC_URL
-          solana config set --keypair ~/.config/solana/id.json
-          
-          # Upload IDL using Anchor
-          anchor idl init -f ./idl.json $PROGRAM_ID
+          # Upload IDL using Anchor with provider flags
+          anchor idl init \
+            --filepath ./idl.json \
+            --provider.cluster $RPC_URL \
+            --provider.wallet ~/.config/solana/id.json \
+            $PROGRAM_ID
 
       - name: Verify Upload
         run: |
