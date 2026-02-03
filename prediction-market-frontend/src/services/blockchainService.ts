@@ -347,12 +347,8 @@ class BlockchainService {
     sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
   ): Promise<string> {
     try {
-      // 1. Generate pool ID from market ID
-      const poolId = new BN(marketId);
-
-      // 2. Prepare parameters
-      const question = `Market ${marketId}`;
-      const resolutionTime = new BN(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      // 1. Generate pool ID from timestamp
+      const poolId = new BN(Date.now());
       const initialLiquidityBN = new BN(Math.floor(initialLiquidity * LAMPORTS_PER_SOL));
 
       // 3. Use native SOL (wrapped SOL mint)
@@ -380,8 +376,8 @@ class BlockchainService {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // 6. Call Anchor program to initialize pool
-      const poolSignature = await anchorProgramService.initializePool(
+      // 6. Call Anchor program to create pool
+      await anchorProgramService.createPool(
         poolId,
         initialLiquidityBN,
         initialLiquidityBN,
@@ -429,7 +425,7 @@ class BlockchainService {
 
       // 2. Prepare parameters
       const poolId = new BN(params.poolId);
-      const outcome = params.tradeType === 'BUY_YES' ? { yes: {} } : { no: {} };
+      const outcome = params.tradeType === TradeType.BUY_YES ? { yes: {} } : { no: {} };
       const amount = new BN(params.inputAmount);
       const minTokensOut = new BN(params.minOutputAmount);
 
@@ -478,7 +474,7 @@ class BlockchainService {
       // 8. Get actual output from on-chain state
       const userPosition = await anchorProgramService.getUserPosition(poolId, walletPublicKey);
       const outputAmount = userPosition
-        ? (params.tradeType === 'BUY_YES'
+        ? (params.tradeType === TradeType.BUY_YES
           ? new BN(userPosition.yesTokens)
           : new BN(userPosition.noTokens))
         : params.minOutputAmount;
@@ -486,7 +482,8 @@ class BlockchainService {
       // 9. Record trade in backend
       await apiService.recordTrade({
         pool_id: params.poolId,
-        trade_type: params.tradeType,
+        user_id: params.userId,
+        trade_type: params.tradeType.toString(),
         input_amount: params.inputAmount.toString(),
         output_amount: outputAmount.toString(),
         fee_amount: params.feeAmount?.toString() || '0',
