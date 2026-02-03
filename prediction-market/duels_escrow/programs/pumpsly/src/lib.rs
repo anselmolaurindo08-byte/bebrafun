@@ -460,6 +460,121 @@ pub mod pumpsly {
 
         Ok(())
     }
+
+    /// Sell YES or NO outcome tokens back to pool
+    pub fn sell_outcome(
+        ctx: Context<SellOutcome>,
+        outcome: Outcome,
+        tokens_amount: u64,
+        min_sol_out: u64,
+    ) -> Result<()> {
+        require!(tokens_amount > 0, PredictionMarketError::InvalidAmount);
+        
+        let pool = &mut ctx.accounts.pool;
+        require!(
+            pool.status == PoolStatus::Active,
+            PredictionMarketError::PoolNotActive
+        );
+        require!(
+            Clock::get()?.unix_timestamp < pool.resolution_time,
+            PredictionMarketError::PoolExpired
+        );
+
+        let position = &mut ctx.accounts.user_position;
+        
+        // Check user has enough tokens
+        let user_tokens = match outcome {
+            Outcome::Yes => position.yes_tokens,
+            Outcome::No => position.no_tokens,
+        };
+        require!(
+            user_tokens >= tokens_amount,
+            PredictionMarketError::InsufficientTokens
+        );
+
+        // Calculate SOL out using reverse constant product formula
+        // When selling YES: add YES to yes_reserve, remove SOL from no_reserve
+        // When selling NO: add NO to no_reserve, remove SOL from yes_reserve
+        let (output_reserve, input_reserve) = match outcome {
+            Outcome::Yes => (pool.no_reserve, pool.yes_reserve),
+            Outcome::No => (pool.yes_reserve, pool.no_reserve),
+        };
+
+        let k = (input_reserve as u128)
+            .checked_mul(output_reserve as u128)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let new_input_reserve = (input_reserve as u128)
+            .checked_add(tokens_amount as u128)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let new_output_reserve = k
+            .checked_div(new_input_reserve)
+            .ok_or(PredictionMarketError::MathOverflow)?;
+
+        let sol_out = (output_reserve as u128)
+            .checked_sub(new_output_reserve)
+            .ok_or(PredictionMarketError::InsufficientLiquidity)?;
+
+        let sol_out_u64 = u64::try_from(sol_out)
+            .map_err(|_| PredictionMarketError::MathOverflow)?;
+
+        require!(
+            sol_out_u64 >= min_sol_out,
+            PredictionMarketError::SlippageExceeded
+        );
+
+        // Update reserves
+        match outcome {
+            Outcome::Yes => {
+                pool.yes_reserve += tokens_amount;
+                pool.no_reserve -= sol_out_u64;
+            }
+            Outcome::No => {
+                pool.no_reserve += tokens_amount;
+                pool.yes_reserve -= sol_out_u64;
+            }
+        }
+
+        // Update user position
+        match outcome {
+            Outcome::Yes => position.yes_tokens -= tokens_amount,
+            Outcome::No => position.no_tokens -= tokens_amount,
+        }
+
+        // Transfer SOL to user
+        let pool_id_bytes = pool.pool_id.to_le_bytes();
+        let seeds = &[
+            b"pool_vault",
+            pool_id_bytes.as_ref(),
+            pool.token_mint.as_ref(),
+            &[pool.bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.pool_vault.to_account_info(),
+                    to: ctx.accounts.user_token_account.to_account_info(),
+                    authority: ctx.accounts.pool_vault.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            sol_out_u64,
+        )?;
+
+        emit!(OutcomeSold {
+            pool_id: pool.pool_id,
+            user: ctx.accounts.user.key(),
+            outcome,
+            tokens_sold: tokens_amount,
+            sol_received: sol_out_u64,
+        });
+
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -704,6 +819,24 @@ pub struct ClaimWinnings<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct SellOutcome<'info> {
+    #[account(mut)]
+    pub pool: Account<'info, Pool>,
+
+    #[account(mut)]
+    pub pool_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_position: Account<'info, UserPosition>,
+
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
 // ============================================================================
 // EVENTS
 // ============================================================================
@@ -757,6 +890,15 @@ pub struct OutcomePurchased {
     pub outcome: Outcome,
     pub amount_paid: u64,
     pub tokens_received: u64,
+}
+
+#[event]
+pub struct OutcomeSold {
+    pub pool_id: u64,
+    pub user: Pubkey,
+    pub outcome: Outcome,
+    pub tokens_sold: u64,
+    pub sol_received: u64,
 }
 
 #[event]
@@ -822,4 +964,7 @@ pub enum PredictionMarketError {
 
     #[msg("No winnings to claim")]
     NoWinnings,
+
+    #[msg("Insufficient tokens")]
+    InsufficientTokens,
 }
