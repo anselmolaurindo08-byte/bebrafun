@@ -158,7 +158,7 @@ jobs:
         working-directory: prediction-market/duels_escrow
         run: |
           echo "=== Deploying to Devnet ==="
-          anchor deploy --provider.cluster devnet --program-name pumpsly --program-keypair target/deploy/pumpsly-keypair.json
+          anchor deploy --provider.cluster devnet --program-name pumpsly
           echo "=== Deployed Program IDs ==="
           anchor keys list
 
