@@ -120,9 +120,9 @@ jobs:
           # Update declare_id in lib.rs
           echo "=== Updating declare_id in lib.rs ==="
           sed -i "s/declare_id!(\".*\")/declare_id!(\"$PROGRAM_ID\")/" programs/pumpsly/src/lib.rs
-          # Add pumpsly to Anchor.toml (after prediction_market line in each section)
-          echo "=== Adding pumpsly to Anchor.toml ==="
-          sed -i "/prediction_market = /a pumpsly = \"$PROGRAM_ID\"" Anchor.toml
+          # Update or add pumpsly to Anchor.toml (replace existing entries)
+          echo "=== Updating Anchor.toml ==="
+          sed -i "s/^pumpsly = .*/pumpsly = \"$PROGRAM_ID\"/" Anchor.toml
           # Show updated files
           echo "=== Updated declare_id ==="
           grep "declare_id" programs/pumpsly/src/lib.rs || echo "declare_id not found"
