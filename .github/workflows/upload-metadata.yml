@@ -103,7 +103,7 @@ jobs:
           node-version: '20'
 
       - name: Upload IDL
-        working-directory: .
+        working-directory: prediction-market/duels_escrow
         run: |
           PROGRAM_ID="${{ github.event.inputs.program_id }}"
           RPC_URL="${{ steps.rpc.outputs.url }}"
@@ -113,7 +113,10 @@ jobs:
           echo "Network: ${{ github.event.inputs.network }}"
           echo "RPC: $RPC_URL"
           
-          # Upload IDL using npx @coral-xyz/anchor
+          # Copy IDL to workspace
+          cp ../../idl.json ./idl.json
+          
+          # Upload IDL using npx @coral-xyz/anchor from workspace directory
           npx -y @coral-xyz/anchor@0.32.1 idl init \
             --filepath ./idl.json \
             --provider.cluster $RPC_URL \
