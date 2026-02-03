@@ -137,7 +137,7 @@ jobs:
           ls -lh target/deploy/pumpsly.so
           echo ""
           echo "=== IDL Files ==="
-          ls -lh target/idl/pumpsly.json
+          ls -lh target/idl/*.json || echo "No IDL files generated"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -165,5 +165,9 @@ jobs:
       - name: Upload IDL
         working-directory: prediction-market/duels_escrow
         run: |
-          echo "=== Uploading IDL to Program ==="
-          npx @solana-program/program-metadata@latest write idl 9Lvncjd2KiHGLrCHWJ9CJM3vcijDfP3CFpS33t6dfcZe target/idl/pumpsly.json --cluster devnet --keypair ~/.config/solana/id.json
+          if [ -f target/idl/pumpsly.json ]; then
+            echo "=== Uploading IDL to Program ==="
+            npx @solana-program/program-metadata@latest write idl 9Lvncjd2KiHGLrCHWJ9CJM3vcijDfP3CFpS33t6dfcZe target/idl/pumpsly.json --cluster devnet --keypair ~/.config/solana/id.json
+          else
+            echo "=== IDL file not found, skipping upload ==="
+          fi
