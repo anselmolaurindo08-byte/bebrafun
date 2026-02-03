@@ -210,7 +210,7 @@ class BlockchainService {
       const pool = pools[0];
 
       return {
-        poolId: String(pool.id),
+        poolId: String(pool.pool_address || pool.id), // Use on-chain pool_address, fallback to UUID
         marketId: String(pool.market_id),
         authority: new PublicKey(pool.authority),
         yesMint: new PublicKey(pool.yes_mint),
