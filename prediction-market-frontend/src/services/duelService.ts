@@ -1,9 +1,10 @@
 import api from './api';
-import type { Duel, CreateDuelRequest, DepositToDuelRequest } from '../types/duel';
-import { PublicKey, Connection, Transaction } from '@solana/web3.js';
-import BN from 'bn.js';
-import anchorProgramService from './anchorProgramService';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
+import type {
+  Duel,
+  DuelStatistics,
+  CreateDuelRequest,
+  DepositRequest,
+} from '../types/duel';
 
 // Map snake_case API response to camelCase Duel
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

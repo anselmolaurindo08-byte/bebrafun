@@ -380,20 +380,16 @@ class BlockchainService {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // 6. Call Anchor program to create pool
-      const signature = await anchorProgramService.createPool(
+      // 6. Call Anchor program to initialize pool
+      const poolSignature = await anchorProgramService.initializePool(
         poolId,
-        question,
-        resolutionTime,
+        initialLiquidityBN,
         initialLiquidityBN,
         tokenMint,
         tokenAccountInfo.address
       );
 
-      // 7. Get pool PDA for backend storage
-      const [poolPda] = anchorProgramService.getPoolPda(poolId);
-
-      // 8. Create pool record in backend with on-chain address
+      // 7. Create pool record in backend with on-chain address
       const pool = await apiService.createPool({
         market_id: parseInt(marketId),
         program_id: anchorProgramService.getProgramId().toString(),
