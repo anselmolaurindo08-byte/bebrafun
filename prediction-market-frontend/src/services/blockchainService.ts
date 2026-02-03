@@ -474,6 +474,7 @@ class BlockchainService {
           market_id: parseInt(marketId),
           program_id: anchorProgramService.getProgramId().toString(),
           authority: walletPublicKey.toString(),
+          pool_address: poolId.toString(), // On-chain pool ID
           yes_mint: tokenMint.toString(),
           no_mint: tokenMint.toString(),
           yes_reserve: parseInt(initialLiquidityBN.toString()),
@@ -484,8 +485,11 @@ class BlockchainService {
         console.log('Pool data being sent:', JSON.stringify(poolData, null, 2));
 
         const pool = await apiService.createPool(poolData);
-        console.log('✅ Pool saved to backend:', pool.id);
-        return pool.id;
+        console.log('✅ Pool saved to backend with UUID:', pool.id);
+        console.log('✅ Returning on-chain poolId:', poolId.toString());
+
+        // Return on-chain poolId, not backend UUID
+        return poolId.toString();
       } catch (error: any) {
         console.error('❌ Failed to save pool to backend:', error);
         console.error('Error response:', error.response?.data);
