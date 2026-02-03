@@ -321,7 +321,6 @@ pub mod pumpsly {
         let pool = &mut ctx.accounts.pool;
         pool.pool_id = pool_id;
         pool.authority = ctx.accounts.authority.key();
-        pool.token_mint = ctx.accounts.token_mint.key();
         pool.question = question.clone();
         pool.resolution_time = resolution_time;
         pool.yes_reserve = initial_liquidity / 2;
@@ -339,23 +338,19 @@ pub mod pumpsly {
         pool.created_at = Clock::get()?.unix_timestamp;
         pool.bump = ctx.bumps.pool;
 
-        // Transfer initial liquidity to pool vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.authority_token_account.to_account_info(),
-                    to: ctx.accounts.pool_vault.to_account_info(),
-                    authority: ctx.accounts.authority.to_account_info(),
-                },
-            ),
-            initial_liquidity,
-        )?;
+        // Transfer initial SOL liquidity to pool PDA
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.pool.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, initial_liquidity)?;
 
         emit!(PoolCreated {
             pool_id,
             authority: ctx.accounts.authority.key(),
-            token_mint: ctx.accounts.token_mint.key(),
             question,
             resolution_time,
             initial_liquidity,
@@ -434,18 +429,15 @@ pub mod pumpsly {
             PredictionMarketError::SlippageExceeded
         );
 
-        // Transfer payment to pool
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.user_token_account.to_account_info(),
-                    to: ctx.accounts.pool_vault.to_account_info(),
-                    authority: ctx.accounts.user.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
+        // Transfer SOL payment to pool PDA
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.user.to_account_info(),
+                to: ctx.accounts.pool.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, amount)?;
 
         // Update reserves
         match outcome {
@@ -551,28 +543,17 @@ pub mod pumpsly {
 
         require!(winning_tokens > 0, PredictionMarketError::NoWinnings);
 
-        // Transfer winnings (1:1 payout for winning tokens)
+        // Transfer SOL winnings from pool PDA (1:1 payout for winning tokens)
         let pool_id_bytes = pool.pool_id.to_le_bytes();
         let seeds = &[
-            b"pool_vault",
+            b"pool",
             pool_id_bytes.as_ref(),
-            pool.token_mint.as_ref(),
             &[pool.bump],
         ];
         let signer_seeds = &[&seeds[..]];
 
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.pool_vault.to_account_info(),
-                    to: ctx.accounts.user_token_account.to_account_info(),
-                    authority: ctx.accounts.pool_vault.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            winning_tokens,
-        )?;
+        **ctx.accounts.pool.to_account_info().try_borrow_mut_lamports()? -= winning_tokens;
+        **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += winning_tokens;
 
         // Reset position
         position.yes_tokens = 0;
@@ -689,28 +670,9 @@ pub mod pumpsly {
             Outcome::No => position.no_tokens -= tokens_amount,
         }
 
-        // Transfer SOL to user
-        let pool_id_bytes = pool.pool_id.to_le_bytes();
-        let seeds = &[
-            b"pool_vault",
-            pool_id_bytes.as_ref(),
-            pool.token_mint.as_ref(),
-            &[pool.bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.pool_vault.to_account_info(),
-                    to: ctx.accounts.user_token_account.to_account_info(),
-                    authority: ctx.accounts.pool_vault.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            sol_out_after_fee,
-        )?;
+        // Transfer SOL from pool PDA to user
+        **ctx.accounts.pool.to_account_info().try_borrow_mut_lamports()? -= sol_out_after_fee;
+        **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += sol_out_after_fee;
 
         emit!(OutcomeSold {
             pool_id: pool.pool_id,
@@ -752,7 +714,6 @@ pub struct Duel {
 pub struct Pool {
     pub pool_id: u64,
     pub authority: Pubkey,
-    pub token_mint: Pubkey,
     pub question: String,
     pub resolution_time: i64,
     pub yes_reserve: u64,
@@ -913,25 +874,9 @@ pub struct CreatePool<'info> {
     )]
     pub pool: Account<'info, Pool>,
 
-    #[account(
-        init,
-        payer = authority,
-        seeds = [b"pool_vault", pool_id.to_le_bytes().as_ref(), token_mint.key().as_ref()],
-        bump,
-        token::mint = token_mint,
-        token::authority = pool_vault,
-    )]
-    pub pool_vault: Account<'info, TokenAccount>,
-
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(mut)]
-    pub authority_token_account: Account<'info, TokenAccount>,
-
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -939,9 +884,6 @@ pub struct CreatePool<'info> {
 pub struct BuyOutcome<'info> {
     #[account(mut)]
     pub pool: Account<'info, Pool>,
-
-    #[account(mut)]
-    pub pool_vault: Account<'info, TokenAccount>,
 
     #[account(
         init_if_needed,
@@ -953,12 +895,8 @@ pub struct BuyOutcome<'info> {
     pub user_position: Account<'info, UserPosition>,
 
     #[account(mut)]
-    pub user_token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
     pub user: Signer<'info>,
 
-    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -980,19 +918,16 @@ pub struct UpdatePoolStatus<'info> {
 
 #[derive(Accounts)]
 pub struct ClaimWinnings<'info> {
-    pub pool: Account<'info, Pool>,
-
     #[account(mut)]
-    pub pool_vault: Account<'info, TokenAccount>,
+    pub pool: Account<'info, Pool>,
 
     #[account(mut)]
     pub user_position: Account<'info, UserPosition>,
 
     #[account(mut)]
-    pub user_token_account: Account<'info, TokenAccount>,
-
     pub user: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -1001,16 +936,12 @@ pub struct SellOutcome<'info> {
     pub pool: Account<'info, Pool>,
 
     #[account(mut)]
-    pub pool_vault: Account<'info, TokenAccount>,
-
-    #[account(mut)]
     pub user_position: Account<'info, UserPosition>,
 
     #[account(mut)]
-    pub user_token_account: Account<'info, TokenAccount>,
-
     pub user: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    
+    pub system_program: Program<'info, System>,
 }
 
 // ============================================================================
@@ -1059,7 +990,6 @@ pub struct DuelCancelled {
 pub struct PoolCreated {
     pub pool_id: u64,
     pub authority: Pubkey,
-    pub token_mint: Pubkey,
     pub question: String,
     pub resolution_time: i64,
     pub initial_liquidity: u64,
