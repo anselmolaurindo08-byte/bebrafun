@@ -228,6 +228,63 @@ pub mod pumpsly {
         Ok(())
     }
 
+    /// Cancel duel and refund player 1 if player 2 hasn't joined
+    pub fn cancel_duel(ctx: Context<CancelDuel>) -> Result<()> {
+        let duel = &mut ctx.accounts.duel;
+        
+        // Only allow if waiting for player 2
+        require!(
+            duel.status == DuelStatus::WaitingForPlayer2,
+            PredictionMarketError::InvalidDuelStatus
+        );
+        
+        // Only player 1 can cancel
+        require!(
+            ctx.accounts.player_1.key() == duel.player_1,
+            PredictionMarketError::Unauthorized
+        );
+        
+        // Must wait at least 5 minutes before cancelling
+        let timeout = 300; // 5 minutes in seconds
+        require!(
+            Clock::get()?.unix_timestamp >= duel.created_at + timeout,
+            PredictionMarketError::CancelTooEarly
+        );
+        
+        // Refund player 1
+        let duel_id_bytes = duel.duel_id.to_le_bytes();
+        let seeds = &[
+            b"duel_vault",
+            duel_id_bytes.as_ref(),
+            duel.token_mint.as_ref(),
+            &[duel.bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+        
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.duel_vault.to_account_info(),
+                    to: ctx.accounts.player_1_token_account.to_account_info(),
+                    authority: ctx.accounts.duel_vault.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            duel.amount,
+        )?;
+        
+        // Mark as cancelled
+        duel.status = DuelStatus::Cancelled;
+        
+        emit!(DuelCancelled {
+            duel_id: duel.duel_id,
+            refund_amount: duel.amount,
+        });
+        
+        Ok(())
+    }
+
     // ========================================================================
     // AMM POOL INSTRUCTIONS
     // ========================================================================
@@ -421,6 +478,29 @@ pub mod pumpsly {
             outcome,
         });
 
+        Ok(())
+    }
+
+    /// Manually update pool status (close pool early)
+    pub fn update_pool_status(
+        ctx: Context<UpdatePoolStatus>,
+        new_status: PoolStatus,
+    ) -> Result<()> {
+        let pool = &mut ctx.accounts.pool;
+        
+        // Only authority can update status
+        require!(
+            ctx.accounts.authority.key() == pool.authority,
+            PredictionMarketError::Unauthorized
+        );
+        
+        pool.status = new_status;
+        
+        emit!(PoolStatusUpdated {
+            pool_id: pool.pool_id,
+            new_status,
+        });
+        
         Ok(())
     }
 
@@ -661,6 +741,7 @@ pub enum DuelStatus {
     Countdown,
     Active,
     Resolved,
+    Cancelled,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -761,6 +842,21 @@ pub struct ResolveDuel<'info> {
 }
 
 #[derive(Accounts)]
+pub struct CancelDuel<'info> {
+    #[account(mut)]
+    pub duel: Account<'info, Duel>,
+
+    #[account(mut)]
+    pub duel_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub player_1_token_account: Account<'info, TokenAccount>,
+
+    pub player_1: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
 #[instruction(pool_id: u64)]
 pub struct CreatePool<'info> {
     #[account(
@@ -823,6 +919,14 @@ pub struct BuyOutcome<'info> {
 
 #[derive(Accounts)]
 pub struct ResolvePool<'info> {
+    #[account(mut)]
+    pub pool: Account<'info, Pool>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdatePoolStatus<'info> {
     #[account(mut)]
     pub pool: Account<'info, Pool>,
 
@@ -901,6 +1005,12 @@ pub struct DuelResolved {
 }
 
 #[event]
+pub struct DuelCancelled {
+    pub duel_id: u64,
+    pub refund_amount: u64,
+}
+
+#[event]
 pub struct PoolCreated {
     pub pool_id: u64,
     pub authority: Pubkey,
@@ -941,6 +1051,12 @@ pub struct WinningsClaimed {
     pub pool_id: u64,
     pub user: Pubkey,
     pub amount: u64,
+}
+
+#[event]
+pub struct PoolStatusUpdated {
+    pub pool_id: u64,
+    pub new_status: PoolStatus,
 }
 
 // ============================================================================
@@ -996,4 +1112,10 @@ pub enum PredictionMarketError {
 
     #[msg("Insufficient tokens")]
     InsufficientTokens,
+
+    #[msg("Unauthorized")]
+    Unauthorized,
+
+    #[msg("Cancel too early - must wait 5 minutes")]
+    CancelTooEarly,
 }
