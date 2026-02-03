@@ -3,6 +3,10 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 declare_id!("11111111111111111111111111111111");
 
+// Fee constants for duel resolution
+const DUEL_FEE_BPS: u64 = 250;  // 2.5% fee
+const BPS_DIVISOR: u64 = 10_000;
+
 #[program]
 pub mod prediction_market {
     use super::*;
@@ -158,8 +162,14 @@ pub mod prediction_market {
         duel.status = DuelStatus::Resolved;
         duel.resolved_at = Some(Clock::get()?.unix_timestamp);
 
-        // Transfer winnings to winner (both deposits)
-        let total_payout = duel.amount.checked_mul(2).unwrap();
+        // Calculate fee and winner payout
+        let total_pool = duel.amount.checked_mul(2).unwrap();
+        let fee_amount = total_pool
+            .checked_mul(DUEL_FEE_BPS)
+            .unwrap()
+            .checked_div(BPS_DIVISOR)
+            .unwrap();
+        let winner_payout = total_pool.checked_sub(fee_amount).unwrap();
         
         let duel_id_bytes = duel.duel_id.to_le_bytes();
         let seeds = &[
@@ -176,6 +186,21 @@ pub mod prediction_market {
             &ctx.accounts.player_2_token_account
         };
 
+        // Transfer fee to platform
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.duel_vault.to_account_info(),
+                    to: ctx.accounts.fee_collector.to_account_info(),
+                    authority: ctx.accounts.duel_vault.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            fee_amount,
+        )?;
+
+        // Transfer winnings to winner
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -186,14 +211,15 @@ pub mod prediction_market {
                 },
                 signer_seeds,
             ),
-            total_payout,
+            winner_payout,
         )?;
 
         emit!(DuelResolved {
             duel_id: duel.duel_id,
             winner: winner_pubkey,
             exit_price,
-            payout: total_payout,
+            payout: winner_payout,
+            fee: fee_amount,
         });
 
         Ok(())
@@ -584,6 +610,10 @@ pub struct ResolveDuel<'info> {
     #[account(mut)]
     pub player_2_token_account: Account<'info, TokenAccount>,
 
+    /// Platform fee collector account
+    #[account(mut)]
+    pub fee_collector: Account<'info, TokenAccount>,
+
     pub authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -707,6 +737,7 @@ pub struct DuelResolved {
     pub winner: Pubkey,
     pub exit_price: u64,
     pub payout: u64,
+    pub fee: u64,
 }
 
 #[event]
