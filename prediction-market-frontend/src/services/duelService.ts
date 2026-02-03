@@ -8,11 +8,7 @@ import type {
 import { PublicKey, Connection, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import anchorProgramService from './anchorProgramService';
-import {
-  getAssociatedTokenAddress,
-  createAssociatedTokenAccountInstruction,
-  TOKEN_PROGRAM_ID,
-} from '@solana/spl-token';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Map snake_case API response to camelCase Duel
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
