@@ -8,7 +8,7 @@ const DUEL_FEE_BPS: u64 = 250;  // 2.5% fee
 const BPS_DIVISOR: u64 = 10_000;
 
 #[program]
-pub mod prediction_market {
+pub mod pumpsly {
     use super::*;
 
     // ========================================================================

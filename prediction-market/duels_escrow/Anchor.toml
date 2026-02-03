@@ -7,13 +7,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-prediction_market = "11111111111111111111111111111111"
+pumpsly = "11111111111111111111111111111111"
 
 [programs.devnet]
-prediction_market = "2h5WNJX656UPrPMyAcZdw5jYVSuetG6Y9kEM9jAtgBD7"
+pumpsly = "11111111111111111111111111111111"
 
 [programs.mainnet]
-prediction_market = "11111111111111111111111111111111"
+pumpsly = "11111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"

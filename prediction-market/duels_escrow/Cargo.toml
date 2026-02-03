@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "programs/prediction_market"
+    "programs/pumpsly"
 ]
 resolver = "2"
 
