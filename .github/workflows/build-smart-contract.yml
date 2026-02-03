@@ -148,12 +148,6 @@ jobs:
             prediction-market/duels_escrow/target/idl/*.json
           retention-days: 30
 
-      - name: Generate Program IDs
-        working-directory: prediction-market/duels_escrow
-        run: |
-          echo "=== Program IDs ==="
-          anchor keys list
-
       - name: Deploy to Devnet
         working-directory: prediction-market/duels_escrow
         run: |
