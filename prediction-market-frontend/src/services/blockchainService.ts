@@ -372,52 +372,75 @@ class BlockchainService {
 
       // 5. If token account doesn't exist, create it first
       if (tokenAccountInfo.instruction) {
-        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
-        const createAccountTx = new Transaction({
-          blockhash,
-          lastValidBlockHeight,
-          feePayer: walletPublicKey,
-        });
-        createAccountTx.add(tokenAccountInfo.instruction);
+        try {
+          console.log('Creating WSOL token account...');
+          const { blockhash: createBlockhash, lastValidBlockHeight: createLastValid } =
+            await this.connection.getLatestBlockhash('confirmed');
+          const createAccountTx = new Transaction({
+            blockhash: createBlockhash,
+            lastValidBlockHeight: createLastValid,
+            feePayer: walletPublicKey,
+          });
+          createAccountTx.add(tokenAccountInfo.instruction);
 
-        await sendTransaction(createAccountTx, this.connection);
-        // Wait for confirmation
-        await new Promise(resolve => setTimeout(resolve, 2000));
+          const createSig = await sendTransaction(createAccountTx, this.connection);
+          console.log('✅ Token account created:', createSig);
+          // Wait for confirmation
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error('❌ Failed to create token account:', error);
+          throw new Error(`Failed to create WSOL token account: ${error}`);
+        }
       }
 
       // 6. Wrap SOL for initial liquidity
       // The contract transfers initial_liquidity from authority's token account to pool vault
       // So we need to fund the authority's WSOL account with initial_liquidity amount
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
-      const wrapTx = new Transaction({
-        blockhash,
-        lastValidBlockHeight,
-        feePayer: walletPublicKey,
-      });
+      try {
+        console.log(`Wrapping ${initialLiquidity} SOL...`);
+        const { blockhash: wrapBlockhash, lastValidBlockHeight: wrapLastValid } =
+          await this.connection.getLatestBlockhash('confirmed');
+        const wrapTx = new Transaction({
+          blockhash: wrapBlockhash,
+          lastValidBlockHeight: wrapLastValid,
+          feePayer: walletPublicKey,
+        });
 
-      // Transfer SOL to token account and sync
-      wrapTx.add(
-        SystemProgram.transfer({
-          fromPubkey: walletPublicKey,
-          toPubkey: tokenAccountInfo.address,
-          lamports: initialLiquidityBN.toNumber(),
-        }),
-        createSyncNativeInstruction(tokenAccountInfo.address)
-      );
+        // Transfer SOL to token account and sync
+        wrapTx.add(
+          SystemProgram.transfer({
+            fromPubkey: walletPublicKey,
+            toPubkey: tokenAccountInfo.address,
+            lamports: initialLiquidityBN.toNumber(),
+          }),
+          createSyncNativeInstruction(tokenAccountInfo.address)
+        );
 
-      await sendTransaction(wrapTx, this.connection);
-      // Wait for SOL wrapping to complete
-      await new Promise(resolve => setTimeout(resolve, 2000));
+        const wrapSig = await sendTransaction(wrapTx, this.connection);
+        console.log('✅ SOL wrapped:', wrapSig);
+        // Wait for SOL wrapping to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error('❌ Failed to wrap SOL:', error);
+        throw new Error(`Failed to wrap SOL for initial liquidity: ${error}`);
+      }
 
       // 7. Call Anchor program to create pool
-      await anchorProgramService.createPool(
-        poolId,
-        marketId,
-        initialLiquidityBN,
-        initialLiquidityBN,
-        tokenMint,
-        tokenAccountInfo.address
-      );
+      try {
+        console.log('Creating pool on-chain...');
+        await anchorProgramService.createPool(
+          poolId,
+          marketId,
+          initialLiquidityBN,
+          initialLiquidityBN,
+          tokenMint,
+          tokenAccountInfo.address
+        );
+        console.log('✅ Pool created on-chain');
+      } catch (error) {
+        console.error('❌ Failed to create pool on-chain:', error);
+        throw new Error(`Failed to create pool on Solana: ${error}`);
+      }
 
       // 7. Create pool record in backend with on-chain address
       const pool = await apiService.createPool({
