@@ -48,6 +48,8 @@ type PolymarketConfig struct {
 // SolanaConfig holds Solana network settings
 type SolanaConfig struct {
 	Network                string
+	SolanaRPCURL           string
+	ProgramID              string
 	ServerWalletPrivateKey string
 	ServerWalletPublicKey  string
 	EscrowProgramID        string
@@ -82,6 +84,8 @@ func Load() (*Config, error) {
 		},
 		Solana: SolanaConfig{
 			Network:                getEnv("SOLANA_NETWORK", "devnet"),
+			SolanaRPCURL:           getEnv("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
+			ProgramID:              getEnv("PROGRAM_ID", "46XLMDdrHBaV1YeX1nuUwtRM1KNMF1XKEp5DBVSrHcbY"),
 			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
 			ServerWalletPublicKey:  getEnv("SERVER_WALLET_PUBLIC_KEY", ""),
 			EscrowProgramID:        getEnv("ESCROW_PROGRAM_ID", "F1CFijTZ6QEWPEoSTZ9BfYc4bhD6ejK5oRZhK5YYH9SY"),

@@ -100,6 +100,7 @@ func main() {
 	blockchainHandler := handlers.NewBlockchainHandler(database.GetDB(), blockchainService)
 	duelHandler := handlers.NewDuelHandler(duelService)
 	ammHandler := handlers.NewAMMHandler(ammService)
+	indexingHandler := handlers.NewIndexingHandler(ammService, duelService)
 
 	// Start market parser job (runs every 6 hours)
 	parserJob := jobs.NewMarketParserJob(
@@ -230,6 +231,7 @@ func main() {
 			amm.GET("/pools/:id", ammHandler.GetPool)
 			amm.GET("/pools/market/:market_id", ammHandler.GetPoolByMarket)
 			amm.POST("/pools", ammHandler.CreatePool)
+			amm.POST("/pools/index", indexingHandler.IndexPoolCreation) // Indexing endpoint
 			amm.GET("/quote", ammHandler.GetTradeQuote)
 			amm.POST("/trades", ammHandler.RecordTrade)
 			amm.GET("/trades/:pool_id", ammHandler.GetTradeHistory)
@@ -237,6 +239,10 @@ func main() {
 			amm.GET("/positions/user/:user_address", ammHandler.GetUserPositions)
 			amm.GET("/prices/:pool_id", ammHandler.GetPriceHistory)
 		}
+
+		// Indexing endpoints (protected)
+		api.POST("/duels/index", indexingHandler.IndexDuelCreation)
+		api.POST("/duels/:id/join/index", indexingHandler.IndexDuelJoin)
 	}
 
 	// Public duel routes
