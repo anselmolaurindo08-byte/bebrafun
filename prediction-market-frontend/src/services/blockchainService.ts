@@ -344,9 +344,15 @@ class BlockchainService {
     marketId: string,
     initialLiquidity: number,
     walletPublicKey: PublicKey,
-    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
+    sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>,
+    wallet: any // Add wallet parameter
   ): Promise<string> {
     try {
+      // 0. Initialize Anchor program with wallet first
+      if (wallet) {
+        anchorProgramService.initializeProgram(wallet);
+      }
+
       // 1. Generate pool ID from timestamp
       const poolId = new BN(Date.now());
       const initialLiquidityBN = new BN(Math.floor(initialLiquidity * LAMPORTS_PER_SOL));
