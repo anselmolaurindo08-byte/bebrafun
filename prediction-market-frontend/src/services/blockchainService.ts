@@ -5,6 +5,7 @@ import {
   clusterApiUrl,
   Transaction,
   TransactionInstruction,
+  SystemProgram,
 } from '@solana/web3.js';
 import type { TransactionSignature } from '@solana/web3.js';
 import {
@@ -13,6 +14,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   NATIVE_MINT,
+  createSyncNativeInstruction,
 } from '@solana/spl-token';
 import BN from 'bn.js';
 import anchorProgramService from './anchorProgramService';
@@ -383,9 +385,31 @@ class BlockchainService {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // Note: SOL wrapping removed - base liquidity uses virtual reserves
+      // 6. Wrap SOL for initial liquidity
+      // The contract transfers initial_liquidity from authority's token account to pool vault
+      // So we need to fund the authority's WSOL account with initial_liquidity amount
+      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+      const wrapTx = new Transaction({
+        blockhash,
+        lastValidBlockHeight,
+        feePayer: walletPublicKey,
+      });
 
-      // 6. Call Anchor program to create pool
+      // Transfer SOL to token account and sync
+      wrapTx.add(
+        SystemProgram.transfer({
+          fromPubkey: walletPublicKey,
+          toPubkey: tokenAccountInfo.address,
+          lamports: initialLiquidityBN.toNumber(),
+        }),
+        createSyncNativeInstruction(tokenAccountInfo.address)
+      );
+
+      await sendTransaction(wrapTx, this.connection);
+      // Wait for SOL wrapping to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 7. Call Anchor program to create pool
       await anchorProgramService.createPool(
         poolId,
         marketId,
