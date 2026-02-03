@@ -458,24 +458,36 @@ class BlockchainService {
           tokenAccountInfo.address
         );
         console.log('✅ Pool created on-chain');
+
+        // Wait for transaction confirmation before reading pool state
+        await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (error) {
         console.error('❌ Failed to create pool on-chain:', error);
         throw new Error(`Failed to create pool on Solana: ${error}`);
       }
 
-      // 7. Create pool record in backend with on-chain address
-      const pool = await apiService.createPool({
-        market_id: parseInt(marketId),
-        program_id: anchorProgramService.getProgramId().toString(),
-        authority: walletPublicKey.toString(),
-        yes_mint: tokenMint.toString(), // Using native SOL
-        no_mint: tokenMint.toString(),
-        yes_reserve: parseInt(initialLiquidityBN.toString()),
-        no_reserve: parseInt(initialLiquidityBN.toString()),
-        fee_percentage: 30, // 0.3% fee (30 basis points)
-      });
-
-      return pool.id;
+      // 8. Create pool record in backend with on-chain address
+      try {
+        console.log('Saving pool to backend...');
+        const pool = await apiService.createPool({
+          market_id: parseInt(marketId),
+          program_id: anchorProgramService.getProgramId().toString(),
+          authority: walletPublicKey.toString(),
+          yes_mint: tokenMint.toString(), // Using native SOL
+          no_mint: tokenMint.toString(),
+          yes_reserve: parseInt(initialLiquidityBN.toString()),
+          no_reserve: parseInt(initialLiquidityBN.toString()),
+          fee_percentage: 30, // 0.3% fee (30 basis points)
+        });
+        console.log('✅ Pool saved to backend:', pool.id);
+        return pool.id;
+      } catch (error) {
+        console.error('❌ Failed to save pool to backend:', error);
+        // Pool was created on-chain but failed to save to backend
+        // Return poolId anyway so user can see it was created
+        console.warn('Pool created on-chain but not saved to backend. Using poolId:', poolId.toString());
+        return poolId.toString();
+      }
 
     } catch (error: any) {
       throw this.createError(
