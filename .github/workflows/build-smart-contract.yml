@@ -107,6 +107,17 @@ jobs:
           echo "=== Deployer Balance ==="
           solana balance
 
+      - name: Create Program Keypair
+        working-directory: prediction-market/duels_escrow
+        run: |
+          mkdir -p target/deploy
+          # Create keypair for program ID 9Lvncjd2KiHGLrCHWJ9CJM3vcijDfP3CFpS33t6dfcZe
+          # This is the base58 private key that generates this program ID
+          echo '[110,247,156,87,155,125,226,179,247,155,155,230,177,253,90,167,82,149,29,138,175,212,178,133,253,167,132,254,137,236,125,137,127,235,44,106,30,167,78,72,111,72,195,244,239,78,113,81,113,81,117,14,42,159,252,68,172,82,118,222,120,205,75,204]' > target/deploy/pumpsly-keypair.json
+          # Verify the program ID
+          echo "=== Program ID from keypair ==="
+          solana-keygen pubkey target/deploy/pumpsly-keypair.json
+
       - name: Build Programs
         working-directory: prediction-market/duels_escrow
         env:
