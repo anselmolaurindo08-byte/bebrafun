@@ -113,12 +113,17 @@ export default function MarketDetailPage() {
             if (connected && publicKey) {
                 try {
                     const poolIdToUse = poolData.onchain_pool_id || poolData.poolId;
+                    console.log('[fetchAmmPool] Fetching user position:', {
+                        poolIdToUse,
+                        publicKey: publicKey.toString()
+                    });
                     if (poolIdToUse) {
                         const position = await anchorProgramService.getUserPosition(new BN(poolIdToUse), publicKey);
+                        console.log('[fetchAmmPool] User position:', position);
                         setUserPosition(position);
                     }
                 } catch (err) {
-                    console.log('No user position found');
+                    console.log('[fetchAmmPool] No user position found:', err);
                 }
             }
         } catch (error) {

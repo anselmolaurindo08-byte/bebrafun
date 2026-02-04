@@ -185,10 +185,19 @@ class AnchorProgramService {
         const program = this.getProgram();
         const [userPositionPda] = this.getUserPositionPda(poolId, user);
 
+        console.log('[getUserPosition] Fetching position for:', {
+            poolId: poolId.toString(),
+            user: user.toString(),
+            pda: userPositionPda.toString()
+        });
+
         try {
-            return await (program.account as any)['userPosition'].fetch(userPositionPda);
+            const position = await (program.account as any)['userPosition'].fetch(userPositionPda);
+            console.log('[getUserPosition] Position found:', position);
+            return position;
         } catch (error) {
             // Position doesn't exist yet
+            console.log('[getUserPosition] Position not found:', error);
             return null;
         }
     }
