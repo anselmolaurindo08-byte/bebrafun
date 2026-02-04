@@ -186,11 +186,11 @@ func (s *SolanaClient) GetSOLBalance(ctx context.Context, walletAddress string) 
 
 // TransactionDetails holds the parsed details of a verified transaction
 type TransactionDetails struct {
-	Signature   string
-	Sender      string
-	Receiver    string
-	Amount      uint64 // in lamports
-	Confirmed   bool
+	Signature string
+	Sender    string
+	Receiver  string
+	Amount    uint64 // in lamports
+	Confirmed bool
 }
 
 // VerifyTransaction verifies if a transaction is confirmed and returns its details
@@ -242,14 +242,24 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 	sender := transaction.Message.AccountKeys[0].String()
 	receiver := transaction.Message.AccountKeys[1].String()
 
+	log.Printf("[VerifyTransaction] Transaction %s: sender=%s, receiver=%s", txHash, sender, receiver)
+	log.Printf("[VerifyTransaction] PreBalances: %v", tx.Meta.PreBalances)
+	log.Printf("[VerifyTransaction] PostBalances: %v", tx.Meta.PostBalances)
+
 	// Calculate amount change for receiver (approximate check)
 	var amount uint64
 	if len(tx.Meta.PreBalances) > 1 && len(tx.Meta.PostBalances) > 1 {
 		preBalance := tx.Meta.PreBalances[1]
 		postBalance := tx.Meta.PostBalances[1]
+		log.Printf("[VerifyTransaction] Receiver balance: pre=%d, post=%d", preBalance, postBalance)
 		if postBalance > preBalance {
 			amount = postBalance - preBalance
+			log.Printf("[VerifyTransaction] Calculated amount: %d lamports", amount)
+		} else {
+			log.Printf("[VerifyTransaction] WARNING: postBalance <= preBalance, amount=0")
 		}
+	} else {
+		log.Printf("[VerifyTransaction] WARNING: Not enough balance entries")
 	}
 
 	return &TransactionDetails{
