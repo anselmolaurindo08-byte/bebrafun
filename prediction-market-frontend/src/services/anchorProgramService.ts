@@ -240,6 +240,14 @@ class AnchorProgramService {
         try {
             const pool = await (program.account as any)['pool'].fetch(poolPda);
             console.log('[getPoolState] Pool found:', pool);
+            console.log('[getPoolState] Pool fields:', {
+                poolId: pool.poolId?.toString(),
+                yesReserve: pool.yes_reserve?.toString(),
+                noReserve: pool.no_reserve?.toString(),
+                baseYesLiquidity: pool.base_yes_liquidity?.toString(),
+                baseNoLiquidity: pool.base_no_liquidity?.toString(),
+                allKeys: Object.keys(pool)
+            });
             return pool;
         } catch (error) {
             console.log('[getPoolState] Pool not found:', error);
