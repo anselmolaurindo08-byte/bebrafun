@@ -78,8 +78,15 @@ func (ds *DuelService) CreateDuel(
 		return nil, fmt.Errorf("insufficient deposit: expected %d lamports, got %d", betAmountLamports, txDetails.Amount)
 	}
 
-	// Generate duel ID
-	duelID := time.Now().UnixNano()
+	// Use duel ID from frontend if provided, otherwise generate new one
+	var duelID int64
+	if req.DuelID != nil && *req.DuelID > 0 {
+		duelID = *req.DuelID
+		log.Printf("Using duel ID from frontend: %d", duelID)
+	} else {
+		duelID = time.Now().UnixNano()
+		log.Printf("Generated new duel ID: %d", duelID)
+	}
 
 	// Prepare duel address if provided
 	var duelAddress *string

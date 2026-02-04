@@ -192,6 +192,7 @@ func (DuelPriceCandle) TableName() string {
 
 // CreateDuelRequest represents a request to create a new duel
 type CreateDuelRequest struct {
+	DuelID           *int64  `json:"duel_id"` // On-chain duel ID from frontend
 	BetAmount        float64 `json:"bet_amount" binding:"required,gt=0"`
 	Currency         string  `json:"currency"` // "SOL", "PUMP"
 	MarketID         *uint   `json:"market_id"`

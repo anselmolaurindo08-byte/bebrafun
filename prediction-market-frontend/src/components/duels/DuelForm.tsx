@@ -60,8 +60,9 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       const signature = result.tx;
       console.log('[DuelForm] Duel initialized on-chain:', signature);
 
-      // Create duel in backend WITH on-chain signature
+      // Create duel in backend WITH on-chain signature AND duelId
       const request: CreateDuelRequest = {
+        duelId, // CRITICAL: Pass the same duelId used on-chain
         betAmount: amount,
         currency: selectedToken,
         predictedOutcome: prediction,

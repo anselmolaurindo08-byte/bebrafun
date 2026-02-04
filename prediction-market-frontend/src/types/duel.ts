@@ -72,6 +72,7 @@ export const DIRECTION_LABELS = {
 };
 
 export interface CreateDuelRequest {
+  duelId?: number; // On-chain duel ID (CRITICAL for backend sync)
   betAmount: number;
   marketId?: string;
   eventId?: string;
