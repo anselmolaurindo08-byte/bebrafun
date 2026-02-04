@@ -101,14 +101,23 @@ export default function MarketDetailPage() {
     const fetchAmmPool = async () => {
         try {
             const poolData = await blockchainService.getPoolByMarketId(id!);
-            setAmmPoolId(poolData.poolId);
+
+            if (!poolData) {
+                console.warn('No pool found for market', id);
+                return;
+            }
+
+            setAmmPoolId(poolData.poolId || poolData.onchain_pool_id);
             setPool(poolData);
 
             // Fetch user position if wallet connected
             if (connected && publicKey) {
                 try {
-                    const position = await anchorProgramService.getUserPosition(new BN(poolData.poolId), publicKey);
-                    setUserPosition(position);
+                    const poolIdToUse = poolData.onchain_pool_id || poolData.poolId;
+                    if (poolIdToUse) {
+                        const position = await anchorProgramService.getUserPosition(new BN(poolIdToUse), publicKey);
+                        setUserPosition(position);
+                    }
                 } catch (err) {
                     console.log('No user position found');
                 }

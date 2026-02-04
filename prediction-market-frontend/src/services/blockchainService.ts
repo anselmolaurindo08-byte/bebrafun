@@ -67,33 +67,50 @@ class BlockchainService {
       const [poolPda] = anchorProgramService.getPoolPda(poolIdBN);
 
       // Persist to backend (manual indexing)
+      console.log('📤 Persisting pool to backend...');
+      console.log('  market_id:', marketId);
+      console.log('  onchain_pool_id:', onchainPoolId);
+      console.log('  pool_address:', poolPda.toString());
+
       try {
+        const payload = {
+          market_id: marketId,
+          onchain_pool_id: onchainPoolId,
+          pool_address: poolPda.toString(),
+          program_id: anchorProgramService.getProgramId().toString(),
+          yes_mint: 'native',
+          no_mint: 'native',
+          yes_reserve: initialLiquidity * 1e9,
+          no_reserve: initialLiquidity * 1e9,
+          fee_percentage: 0.02,
+          question,
+          resolution_time: resolutionTime.toISOString()
+        };
+
+        console.log('  payload:', JSON.stringify(payload, null, 2));
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/amm/pools`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            market_id: marketId,
-            onchain_pool_id: onchainPoolId, // Use timestamp-based ID
-            pool_address: poolPda.toString(),
-            program_id: anchorProgramService.getProgramId().toString(),
-            yes_mint: 'native',
-            no_mint: 'native',
-            yes_reserve: initialLiquidity * 1e9,
-            no_reserve: initialLiquidity * 1e9,
-            fee_percentage: 0.02,
-            question,
-            resolution_time: resolutionTime.toISOString()
-          })
+          body: JSON.stringify(payload)
         });
 
+        console.log('  response status:', response.status);
+
         if (!response.ok) {
-          console.warn('Failed to persist pool to backend:', await response.text());
+          const errorText = await response.text();
+          console.error('❌ Failed to persist pool to backend');
+          console.error('  status:', response.status);
+          console.error('  error:', errorText);
         } else {
+          const result = await response.json();
           console.log('✅ Pool persisted to backend');
-          console.log('Onchain Pool ID:', onchainPoolId);
+          console.log('  result:', result);
+          console.log('  Onchain Pool ID:', onchainPoolId);
+          console.log('  Market ID:', marketId);
         }
       } catch (backendError) {
-        console.error('Backend persistence error (non-fatal):', backendError);
+        console.error('❌ Backend persistence error (non-fatal):', backendError);
       }
 
       return { success: true, tx, poolId: onchainPoolId };
