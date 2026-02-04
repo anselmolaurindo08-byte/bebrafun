@@ -199,6 +199,7 @@ type CreateDuelRequest struct {
 	MarketID         *uint   `json:"market_id"`
 	EventID          *uint   `json:"event_id"`
 	PredictedOutcome *string `json:"predicted_outcome"`
+	Direction        *int16  `json:"direction"` // 0 = UP, 1 = DOWN
 	Opponent         *uint   `json:"opponent"`
 	Signature        string  `json:"signature" binding:"required"` // Transaction signature for deposit
 	DuelAddress      string  `json:"duel_address"`                 // On-chain duel PDA address

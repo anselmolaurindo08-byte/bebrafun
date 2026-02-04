@@ -105,6 +105,7 @@ func (ds *DuelService) CreateDuel(
 		MarketID:         req.MarketID,
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
+		Direction:        req.Direction,
 		Status:           models.DuelStatusPending,
 		CreatedAt:        time.Now(),
 		ExpiresAt:        timePtr(time.Now().Add(5 * time.Minute)), // 5 min expiry

@@ -65,7 +65,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         duelId, // CRITICAL: Pass the same duelId used on-chain
         betAmount: amount,
         currency: selectedToken,
-        predictedOutcome: prediction,
+        direction: prediction === 'UP' ? 0 : 1, // Send as number: 0=UP, 1=DOWN
         signature, // On-chain transaction signature
       };
 

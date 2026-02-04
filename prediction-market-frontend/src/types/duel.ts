@@ -79,6 +79,7 @@ export interface CreateDuelRequest {
   eventId?: string;
   currency: DuelCurrency;
   predictedOutcome?: 'UP' | 'DOWN';
+  direction?: number; // 0 = UP, 1 = DOWN
   signature: string; // Transaction signature (REQUIRED)
 }
 
