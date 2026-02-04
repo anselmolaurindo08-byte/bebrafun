@@ -212,7 +212,7 @@ class AnchorProgramService {
             .accounts({
                 pool: poolPda,
                 userPosition: userPositionPda,
-                seller: program.provider.publicKey,
+                user: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
