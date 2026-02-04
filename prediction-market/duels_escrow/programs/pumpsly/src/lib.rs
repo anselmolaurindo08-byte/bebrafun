@@ -379,15 +379,16 @@ pub mod pumpsly {
         // NOW take mutable reference to update reserves
         let pool = &mut ctx.accounts.pool;
         
-        // Update reserves
+        // Update reserves - ONLY add the SOL payment
+        // Shares are tracked in UserPosition, not in reserves
         match outcome {
             Outcome::Yes => {
                 pool.no_reserve += amount;
-                pool.yes_reserve -= tokens_out_u64;
+                // DON'T subtract from yes_reserve - shares are virtual!
             }
             Outcome::No => {
                 pool.yes_reserve += amount;
-                pool.no_reserve -= tokens_out_u64;
+                // DON'T subtract from no_reserve - shares are virtual!
             }
         }
 
@@ -591,14 +592,15 @@ pub mod pumpsly {
         // NOW take mutable reference to update reserves
         let pool = &mut ctx.accounts.pool;
 
-        // Update reserves
+        // Update reserves - ONLY subtract the SOL payout
+        // Shares are tracked in UserPosition, not in reserves
         match outcome {
             Outcome::Yes => {
-                pool.yes_reserve += tokens_amount;
+                // DON'T add shares to yes_reserve - shares are virtual!
                 pool.no_reserve -= sol_out_u64;
             }
             Outcome::No => {
-                pool.no_reserve += tokens_amount;
+                // DON'T add shares to no_reserve - shares are virtual!
                 pool.yes_reserve -= sol_out_u64;
             }
         }
