@@ -120,6 +120,13 @@ export default function MarketDetailPage() {
                         const baseYesLiquidity = onChainPool.base_yes_liquidity?.toNumber() / 1e9 || 0;
                         const baseNoLiquidity = onChainPool.base_no_liquidity?.toNumber() / 1e9 || 0;
 
+                        console.log('[fetchAmmPool] Reserves:', {
+                            yesReserve,
+                            noReserve,
+                            baseYesLiquidity,
+                            baseNoLiquidity
+                        });
+
                         // Calculate prices from reserves + base liquidity (AMM formula)
                         // Base liquidity provides price stability without being tradeable
                         const effectiveYesReserve = yesReserve + baseYesLiquidity;
@@ -127,6 +134,14 @@ export default function MarketDetailPage() {
                         const totalReserve = effectiveYesReserve + effectiveNoReserve;
                         const yesPrice = totalReserve > 0 ? effectiveYesReserve / totalReserve : 0.5;
                         const noPrice = totalReserve > 0 ? effectiveNoReserve / totalReserve : 0.5;
+
+                        console.log('[fetchAmmPool] Calculated prices:', {
+                            effectiveYesReserve,
+                            effectiveNoReserve,
+                            totalReserve,
+                            yesPrice,
+                            noPrice
+                        });
 
                         const poolWithPrices = {
                             ...poolData,
