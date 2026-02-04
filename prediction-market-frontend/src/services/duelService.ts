@@ -117,5 +117,22 @@ export const duelService = {
     const response = await api.getDuelConfig();
     return response;
   },
+
+  // Auto-resolve duel when timer expires
+  autoResolveDuel: async (
+    duelId: string,
+    exitPrice: number
+  ): Promise<any> => {
+    const response = await api.autoResolveDuel(duelId, exitPrice);
+    return response;
+  },
+
+  // Set chart start price for persistence
+  setChartStartPrice: async (
+    duelId: string,
+    price: number
+  ): Promise<void> => {
+    await api.setChartStartPrice(duelId, price);
+  },
 };
 

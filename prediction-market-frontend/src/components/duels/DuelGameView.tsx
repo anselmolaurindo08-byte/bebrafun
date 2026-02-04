@@ -32,9 +32,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft());
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  // Initialize start price to 0, will be set on first WebSocket tick
-  // Don't use duel.priceAtStart because it's the entry price for resolution, not for chart display
-  const [startPrice, setStartPrice] = useState<number>(0);
+  // Initialize start price from duel.chartStartPrice if available, otherwise 0
+  const [startPrice, setStartPrice] = useState<number>(duel.chartStartPrice || 0);
   const [isResolving, setIsResolving] = useState(false);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -63,7 +62,13 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
       // Capture start price on first tick if not set
       setStartPrice((prev) => {
-        if (prev === 0) return price;
+        if (prev === 0) {
+          // Save to backend for persistence
+          duelService.setChartStartPrice(duel.id, price).catch(err =>
+            console.error('Failed to save chart start price:', err)
+          );
+          return price;
+        }
         return prev;
       });
 
@@ -118,30 +123,41 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
     setIsResolving(true);
 
-    // 2. Poll for Server Resolution (Read-Only Mode)
-    // We no longer calculate winner client-side or call resolve().
-    // We wait for the backend auto-resolution job to update the duel status.
+    // 2. Trigger auto-resolution with current price
+    try {
+      console.log('[DuelGameView] Triggering auto-resolution with exit price:', currentPrice);
+      const result = await duelService.autoResolveDuel(duel.id, currentPrice);
 
-    const pollInterval = setInterval(async () => {
-      try {
-        const updatedDuel = await duelService.getDuel(duel.id);
-        // Check for both RESOLVED and FINISHED statuses
-        // Also check if winnerId is set, as that confirms resolution
-        if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED' || updatedDuel.winnerId) {
-          clearInterval(pollInterval);
+      console.log('[DuelGameView] Resolution result:', result);
 
-          setResult({
-            winnerId: updatedDuel.winnerId || "0",
-            finalPrice: updatedDuel.priceAtEnd || currentPrice, // Use server price if available
-            payout: (updatedDuel.betAmount || duel.betAmount) * 2
-          });
-          setShowResultModal(true);
-          setIsResolving(false);
+      setResult({
+        winnerId: result.winner_id || result.winnerId || "0",
+        finalPrice: result.exit_price || result.priceAtEnd || currentPrice,
+        payout: result.payout || (duel.betAmount * 2)
+      });
+      setShowResultModal(true);
+      setIsResolving(false);
+    } catch (error) {
+      console.error('[DuelGameView] Auto-resolution failed:', error);
+      setIsResolving(false);
+      // Fallback: poll for resolution
+      const pollInterval = setInterval(async () => {
+        try {
+          const updatedDuel = await duelService.getDuel(duel.id);
+          if (updatedDuel.status === 'RESOLVED' || updatedDuel.winnerId) {
+            clearInterval(pollInterval);
+            setResult({
+              winnerId: updatedDuel.winnerId || "0",
+              finalPrice: updatedDuel.priceAtEnd || currentPrice,
+              payout: (updatedDuel.betAmount || duel.betAmount) * 2
+            });
+            setShowResultModal(true);
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
         }
-      } catch (e) {
-        console.error("Polling error:", e);
-      }
-    }, 2000);
+      }, 2000);
+    }
   };
 
   // Calculate percentage change for UI

@@ -27,11 +27,12 @@ export interface Duel {
   player2Deposited?: boolean;
 
   // Legacy fields for backward compatibility if needed
-  priceAtStart?: number;
-  priceAtEnd?: number;
-  direction?: 'UP' | 'DOWN'; // Alias for predictedOutcome if needed
+  priceAtStart?: number;       // Entry price for resolution
+  priceAtEnd?: number;         // Exit price for resolution
+  chartStartPrice?: number;    // First WebSocket price for chart display
+  direction?: 'UP' | 'DOWN';   // Alias for predictedOutcome if needed
   transactionHash?: string;
-  confirmations?: number; // Added missing field
+  confirmations?: number;      // Added missing field
 }
 
 export const DuelStatus = {

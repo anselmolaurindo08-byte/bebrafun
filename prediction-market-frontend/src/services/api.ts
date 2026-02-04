@@ -247,6 +247,19 @@ class ApiService {
         return response.data;
     }
 
+    async autoResolveDuel(duelId: string, exitPrice: number): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/auto-resolve`, {
+            exit_price: exitPrice,
+        });
+        return response.data;
+    }
+
+    async setChartStartPrice(duelId: string, price: number): Promise<void> {
+        await this.api.post(`/api/duels/${duelId}/chart-start`, {
+            price,
+        });
+    }
+
     // Wallet/Blockchain endpoints
     async connectWallet(data: { wallet_address: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
