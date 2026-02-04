@@ -43,13 +43,15 @@ class BlockchainService {
    * Create pool on-chain and persist to backend
    */
   async createPool(
-    poolId: number,
+    marketId: number,
     question: string,
     resolutionTime: Date,
     initialLiquidity: number
   ): Promise<{ success: boolean; tx?: string; poolId?: number; error?: string }> {
     try {
-      const poolIdBN = new BN(poolId);
+      // Generate timestamp-based pool ID (like yesterday)
+      const onchainPoolId = Date.now();
+      const poolIdBN = new BN(onchainPoolId);
       const resolutionTimeBN = new BN(Math.floor(resolutionTime.getTime() / 1000));
       const liquidityBN = new BN(initialLiquidity * 1e9);
 
@@ -70,8 +72,8 @@ class BlockchainService {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            market_id: poolId,
-            onchain_pool_id: poolId,
+            market_id: marketId,
+            onchain_pool_id: onchainPoolId, // Use timestamp-based ID
             pool_address: poolPda.toString(),
             program_id: anchorProgramService.getProgramId().toString(),
             yes_mint: 'native',
@@ -88,12 +90,13 @@ class BlockchainService {
           console.warn('Failed to persist pool to backend:', await response.text());
         } else {
           console.log('✅ Pool persisted to backend');
+          console.log('Onchain Pool ID:', onchainPoolId);
         }
       } catch (backendError) {
         console.error('Backend persistence error (non-fatal):', backendError);
       }
 
-      return { success: true, tx, poolId };
+      return { success: true, tx, poolId: onchainPoolId };
     } catch (error: any) {
       console.error('Create pool error:', error);
       return {

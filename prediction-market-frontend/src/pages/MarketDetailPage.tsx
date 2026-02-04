@@ -53,7 +53,7 @@ export default function MarketDetailPage() {
         try {
             // Default initial liquidity: 0.001 SOL (minimum for testing)
             const initialLiquidity = 0.001;
-            const poolIdNum = parseInt(id);
+            const marketId = parseInt(id);
 
             // Use market title as question
             const question = market.title;
@@ -63,7 +63,7 @@ export default function MarketDetailPage() {
             resolutionTime.setDate(resolutionTime.getDate() + 30);
 
             const result = await blockchainService.createPool(
-                poolIdNum,
+                marketId, // Pass market_id, not pool_id
                 question,
                 resolutionTime,
                 initialLiquidity
@@ -72,7 +72,7 @@ export default function MarketDetailPage() {
             if (result.success) {
                 setAmmPoolId(result.tx || '');
                 console.log('✅ Pool created:', result.tx);
-                console.log('Pool ID:', result.poolId);
+                console.log('Onchain Pool ID:', result.poolId);
 
                 // Refresh pool data
                 setTimeout(() => fetchAmmPool(), 2000);
