@@ -7,13 +7,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-pumpsly = "11111111111111111111111111111111"
+pumpsly = "6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH"
 
 [programs.devnet]
 pumpsly = "Af1k16zHZPdZbYrV8bpUDcFnZPJUra7AvB8jwSDbv6L6"
 
 [programs.mainnet]
-pumpsly = "11111111111111111111111111111111"
+pumpsly = "6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH"
 
 [registry]
 url = "https://api.apr.dev"

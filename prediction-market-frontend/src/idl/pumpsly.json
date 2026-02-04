@@ -1,5 +1,5 @@
 {
-  "address": "FT1WPvYeV3ZdzYBWKzQFtAiSTGS1dMJbsmA14op89xTf",
+  "address": "6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH",
   "metadata": {
     "name": "pumpsly",
     "version": "0.1.0",
@@ -25,10 +25,6 @@
       "accounts": [
         {
           "name": "pool",
-          "writable": true
-        },
-        {
-          "name": "pool_vault",
           "writable": true
         },
         {
@@ -62,17 +58,9 @@
           }
         },
         {
-          "name": "user_token_account",
-          "writable": true
-        },
-        {
           "name": "user",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
@@ -119,20 +107,13 @@
           "writable": true
         },
         {
-          "name": "duel_vault",
-          "writable": true
-        },
-        {
-          "name": "player_1_token_account",
-          "writable": true
-        },
-        {
           "name": "player_1",
+          "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -154,10 +135,7 @@
       ],
       "accounts": [
         {
-          "name": "pool"
-        },
-        {
-          "name": "pool_vault",
+          "name": "pool",
           "writable": true
         },
         {
@@ -165,16 +143,13 @@
           "writable": true
         },
         {
-          "name": "user_token_account",
-          "writable": true
-        },
-        {
           "name": "user",
+          "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -217,51 +192,9 @@
           }
         },
         {
-          "name": "pool_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  111,
-                  108,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "pool_id"
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_mint"
-        },
-        {
-          "name": "authority_token_account",
-          "writable": true
-        },
-        {
           "name": "authority",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
@@ -325,51 +258,9 @@
           }
         },
         {
-          "name": "duel_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  117,
-                  101,
-                  108,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "duel_id"
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_mint"
-        },
-        {
-          "name": "player_1_token_account",
-          "writable": true
-        },
-        {
           "name": "player_1",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
@@ -412,21 +303,13 @@
           "writable": true
         },
         {
-          "name": "duel_vault",
-          "writable": true
-        },
-        {
-          "name": "player_2_token_account",
-          "writable": true
-        },
-        {
           "name": "player_2",
           "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -439,7 +322,7 @@
     {
       "name": "resolve_duel",
       "docs": [
-        "Resolve the duel and pay out winner"
+        "Resolve duel with final price and distribute winnings"
       ],
       "discriminator": [
         213,
@@ -457,15 +340,11 @@
           "writable": true
         },
         {
-          "name": "duel_vault",
+          "name": "player_1",
           "writable": true
         },
         {
-          "name": "player_1_token_account",
-          "writable": true
-        },
-        {
-          "name": "player_2_token_account",
+          "name": "player_2",
           "writable": true
         },
         {
@@ -480,8 +359,8 @@
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -548,24 +427,17 @@
           "writable": true
         },
         {
-          "name": "pool_vault",
-          "writable": true
-        },
-        {
           "name": "user_position",
           "writable": true
         },
         {
-          "name": "user_token_account",
-          "writable": true
-        },
-        {
           "name": "user",
+          "writable": true,
           "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -959,10 +831,6 @@
             "type": "u64"
           },
           {
-            "name": "token_mint",
-            "type": "pubkey"
-          },
-          {
             "name": "player_1_prediction",
             "type": "u8"
           },
@@ -1049,10 +917,6 @@
           {
             "name": "amount",
             "type": "u64"
-          },
-          {
-            "name": "token_mint",
-            "type": "pubkey"
           },
           {
             "name": "prediction",
@@ -1252,10 +1116,6 @@
             "type": "pubkey"
           },
           {
-            "name": "token_mint",
-            "type": "pubkey"
-          },
-          {
             "name": "question",
             "type": "string"
           },
@@ -1329,10 +1189,6 @@
           },
           {
             "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "token_mint",
             "type": "pubkey"
           },
           {

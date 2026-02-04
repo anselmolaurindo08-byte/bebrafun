@@ -14,7 +14,7 @@ security_txt! {
     source_code: "https://github.com/pumpslydev/pumpslyfun"
 }
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH");
 
 // Fee constants for duel resolution
 const DUEL_FEE_BPS: u64 = 250;  // 2.5% fee
