@@ -368,7 +368,7 @@ pub mod pumpsly {
     ) -> Result<()> {
         require!(amount > 0, PredictionMarketError::InvalidAmount);
         
-        let pool = &mut ctx.accounts.pool;
+        let pool = &ctx.accounts.pool;
         require!(
             pool.status == PoolStatus::Active,
             PredictionMarketError::PoolNotActive
@@ -429,7 +429,7 @@ pub mod pumpsly {
             PredictionMarketError::SlippageExceeded
         );
 
-        // Transfer SOL payment to pool PDA
+        // Transfer SOL payment to pool PDA (BEFORE taking mutable reference)
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             anchor_lang::system_program::Transfer {
@@ -439,6 +439,9 @@ pub mod pumpsly {
         );
         anchor_lang::system_program::transfer(cpi_context, amount)?;
 
+        // NOW take mutable reference to update reserves
+        let pool = &mut ctx.accounts.pool;
+        
         // Update reserves
         match outcome {
             Outcome::Yes => {
@@ -544,14 +547,6 @@ pub mod pumpsly {
         require!(winning_tokens > 0, PredictionMarketError::NoWinnings);
 
         // Transfer SOL winnings from pool PDA (1:1 payout for winning tokens)
-        let pool_id_bytes = pool.pool_id.to_le_bytes();
-        let seeds = &[
-            b"pool",
-            pool_id_bytes.as_ref(),
-            &[pool.bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
         **ctx.accounts.pool.to_account_info().try_borrow_mut_lamports()? -= winning_tokens;
         **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += winning_tokens;
 
