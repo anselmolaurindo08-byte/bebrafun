@@ -236,14 +236,19 @@ func (ds *DuelService) JoinDuel(
 	}
 
 	// Verify transaction on blockchain
+	log.Printf("[JoinDuel] Verifying transaction %s for duel %s", signature, duelID)
 	txDetails, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
 	if err != nil {
+		log.Printf("[JoinDuel] Transaction verification failed: %v", err)
 		return nil, fmt.Errorf("failed to verify deposit transaction: %w", err)
 	}
 
 	if txDetails == nil || !txDetails.Confirmed {
+		log.Printf("[JoinDuel] Transaction not confirmed: txDetails=%v", txDetails)
 		return nil, errors.New("deposit transaction not confirmed on blockchain")
 	}
+
+	log.Printf("[JoinDuel] Transaction verified: amount=%d lamports, expected=%d lamports", txDetails.Amount, duel.BetAmount)
 
 	// Verify transaction amount matches bet amount
 	if txDetails.Amount < uint64(duel.BetAmount) {
