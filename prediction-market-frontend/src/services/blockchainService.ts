@@ -84,6 +84,7 @@ class BlockchainService {
           yes_reserve: initialLiquidity * 1e9,
           no_reserve: initialLiquidity * 1e9,
           fee_percentage: 200, // 2% in basis points (200 = 2%)
+          status: 'active',
           question,
           resolution_time: resolutionTime.toISOString()
         };
