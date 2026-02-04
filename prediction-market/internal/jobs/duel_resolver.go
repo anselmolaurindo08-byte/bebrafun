@@ -81,8 +81,15 @@ func (dr *DuelResolver) resolveExpiredDuels() {
 
 		log.Printf("[DuelResolver] Resolving expired duel: %s (started: %v)", duel.ID, duel.StartedAt)
 
+		// Get exit price from determineWinner (uses mock price for now)
+		_, exitPrice, err := dr.determineWinner(ctx, duel)
+		if err != nil {
+			log.Printf("[DuelResolver] Error determining exit price for duel %s: %v", duel.ID, err)
+			continue
+		}
+
 		// Use AutoResolveDuel which doesn't require on-chain call
-		_, err = dr.duelService.AutoResolveDuel(ctx, duel.ID.String())
+		_, err = dr.duelService.AutoResolveDuel(ctx, duel.ID, exitPrice)
 		if err != nil {
 			log.Printf("[DuelResolver] Error resolving duel %s: %v", duel.ID, err)
 			continue
