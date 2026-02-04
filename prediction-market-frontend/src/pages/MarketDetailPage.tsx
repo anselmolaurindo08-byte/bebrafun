@@ -3,9 +3,8 @@ import { useParams } from 'react-router-dom';
 import apiService from '../services/api';
 import blockchainService from '../services/blockchainService';
 import anchorProgramService from '../services/anchorProgramService';
-import AMMTradingPanel from '../components/AMMTradingPanel';
-import Portfolio from '../components/Portfolio';
-import SellOutcomeButton from '../components/SellOutcomeButton';
+import UnifiedTradingPanel from '../components/UnifiedTradingPanel';
+import PriceChart from '../components/PriceChart';
 import AdminPoolControls from '../components/AdminPoolControls';
 import type { Market, User } from '../types/types';
 import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
@@ -181,72 +180,68 @@ export default function MarketDetailPage() {
                 </div>
             </div>
 
-            {/* Portfolio */}
-            <Portfolio marketId={parseInt(id!)} userPosition={userPosition} />
+            {ammPoolId ? (
+                <>
+                    {/* Two-Column Layout: Chart + Trading */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Left: Price Chart (2/3 width) */}
+                        <div className="lg:col-span-2">
+                            <PriceChart pool={pool} />
+                        </div>
 
-            {/* Trading Section */}
-            <div className="mt-8 space-y-6">
-                <h2 className="text-2xl font-mono font-bold text-pump-white">Trade</h2>
-
-                {ammPoolId ? (
-                    <>
-                        <AMMTradingPanel
-                            poolId={ammPoolId}
-                            eventTitle={market.title}
-                            onSuccess={() => {
-                                fetchAmmPool();
-                            }}
-                        />
-
-                        {/* Sell Outcome Tokens */}
-                        {connected && pool && userPosition && (
-                            <SellOutcomeButton
+                        {/* Right: Trading Panel (1/3 width) */}
+                        <div className="lg:col-span-1">
+                            <UnifiedTradingPanel
+                                poolId={ammPoolId}
                                 pool={pool}
                                 userPosition={userPosition}
+                                eventTitle={market.title}
                                 onSuccess={() => {
                                     fetchAmmPool();
                                 }}
                             />
-                        )}
+                        </div>
+                    </div>
 
-                        {/* Admin Controls */}
-                        {connected && pool && (
+                    {/* Admin Controls */}
+                    {connected && pool && (
+                        <div className="mt-6">
                             <AdminPoolControls
                                 pool={pool}
                                 onSuccess={() => {
                                     fetchAmmPool();
                                 }}
                             />
-                        )}
-                    </>
-                ) : (
-                    <div className="bg-pump-gray-darker border-2 border-pump-yellow/30 rounded-lg p-8 text-center">
-                        <div className="text-4xl mb-4">⚠️</div>
-                        <h3 className="text-xl font-mono font-bold text-pump-white mb-2">No Liquidity Pool</h3>
-                        <p className="text-pump-gray-light font-sans mb-6">
-                            This market does not have an active AMM pool yet.
-                            Liquidity must be added to enable trading.
-                        </p>
-                        {currentUser && market && (currentUser.id === market.created_by || isAdmin) && (
-                            <div className="mt-4">
-                                {!connected ? (
-                                    <p className="text-pump-red font-sans text-sm">
-                                        Please connect wallet to create pool
-                                    </p>
-                                ) : (
-                                    <button
-                                        onClick={handleCreatePool}
-                                        disabled={isCreatingPool}
-                                        className="bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isCreatingPool ? 'Creating Pool...' : 'Create Liquidity Pool (10 SOL)'}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="bg-pump-gray-darker border-2 border-pump-yellow/30 rounded-lg p-8 text-center">
+                    <div className="text-4xl mb-4">⚠️</div>
+                    <h3 className="text-xl font-mono font-bold text-pump-white mb-2">No Liquidity Pool</h3>
+                    <p className="text-pump-gray-light font-sans mb-6">
+                        This market does not have an active AMM pool yet.
+                        Liquidity must be added to enable trading.
+                    </p>
+                    {currentUser && market && (currentUser.id === market.created_by || isAdmin) && (
+                        <div className="mt-4">
+                            {!connected ? (
+                                <p className="text-pump-red font-sans text-sm">
+                                    Please connect wallet to create pool
+                                </p>
+                            ) : (
+                                <button
+                                    onClick={handleCreatePool}
+                                    disabled={isCreatingPool}
+                                    className="bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-bold py-3 px-6 rounded-md transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isCreatingPool ? 'Creating Pool...' : 'Create Liquidity Pool (10 SOL)'}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
