@@ -861,7 +861,6 @@ pub struct DuelCreated {
     pub duel_id: u64,
     pub player_1: Pubkey,
     pub amount: u64,
-    pub token_mint: Pubkey,
     pub prediction: u8,
 }
 
