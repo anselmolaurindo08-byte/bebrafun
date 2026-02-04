@@ -127,6 +127,7 @@ func (s *AMMService) CreatePool(ctx context.Context, req *models.CreatePoolReque
 
 	pool := &models.AMMPool{
 		MarketID:       req.MarketID,
+		OnchainPoolID:  req.OnchainPoolID,
 		ProgramID:      req.ProgramID,
 		Authority:      req.Authority,
 		PoolAddress:    poolAddress,

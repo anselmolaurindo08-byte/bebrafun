@@ -119,15 +119,16 @@ func (AMMTrade) TableName() string {
 
 // CreatePoolRequest is the request body for creating a new AMM pool
 type CreatePoolRequest struct {
-	MarketID      *uint  `json:"market_id"`
-	ProgramID     string `json:"program_id" binding:"required"`
-	Authority     string `json:"authority" binding:"required"`
-	PoolAddress   string `json:"pool_address"` // On-chain pool PDA address
-	YesMint       string `json:"yes_mint" binding:"required"`
-	NoMint        string `json:"no_mint" binding:"required"`
-	YesReserve    int64  `json:"yes_reserve" binding:"required,min=1"`
-	NoReserve     int64  `json:"no_reserve" binding:"required,min=1"`
-	FeePercentage int16  `json:"fee_percentage"`
+	MarketID      *uint   `json:"market_id"`
+	OnchainPoolID *uint64 `json:"onchain_pool_id"` // Blockchain pool_id
+	ProgramID     string  `json:"program_id" binding:"required"`
+	Authority     string  `json:"authority" binding:"required"`
+	PoolAddress   string  `json:"pool_address"` // On-chain pool PDA address
+	YesMint       string  `json:"yes_mint" binding:"required"`
+	NoMint        string  `json:"no_mint" binding:"required"`
+	YesReserve    int64   `json:"yes_reserve" binding:"required,min=1"`
+	NoReserve     int64   `json:"no_reserve" binding:"required,min=1"`
+	FeePercentage int16   `json:"fee_percentage"`
 }
 
 // TradeQuoteRequest is the query params for getting a trade quote
