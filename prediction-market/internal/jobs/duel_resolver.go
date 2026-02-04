@@ -127,15 +127,33 @@ func (dr *DuelResolver) determineWinner(ctx context.Context, duel *models.Duel) 
 	priceWentUp := exitPrice > entryPrice
 
 	var winnerID uint
-	if duel.PredictedOutcome == "UP" {
+
+	// Check if PredictedOutcome is nil
+	if duel.PredictedOutcome == nil {
+		winnerID = duel.Player1ID
+		return winnerID, exitPrice, nil
+	}
+
+	// Dereference pointer
+	prediction := *duel.PredictedOutcome
+
+	if prediction == "UP" {
 		if priceWentUp {
 			winnerID = duel.Player1ID
 		} else {
-			winnerID = duel.Player2ID
+			if duel.Player2ID != nil {
+				winnerID = *duel.Player2ID
+			} else {
+				winnerID = duel.Player1ID
+			}
 		}
 	} else { // DOWN
 		if priceWentUp {
-			winnerID = duel.Player2ID
+			if duel.Player2ID != nil {
+				winnerID = *duel.Player2ID
+			} else {
+				winnerID = duel.Player1ID
+			}
 		} else {
 			winnerID = duel.Player1ID
 		}
