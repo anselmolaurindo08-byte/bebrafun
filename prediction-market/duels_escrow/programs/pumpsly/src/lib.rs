@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 // Neodyme security.txt standard
 #[cfg(not(feature = "no-entrypoint"))]
@@ -42,12 +41,21 @@ pub mod pumpsly {
         require!(amount > 0, PredictionMarketError::InvalidAmount);
         require!(predicted_outcome <= 1, PredictionMarketError::InvalidOutcome);
 
+        // Transfer SOL deposit to duel PDA
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.player_1.to_account_info(),
+                to: ctx.accounts.duel.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, amount)?;
+
         let duel = &mut ctx.accounts.duel;
         duel.duel_id = duel_id;
         duel.player_1 = ctx.accounts.player_1.key();
         duel.player_2 = None;
         duel.amount = amount;
-        duel.token_mint = ctx.accounts.token_mint.key();
         duel.player_1_prediction = predicted_outcome;
         duel.player_2_prediction = None;
         duel.entry_price = 0;
@@ -59,24 +67,10 @@ pub mod pumpsly {
         duel.resolved_at = None;
         duel.bump = ctx.bumps.duel;
 
-        // Transfer player 1's deposit to vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.player_1_token_account.to_account_info(),
-                    to: ctx.accounts.duel_vault.to_account_info(),
-                    authority: ctx.accounts.player_1.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-
         emit!(DuelCreated {
             duel_id,
             player_1: ctx.accounts.player_1.key(),
             amount,
-            token_mint: ctx.accounts.token_mint.key(),
             prediction: predicted_outcome,
         });
 
@@ -90,29 +84,27 @@ pub mod pumpsly {
     ) -> Result<()> {
         require!(predicted_outcome <= 1, PredictionMarketError::InvalidOutcome);
         
-        let duel = &mut ctx.accounts.duel;
+        let duel = &ctx.accounts.duel; // Immutable borrow to get amount
         require!(
             duel.status == DuelStatus::WaitingForPlayer2,
             PredictionMarketError::InvalidDuelStatus
         );
         require!(duel.player_2.is_none(), PredictionMarketError::DuelAlreadyJoined);
 
+        // Transfer SOL deposit to duel PDA
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.player_2.to_account_info(),
+                to: ctx.accounts.duel.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, duel.amount)?;
+
+        let duel = &mut ctx.accounts.duel; // Mutable borrow after transfer
         duel.player_2 = Some(ctx.accounts.player_2.key());
         duel.player_2_prediction = Some(predicted_outcome);
-        duel.status = DuelStatus::Countdown;
-
-        // Transfer player 2's deposit to vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.player_2_token_account.to_account_info(),
-                    to: ctx.accounts.duel_vault.to_account_info(),
-                    authority: ctx.accounts.player_2.to_account_info(),
-                },
-            ),
-            duel.amount,
-        )?;
+        duel.status = DuelStatus::Countdown; // Re-added this line
 
         emit!(DuelJoined {
             duel_id: duel.duel_id,
@@ -149,20 +141,16 @@ pub mod pumpsly {
         Ok(())
     }
 
-    /// Resolve the duel and pay out winner
+    /// Resolve duel with final price and distribute winnings
     pub fn resolve_duel(
         ctx: Context<ResolveDuel>,
         exit_price: u64,
     ) -> Result<()> {
-        require!(exit_price > 0, PredictionMarketError::InvalidPrice);
-        
-        let duel = &mut ctx.accounts.duel;
+        let duel = &ctx.accounts.duel;
         require!(
             duel.status == DuelStatus::Active,
             PredictionMarketError::InvalidDuelStatus
         );
-
-        duel.exit_price = exit_price;
 
         // Determine winner based on price movement and predictions
         let price_went_up = exit_price > duel.entry_price;
@@ -175,10 +163,6 @@ pub mod pumpsly {
             duel.player_2.unwrap()
         };
 
-        duel.winner = Some(winner_pubkey);
-        duel.status = DuelStatus::Resolved;
-        duel.resolved_at = Some(Clock::get()?.unix_timestamp);
-
         // Calculate fee and winner payout
         let total_pool = duel.amount.checked_mul(2).unwrap();
         let fee_amount = total_pool
@@ -188,48 +172,26 @@ pub mod pumpsly {
             .unwrap();
         let winner_payout = total_pool.checked_sub(fee_amount).unwrap();
         
-        let duel_id_bytes = duel.duel_id.to_le_bytes();
-        let seeds = &[
-            b"duel_vault",
-            duel_id_bytes.as_ref(),
-            duel.token_mint.as_ref(),
-            &[duel.bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
         let winner_account = if player_1_correct {
-            &ctx.accounts.player_1_token_account
+            &ctx.accounts.player_1
         } else {
-            &ctx.accounts.player_2_token_account
+            &ctx.accounts.player_2
         };
 
         // Transfer fee to platform
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.duel_vault.to_account_info(),
-                    to: ctx.accounts.fee_collector.to_account_info(),
-                    authority: ctx.accounts.duel_vault.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            fee_amount,
-        )?;
+        **ctx.accounts.duel.to_account_info().try_borrow_mut_lamports()? -= fee_amount;
+        **ctx.accounts.fee_collector.to_account_info().try_borrow_mut_lamports()? += fee_amount;
 
         // Transfer winnings to winner
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.duel_vault.to_account_info(),
-                    to: winner_account.to_account_info(),
-                    authority: ctx.accounts.duel_vault.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            winner_payout,
-        )?;
+        **ctx.accounts.duel.to_account_info().try_borrow_mut_lamports()? -= winner_payout;
+        **winner_account.to_account_info().try_borrow_mut_lamports()? += winner_payout;
+
+        // Update duel state
+        let duel = &mut ctx.accounts.duel;
+        duel.exit_price = exit_price;
+        duel.winner = Some(winner_pubkey);
+        duel.status = DuelStatus::Resolved;
+        duel.resolved_at = Some(Clock::get()?.unix_timestamp);
 
         emit!(DuelResolved {
             duel_id: duel.duel_id,
@@ -244,7 +206,7 @@ pub mod pumpsly {
 
     /// Cancel duel and refund player 1 if player 2 hasn't joined
     pub fn cancel_duel(ctx: Context<CancelDuel>) -> Result<()> {
-        let duel = &mut ctx.accounts.duel;
+        let duel = &ctx.accounts.duel;
         
         // Only allow if waiting for player 2
         require!(
@@ -257,45 +219,20 @@ pub mod pumpsly {
             ctx.accounts.player_1.key() == duel.player_1,
             PredictionMarketError::Unauthorized
         );
-        
-        // Must wait at least 5 minutes before cancelling
-        let timeout = 300; // 5 minutes in seconds
-        require!(
-            Clock::get()?.unix_timestamp >= duel.created_at + timeout,
-            PredictionMarketError::CancelTooEarly
-        );
-        
-        // Refund player 1
-        let duel_id_bytes = duel.duel_id.to_le_bytes();
-        let seeds = &[
-            b"duel_vault",
-            duel_id_bytes.as_ref(),
-            duel.token_mint.as_ref(),
-            &[duel.bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-        
-        token::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.duel_vault.to_account_info(),
-                    to: ctx.accounts.player_1_token_account.to_account_info(),
-                    authority: ctx.accounts.duel_vault.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            duel.amount,
-        )?;
-        
-        // Mark as cancelled
+
+        // Refund player 1's deposit
+        **ctx.accounts.duel.to_account_info().try_borrow_mut_lamports()? -= duel.amount;
+        **ctx.accounts.player_1.to_account_info().try_borrow_mut_lamports()? += duel.amount;
+
+        // Update duel state
+        let duel = &mut ctx.accounts.duel;
         duel.status = DuelStatus::Cancelled;
-        
+
         emit!(DuelCancelled {
             duel_id: duel.duel_id,
             refund_amount: duel.amount,
         });
-        
+
         Ok(())
     }
 
@@ -695,7 +632,6 @@ pub struct Duel {
     pub player_1: Pubkey,
     pub player_2: Option<Pubkey>,
     pub amount: u64,
-    pub token_mint: Pubkey,
     pub player_1_prediction: u8,
     pub player_2_prediction: Option<u8>,
     pub entry_price: u64,
@@ -776,25 +712,9 @@ pub struct InitializeDuel<'info> {
     )]
     pub duel: Account<'info, Duel>,
 
-    #[account(
-        init,
-        payer = player_1,
-        seeds = [b"duel_vault", duel_id.to_le_bytes().as_ref(), token_mint.key().as_ref()],
-        bump,
-        token::mint = token_mint,
-        token::authority = duel_vault,
-    )]
-    pub duel_vault: Account<'info, TokenAccount>,
-
-    pub token_mint: Account<'info, Mint>,
-
-    #[account(mut)]
-    pub player_1_token_account: Account<'info, TokenAccount>,
-
     #[account(mut)]
     pub player_1: Signer<'info>,
 
-    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -804,15 +724,9 @@ pub struct JoinDuel<'info> {
     pub duel: Account<'info, Duel>,
 
     #[account(mut)]
-    pub duel_vault: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub player_2_token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
     pub player_2: Signer<'info>,
 
-    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -828,21 +742,21 @@ pub struct ResolveDuel<'info> {
     #[account(mut)]
     pub duel: Account<'info, Duel>,
 
+    /// CHECK: Player 1 account to receive winnings
     #[account(mut)]
-    pub duel_vault: Account<'info, TokenAccount>,
+    pub player_1: AccountInfo<'info>,
 
+    /// CHECK: Player 2 account to receive winnings
     #[account(mut)]
-    pub player_1_token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub player_2_token_account: Account<'info, TokenAccount>,
+    pub player_2: AccountInfo<'info>,
 
     /// Platform fee collector account
+    /// CHECK: Fee collector SOL account
     #[account(mut)]
-    pub fee_collector: Account<'info, TokenAccount>,
+    pub fee_collector: AccountInfo<'info>,
 
     pub authority: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -851,13 +765,9 @@ pub struct CancelDuel<'info> {
     pub duel: Account<'info, Duel>,
 
     #[account(mut)]
-    pub duel_vault: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub player_1_token_account: Account<'info, TokenAccount>,
-
     pub player_1: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
