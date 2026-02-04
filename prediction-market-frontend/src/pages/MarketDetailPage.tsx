@@ -114,9 +114,9 @@ export default function MarketDetailPage() {
                 try {
                     const onChainPool = await anchorProgramService.getPoolState(new BN(poolIdToUse));
                     if (onChainPool) {
-                        // Convert BN values to numbers
-                        const yesReserve = onChainPool.yesReserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
-                        const noReserve = onChainPool.noReserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
+                        // Convert BN values to numbers (fields are snake_case from Rust)
+                        const yesReserve = onChainPool.yes_reserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
+                        const noReserve = onChainPool.no_reserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
 
                         // Calculate prices from reserves (AMM formula)
                         const totalReserve = yesReserve + noReserve;
