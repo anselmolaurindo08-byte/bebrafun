@@ -245,22 +245,32 @@ func (s *SolanaClient) VerifyTransaction(ctx context.Context, txHash string, req
 	log.Printf("[VerifyTransaction] Transaction %s: sender=%s, receiver=%s", txHash, sender, receiver)
 	log.Printf("[VerifyTransaction] PreBalances: %v", tx.Meta.PreBalances)
 	log.Printf("[VerifyTransaction] PostBalances: %v", tx.Meta.PostBalances)
+	log.Printf("[VerifyTransaction] Account keys: %v", transaction.Message.AccountKeys)
 
-	// Calculate amount change for receiver (approximate check)
+	// Calculate amount - check ALL accounts for balance increases
 	var amount uint64
-	if len(tx.Meta.PreBalances) > 1 && len(tx.Meta.PostBalances) > 1 {
-		preBalance := tx.Meta.PreBalances[1]
-		postBalance := tx.Meta.PostBalances[1]
-		log.Printf("[VerifyTransaction] Receiver balance: pre=%d, post=%d", preBalance, postBalance)
-		if postBalance > preBalance {
-			amount = postBalance - preBalance
-			log.Printf("[VerifyTransaction] Calculated amount: %d lamports", amount)
-		} else {
-			log.Printf("[VerifyTransaction] WARNING: postBalance <= preBalance, amount=0")
+	if len(tx.Meta.PreBalances) == len(tx.Meta.PostBalances) {
+		// Check each account for balance increase
+		for i := 0; i < len(tx.Meta.PreBalances); i++ {
+			preBalance := tx.Meta.PreBalances[i]
+			postBalance := tx.Meta.PostBalances[i]
+
+			if postBalance > preBalance {
+				increase := postBalance - preBalance
+				log.Printf("[VerifyTransaction] Account %d (%s): balance increased by %d lamports",
+					i, transaction.Message.AccountKeys[i].String(), increase)
+
+				// Use the largest increase as the amount (typically the receiver)
+				if increase > amount {
+					amount = increase
+				}
+			}
 		}
 	} else {
-		log.Printf("[VerifyTransaction] WARNING: Not enough balance entries")
+		log.Printf("[VerifyTransaction] WARNING: PreBalances and PostBalances length mismatch")
 	}
+
+	log.Printf("[VerifyTransaction] Final calculated amount: %d lamports", amount)
 
 	return &TransactionDetails{
 		Signature: txHash,
