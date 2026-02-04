@@ -1,0 +1,26 @@
+--- a/src/services/blockchainService.ts
++++ b/src/services/blockchainService.ts
+@@ -88,9 +88,23 @@
+         };
+ 
+         console.log('  payload:', JSON.stringify(payload, null, 2));
++        
++        // Get JWT token from localStorage
++        const token = localStorage.getItem('token');
++        const headers: HeadersInit = {
++          'Content-Type': 'application/json'
++        };
++        
++        if (token) {
++          headers['Authorization'] = `Bearer ${token}`;
++          console.log('  ✅ Authorization token added');
++        } else {
++          console.warn('  ⚠️ No auth token found in localStorage');
++        }
+ 
+         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/amm/pools`, {
+           method: 'POST',
+-          headers: { 'Content-Type': 'application/json' },
++          headers,
+           body: JSON.stringify(payload)
+         });
