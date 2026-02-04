@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
-import anchorProgramService from '../services/anchorProgramService';
-import BN from 'bn.js';
 
 interface PortfolioProps {
     marketId: number;
