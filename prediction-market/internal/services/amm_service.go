@@ -227,6 +227,7 @@ func (s *AMMService) ToPoolResponse(pool *models.AMMPool) *models.PoolResponse {
 	return &models.PoolResponse{
 		ID:             pool.ID.String(),
 		MarketID:       pool.MarketID,
+		OnchainPoolID:  pool.OnchainPoolID,
 		ProgramID:      pool.ProgramID,
 		Authority:      pool.Authority,
 		PoolAddress:    pool.PoolAddress, // On-chain pool address

@@ -161,6 +161,7 @@ type RecordTradeRequest struct {
 type PoolResponse struct {
 	ID             string    `json:"id"`
 	MarketID       *uint     `json:"market_id"`
+	OnchainPoolID  *uint64   `json:"onchain_pool_id,omitempty"` // Blockchain pool_id
 	ProgramID      string    `json:"program_id"`
 	Authority      string    `json:"authority"`
 	PoolAddress    *string   `json:"pool_address,omitempty"` // On-chain pool address
