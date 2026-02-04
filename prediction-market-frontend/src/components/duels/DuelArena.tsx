@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
@@ -6,6 +7,8 @@ import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
 import { useDuelPolling } from '../../hooks/useDuelPolling';
+import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
+import { sendDuelDeposit } from '../../utils/solanaTransactions';
 
 interface DuelArenaProps {
   duel: Duel;
@@ -14,6 +17,7 @@ interface DuelArenaProps {
 
 export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResolved }) => {
   const { user } = useUserStore();
+  const { publicKey, sendTransaction, blockchainService } = useBlockchainWallet();
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,28 +57,22 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       setIsJoining(true);
       setError(null);
 
-      // Import wallet functions
-      const { useBlockchainWallet } = await import('../../hooks/useBlockchainWallet');
-      const walletHook = useBlockchainWallet();
-
-      if (!walletHook.publicKey || !walletHook.sendTransaction) {
+      if (!publicKey || !sendTransaction) {
         setError('Please connect your wallet first');
         return;
       }
 
       // Step 1: Get server wallet address
       const config = await duelService.getConfig();
-      const { PublicKey } = await import('@solana/web3.js');
       const serverWallet = new PublicKey(config.serverWallet);
 
       // Step 2: Send SOL transaction FIRST
-      const { sendDuelDeposit } = await import('../../utils/solanaTransactions');
       const signature = await sendDuelDeposit(
-        walletHook.blockchainService.getConnection(),
-        walletHook.publicKey,
+        blockchainService.getConnection(),
+        publicKey,
         serverWallet,
         duel.betAmount / 1e9, // Convert lamports to SOL
-        walletHook.sendTransaction
+        sendTransaction
       );
 
       console.log('Join deposit transaction sent:', signature);
