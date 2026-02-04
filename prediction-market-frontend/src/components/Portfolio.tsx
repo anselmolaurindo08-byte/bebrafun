@@ -10,7 +10,6 @@ interface PortfolioProps {
 export default function Portfolio({ marketId }: PortfolioProps) {
     const { connected, publicKey } = useBlockchainWallet();
     const [userPosition, setUserPosition] = useState<any>(null);
-    const [pool, setPool] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -33,8 +32,6 @@ export default function Portfolio({ marketId }: PortfolioProps) {
             const poolData = await response.json();
 
             if (poolData && poolData.onchain_pool_id) {
-                setPool(poolData);
-
                 // Fetch on-chain user position
                 const position = await anchorProgramService.getUserPosition(
                     new BN(poolData.onchain_pool_id),
