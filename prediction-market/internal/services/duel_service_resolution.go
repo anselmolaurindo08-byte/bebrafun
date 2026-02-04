@@ -104,14 +104,12 @@ func (ds *DuelService) AutoResolveDuel(
 
 	// Update duel status directly in database (no on-chain call needed)
 	now := time.Now()
-	updates := map[string]interface{}{
-		"status":       models.DuelStatusResolved,
-		"winner_id":    winnerID,
-		"price_at_end": exitPrice,
-		"resolved_at":  &now,
-	}
+	duel.Status = models.DuelStatusResolved
+	duel.WinnerID = &winnerID
+	duel.PriceAtEnd = &exitPrice
+	duel.ResolvedAt = &now
 
-	err = ds.repo.UpdateDuel(ctx, duelID, updates)
+	err = ds.repo.UpdateDuel(ctx, duel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update duel status: %w", err)
 	}
@@ -119,13 +117,7 @@ func (ds *DuelService) AutoResolveDuel(
 	log.Printf("[AutoResolveDuel] Duel %s resolved successfully. Winner: %d, Loser: %d", duelID, winnerID, loserID)
 
 	// Return result
-	result := &models.DuelResult{
-		DuelID:   duelID,
-		WinnerID: winnerID,
-		Status:   models.DuelStatusResolved,
-	}
-
-	return result, nil
+	return ds.GetDuelResult(ctx, duelID)
 }
 
 // SetChartStartPrice sets the chart start price for a duel
