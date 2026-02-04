@@ -256,14 +256,11 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("insufficient deposit: expected %d lamports, got %d", duel.BetAmount, txDetails.Amount)
 	}
 
-	// Set Player2 and update status to ACTIVE (both players ready)
+	// Set Player2 and update status to COUNTDOWN temporarily
 	duel.Player2ID = &playerID
 	duel.Player2Amount = &duel.BetAmount
-	duel.Status = models.DuelStatusActive // Changed from MATCHED to ACTIVE
-	now := time.Now()
-	duel.StartedAt = &now
 
-	// Save to database
+	// Save to database with COUNTDOWN status first
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
@@ -287,6 +284,63 @@ func (ds *DuelService) JoinDuel(
 	}
 
 	log.Printf("Player %d joined duel %d with verified deposit (tx: %s)", playerID, duel.DuelID, signature)
+
+	// Get entry price (mock for now - TODO: integrate Pyth oracle)
+	// Using $100 as mock price in micro-units (6 decimals)
+	entryPriceMicroUnits := uint64(100_000_000) // $100.00
+
+	log.Printf("[JoinDuel] Calling start_duel for duel %d with entry price %d", duel.DuelID, entryPriceMicroUnits)
+
+	// Call start_duel on-chain to set entry price
+	startSignature, err := ds.anchorClient.StartDuel(
+		ctx,
+		uint64(duel.DuelID),
+		entryPriceMicroUnits,
+	)
+	if err != nil {
+		log.Printf("ERROR: Failed to start duel %s on-chain: %v", duel.ID, err)
+
+		// Rollback: remove player 2 and revert to PENDING
+		duel.Player2ID = nil
+		duel.Player2Amount = nil
+		duel.Status = models.DuelStatusPending
+		if updateErr := ds.repo.UpdateDuel(ctx, duel); updateErr != nil {
+			log.Printf("ERROR: Failed to rollback duel %s: %v", duel.ID, updateErr)
+		}
+
+		return nil, fmt.Errorf("failed to start duel on-chain: %w", err)
+	}
+
+	log.Printf("[JoinDuel] Duel started on-chain: %s", startSignature)
+
+	// Verify start_duel transaction
+	startTxDetails, err := ds.solanaClient.VerifyTransaction(ctx, startSignature, 1)
+	if err != nil {
+		log.Printf("ERROR: Failed to verify start transaction for duel %s: %v", duel.ID, err)
+		return nil, fmt.Errorf("failed to verify start transaction: %w", err)
+	}
+
+	if startTxDetails == nil || !startTxDetails.Confirmed {
+		log.Printf("ERROR: Start transaction not confirmed for duel %s", duel.ID)
+		return nil, errors.New("start transaction not confirmed on blockchain")
+	}
+
+	log.Printf("[JoinDuel] Start transaction verified for duel %d", duel.DuelID)
+
+	// Update duel status to ACTIVE and set entry price
+	duel.Status = models.DuelStatusActive
+	now := time.Now()
+	duel.StartedAt = &now
+	entryPriceFloat := float64(entryPriceMicroUnits) / 1e6 // Convert to dollars
+	duel.PriceAtStart = &entryPriceFloat
+
+	// Save final state to database
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel to active: %w", err)
+	}
+
+	log.Printf("Duel %d started successfully. Entry price: $%.2f, Start tx: %s",
+		duel.DuelID, entryPriceFloat, startSignature)
 
 	return duel, nil
 }
