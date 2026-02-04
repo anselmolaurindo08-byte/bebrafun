@@ -182,7 +182,7 @@ export default function MarketDetailPage() {
             </div>
 
             {/* Portfolio */}
-            <Portfolio marketId={parseInt(id!)} />
+            <Portfolio marketId={parseInt(id!)} userPosition={userPosition} />
 
             {/* Trading Section */}
             <div className="mt-8 space-y-6">

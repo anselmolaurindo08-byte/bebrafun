@@ -5,46 +5,12 @@ import BN from 'bn.js';
 
 interface PortfolioProps {
     marketId: number;
+    userPosition: any | null;
 }
 
-export default function Portfolio({ marketId }: PortfolioProps) {
-    const { connected, publicKey } = useBlockchainWallet();
-    const [userPosition, setUserPosition] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (connected && publicKey) {
-            fetchOnChainPosition();
-        } else {
-            setLoading(false);
-        }
-    }, [marketId, connected, publicKey]);
-
-    const fetchOnChainPosition = async () => {
-        if (!connected || !publicKey) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            // Fetch pool data to get onchain_pool_id
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/amm/pools/market/${marketId}`);
-            const poolData = await response.json();
-
-            if (poolData && poolData.onchain_pool_id) {
-                // Fetch on-chain user position
-                const position = await anchorProgramService.getUserPosition(
-                    new BN(poolData.onchain_pool_id),
-                    publicKey
-                );
-                setUserPosition(position);
-            }
-        } catch (error: any) {
-            console.error('Failed to fetch on-chain position:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+export default function Portfolio({ marketId, userPosition }: PortfolioProps) {
+    const { connected } = useBlockchainWallet();
+    const [loading] = useState(false);
 
     // If not connected, show wallet prompt
     if (!connected) {
