@@ -84,8 +84,11 @@ func main() {
 		cfg.Solana.PlatformFeePercent,
 	)
 
+	// Initialize price service for real-time price feeds
+	priceService := services.NewPriceService()
+
 	// Initialize duel service
-	duelService := services.NewDuelService(repo, escrowContract, solanaClient, anchorClient, payoutService)
+	duelService := services.NewDuelService(repo, escrowContract, solanaClient, anchorClient, payoutService, priceService)
 
 	// Start duel resolver background job
 	duelResolver := jobs.NewDuelResolver(duelService, 10*time.Second)
