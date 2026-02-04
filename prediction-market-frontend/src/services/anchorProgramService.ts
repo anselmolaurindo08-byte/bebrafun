@@ -381,39 +381,7 @@ class AnchorProgramService {
         return tx;
     }
 
-    // ============================================================================
-    // ADDITIONAL POOL OPERATIONS
-    // ============================================================================
 
-    /**
-     * Sell outcome shares for SOL
-     */
-    async sellOutcome(
-        poolId: BN,
-        outcome: { yes: {} } | { no: {} },
-        sharesAmount: BN
-    ): Promise<string> {
-        const program = this.getProgram();
-        const [poolPda] = this.getPoolPda(poolId);
-
-        if (!program.provider.publicKey) {
-            throw new Error('Wallet not connected');
-        }
-
-        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
-
-        const tx = await (program.methods as any)
-            .sellOutcome(outcome, sharesAmount)
-            .accounts({
-                pool: poolPda,
-                userPosition: userPositionPda,
-                seller: program.provider.publicKey,
-                systemProgram: SystemProgram.programId,
-            })
-            .rpc();
-
-        return tx;
-    }
 
     /**
      * Cancel duel and refund player 1 (after 5 min timeout) - returns SOL

@@ -69,6 +69,57 @@ class BlockchainService {
   }
 
   /**
+   * Resolve pool (admin only)
+   */
+  async resolvePool(
+    poolId: number,
+    outcome: 'yes' | 'no' | 'invalid'
+  ): Promise<{ success: boolean; tx?: string; error?: string }> {
+    try {
+      const poolIdBN = new BN(poolId);
+      let outcomeEnum: { yes: {} } | { no: {} } | { invalid: {} };
+
+      if (outcome === 'yes') {
+        outcomeEnum = { yes: {} };
+      } else if (outcome === 'no') {
+        outcomeEnum = { no: {} };
+      } else {
+        outcomeEnum = { invalid: {} };
+      }
+
+      const tx = await anchorProgramService.resolvePool(poolIdBN, outcomeEnum);
+
+      return { success: true, tx };
+    } catch (error: any) {
+      console.error('Resolve pool error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to resolve pool'
+      };
+    }
+  }
+
+  /**
+   * Claim winnings from resolved pool
+   */
+  async claimWinnings(
+    poolId: number
+  ): Promise<{ success: boolean; tx?: string; error?: string }> {
+    try {
+      const poolIdBN = new BN(poolId);
+      const tx = await anchorProgramService.claimWinnings(poolIdBN);
+
+      return { success: true, tx };
+    } catch (error: any) {
+      console.error('Claim winnings error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to claim winnings'
+      };
+    }
+  }
+
+  /**
    * Get pool state
    */
   async getPool(poolId: number): Promise<any> {
