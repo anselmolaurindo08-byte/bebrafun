@@ -15,7 +15,7 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
     const [error, setError] = useState<string | null>(null);
 
     const handleSellYes = async () => {
-        if (!publicKey || !userPosition?.yesTokens) return;
+        if (!publicKey || !userPosition?.yes_tokens) return;
 
         setLoading(true);
         setError(null);
@@ -24,7 +24,7 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
             const result = await blockchainService.sellShares(
                 pool.id,
                 'yes',
-                userPosition.yesTokens
+                userPosition.yes_tokens
             );
 
             if (result.success) {
@@ -46,7 +46,7 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
     };
 
     const handleSellNo = async () => {
-        if (!publicKey || !userPosition?.noTokens) return;
+        if (!publicKey || !userPosition?.no_tokens) return;
 
         setLoading(true);
         setError(null);
@@ -55,7 +55,7 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
             const result = await blockchainService.sellShares(
                 pool.id,
                 'no',
-                userPosition.noTokens
+                userPosition.no_tokens
             );
 
             if (result.success) {
@@ -80,39 +80,53 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
         return <div className="sell-outcome-message">Connect wallet to sell tokens</div>;
     }
 
-    if (!userPosition || (userPosition.yesTokens === 0 && userPosition.noTokens === 0)) {
+    if (!userPosition || (userPosition.yes_tokens === 0 && userPosition.no_tokens === 0)) {
         return <div className="sell-outcome-message">No tokens to sell</div>;
     }
 
     return (
-        <div className="sell-outcome-section">
-            <h3>Sell Your Tokens</h3>
+        <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">
+            <h3 className="text-xl font-mono font-bold text-pump-white mb-4">Sell Outcome Tokens</h3>
 
             {error && (
-                <div className="error-message">
-                    {error}
+                <div className="bg-pump-red/10 border-2 border-pump-red rounded-md p-3 mb-4">
+                    <p className="text-pump-red font-sans text-sm">{error}</p>
                 </div>
             )}
 
-            <div className="sell-buttons">
-                {userPosition.yesTokens > 0 && (
-                    <button
-                        onClick={handleSellYes}
-                        disabled={loading}
-                        className="sell-yes-btn"
-                    >
-                        {loading ? 'Selling...' : `Sell ${userPosition.yesTokens} YES tokens`}
-                    </button>
+            <div className="grid grid-cols-2 gap-4">
+                {/* Sell YES */}
+                {userPosition?.yes_tokens > 0 && (
+                    <div className="bg-pump-black rounded-md p-4">
+                        <p className="text-pump-gray-light font-sans text-xs mb-2">YES Tokens</p>
+                        <p className="text-2xl font-mono font-bold text-pump-green mb-3">
+                            {(userPosition.yes_tokens / 1_000_000_000).toFixed(4)}
+                        </p>
+                        <button
+                            onClick={handleSellYes}
+                            disabled={loading}
+                            className="sell-yes-btn"
+                        >
+                            {loading ? 'Selling...' : `Sell YES tokens`}
+                        </button>
+                    </div>
                 )}
 
-                {userPosition.noTokens > 0 && (
-                    <button
-                        onClick={handleSellNo}
-                        disabled={loading}
-                        className="sell-no-btn"
-                    >
-                        {loading ? 'Selling...' : `Sell ${userPosition.noTokens} NO tokens`}
-                    </button>
+                {/* Sell NO */}
+                {userPosition?.no_tokens > 0 && (
+                    <div className="bg-pump-black rounded-md p-4">
+                        <p className="text-pump-gray-light font-sans text-xs mb-2">NO Tokens</p>
+                        <p className="text-2xl font-mono font-bold text-pump-red mb-3">
+                            {(userPosition.no_tokens / 1_000_000_000).toFixed(4)}
+                        </p>
+                        <button
+                            onClick={handleSellNo}
+                            disabled={loading}
+                            className="sell-no-btn"
+                        >
+                            {loading ? 'Selling...' : `Sell NO tokens`}
+                        </button>
+                    </div>
                 )}
             </div>
 
