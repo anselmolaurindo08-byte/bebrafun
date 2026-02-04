@@ -238,7 +238,7 @@ class AnchorProgramService {
         });
 
         try {
-            const pool = await (program.account as any)['ammPool'].fetch(poolPda);
+            const pool = await (program.account as any)['pool'].fetch(poolPda);
             console.log('[getPoolState] Pool found:', pool);
             return pool;
         } catch (error) {
