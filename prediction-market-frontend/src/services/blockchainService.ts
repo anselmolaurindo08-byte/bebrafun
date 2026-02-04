@@ -98,7 +98,7 @@ class BlockchainService {
    * Calculate quote for buying shares
    * Simple estimation: shares ≈ SOL amount (1:1 for now)
    */
-  getQuote(solAmount: number, outcome: 'yes' | 'no'): {
+  getQuote(solAmount: number, _outcome: 'yes' | 'no'): {
     estimatedShares: number;
     pricePerShare: number;
   } {
@@ -228,8 +228,8 @@ class BlockchainService {
   /**
    * Create standardized error object
    */
-  createError(type: string, message: string): { type: string; message: string } {
-    return { type, message };
+  createError(type: string, message: string): { type: string; message: string; name: string } {
+    return { type, message, name: 'BlockchainError' };
   }
 
   /**

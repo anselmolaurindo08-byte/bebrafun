@@ -53,14 +53,21 @@ export default function MarketDetailPage() {
         try {
             // Default initial liquidity: 0.001 SOL (minimum for testing)
             const initialLiquidity = 0.001;
-            const poolId = await blockchainService.createPool(
-                id,
-                initialLiquidity,
-                publicKey,
-                sendTransaction,
-                wallet?.adapter // Pass wallet adapter
+            const poolIdNum = parseInt(id);
+            const marketIdNum = parseInt(id); // Use same ID for now
+
+            const result = await blockchainService.createPool(
+                poolIdNum,
+                marketIdNum,
+                initialLiquidity
             );
-            setAmmPoolId(poolId);
+
+            if (result.success) {
+                setAmmPoolId(result.tx || '');
+                console.log('Pool created:', result.tx);
+            } else {
+                throw new Error(result.error || 'Failed to create pool');
+            }
         } catch (error: any) {
             console.error('Failed to create pool:', error);
             alert(`Failed to create pool: ${error.message || 'Unknown error'}`);
