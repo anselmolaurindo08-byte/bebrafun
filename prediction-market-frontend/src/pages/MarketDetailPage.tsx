@@ -26,7 +26,7 @@ export default function MarketDetailPage() {
         fetchMarket();
         fetchAmmPool();
         fetchUser();
-    }, [id]);
+    }, [id, connected, publicKey]);
 
     const fetchUser = async () => {
         try {
