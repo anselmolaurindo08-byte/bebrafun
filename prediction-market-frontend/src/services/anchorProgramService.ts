@@ -158,7 +158,7 @@ class AnchorProgramService {
             .accounts({
                 pool: poolPda,
                 userPosition: userPositionPda,
-                buyer: program.provider.publicKey,
+                user: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
