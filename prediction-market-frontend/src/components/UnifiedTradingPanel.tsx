@@ -80,7 +80,7 @@ export default function UnifiedTradingPanel({
     };
 
     const availableShares = mode === 'sell' && userPosition
-        ? (outcome === 'yes' ? (userPosition.yes_tokens || 0) : (userPosition.no_tokens || 0))
+        ? (outcome === 'yes' ? (userPosition.yesTokens || 0) : (userPosition.noTokens || 0))
         : 0;
 
     const canSell = mode === 'sell' && availableShares > 0;
@@ -164,17 +164,17 @@ export default function UnifiedTradingPanel({
             </div>
 
             {/* Current Position */}
-            {userPosition && ((userPosition.yes_tokens || 0) > 0 || (userPosition.no_tokens || 0) > 0) && (
+            {userPosition && ((userPosition.yesTokens || 0) > 0 || (userPosition.noTokens || 0) > 0) && (
                 <div className="bg-pump-black rounded-md p-3 mb-4">
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
-                    {(userPosition.yes_tokens || 0) > 0 && (
+                    {(userPosition.yesTokens || 0) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {(userPosition.yes_tokens || 0).toFixed(6)} YES shares
+                            {(userPosition.yesTokens || 0).toFixed(6)} YES shares
                         </p>
                     )}
-                    {(userPosition.no_tokens || 0) > 0 && (
+                    {(userPosition.noTokens || 0) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {(userPosition.no_tokens || 0).toFixed(6)} NO shares
+                            {(userPosition.noTokens || 0).toFixed(6)} NO shares
                         </p>
                     )}
                 </div>
