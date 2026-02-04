@@ -463,14 +463,27 @@ class BlockchainService {
     _publicKey: any,
     _sendTransaction: any
   ): Promise<any> {
-    const solAmount = params.inputAmount.toNumber() / 1e9;
-    const outcome = params.tradeType === 0 ? 'yes' : 'no';
+    const isSell = params.tradeType === 2 || params.tradeType === 3; // SELL_YES or SELL_NO
+    const outcome = (params.tradeType === 0 || params.tradeType === 2) ? 'yes' : 'no';
 
-    const result = await this.buyShares(
-      parseInt(params.poolId),
-      outcome,
-      solAmount
-    );
+    let result;
+    if (isSell) {
+      // For sell: inputAmount is shares in lamports
+      const sharesAmount = params.inputAmount.toNumber();
+      result = await this.sellShares(
+        parseInt(params.poolId),
+        outcome,
+        sharesAmount
+      );
+    } else {
+      // For buy: inputAmount is SOL in lamports
+      const solAmount = params.inputAmount.toNumber() / 1e9;
+      result = await this.buyShares(
+        parseInt(params.poolId),
+        outcome,
+        solAmount
+      );
+    }
 
     if (result.success) {
       return {
