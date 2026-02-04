@@ -30,7 +30,6 @@ export default function AMMTradingPanel({
 
   const [tradeType, setTradeType] = useState<TradeType>(TradeType.BUY_YES);
   const [amount, setAmount] = useState('');
-  const [slippage, setSlippage] = useState(0.5);
 
   // Fetch pool state on mount and poll every 10s
   useEffect(() => {
@@ -46,15 +45,15 @@ export default function AMMTradingPanel({
       return;
     }
     const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
-    getQuote(lamports, tradeType, slippage);
-  }, [amount, tradeType, slippage, poolState, getQuote]);
+    getQuote(lamports, tradeType);
+  }, [amount, tradeType, poolState, getQuote]);
 
   const handleTrade = useCallback(async () => {
     const parsed = parseFloat(amount);
     if (!amount || isNaN(parsed) || parsed <= 0) return;
     const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
-    await executeTrade(lamports, tradeType, slippage);
-  }, [amount, tradeType, slippage, executeTrade]);
+    await executeTrade(lamports, tradeType);
+  }, [amount, tradeType, executeTrade]);
 
   const formatSOL = (bn: BN): string => {
     return (bn.toNumber() / LAMPORTS_PER_SOL).toFixed(6);
@@ -62,18 +61,18 @@ export default function AMMTradingPanel({
 
   const yesPrice =
     poolState &&
-    !poolState.yesReserve.isZero() &&
-    !poolState.noReserve.isZero()
+      !poolState.yesReserve.isZero() &&
+      !poolState.noReserve.isZero()
       ? poolState.noReserve.toNumber() /
-        (poolState.yesReserve.toNumber() + poolState.noReserve.toNumber())
+      (poolState.yesReserve.toNumber() + poolState.noReserve.toNumber())
       : 0;
 
   const noPrice =
     poolState &&
-    !poolState.yesReserve.isZero() &&
-    !poolState.noReserve.isZero()
+      !poolState.yesReserve.isZero() &&
+      !poolState.noReserve.isZero()
       ? poolState.yesReserve.toNumber() /
-        (poolState.yesReserve.toNumber() + poolState.noReserve.toNumber())
+      (poolState.yesReserve.toNumber() + poolState.noReserve.toNumber())
       : 0;
 
   return (
@@ -165,21 +164,19 @@ export default function AMMTradingPanel({
               <div className="flex gap-2">
                 <button
                   onClick={() => setTradeType(TradeType.BUY_YES)}
-                  className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${
-                    tradeType === TradeType.BUY_YES
+                  className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${tradeType === TradeType.BUY_YES
                       ? 'bg-pump-green text-pump-black scale-105'
                       : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-green'
-                  }`}
+                    }`}
                 >
                   BUY YES
                 </button>
                 <button
                   onClick={() => setTradeType(TradeType.BUY_NO)}
-                  className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${
-                    tradeType === TradeType.BUY_NO
+                  className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${tradeType === TradeType.BUY_NO
                       ? 'bg-pump-red text-pump-white scale-105'
                       : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-red'
-                  }`}
+                    }`}
                 >
                   BUY NO
                 </button>
@@ -202,27 +199,7 @@ export default function AMMTradingPanel({
               />
             </div>
 
-            {/* Slippage Setting */}
-            <div>
-              <label className="block text-xs font-sans font-semibold text-pump-gray-light mb-2">
-                SLIPPAGE TOLERANCE
-              </label>
-              <div className="flex gap-2">
-                {[0.5, 1.0, 2.0].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => setSlippage(val)}
-                    className={`flex-1 py-2 rounded-md font-sans font-semibold text-xs transition-all duration-200 ${
-                      slippage === val
-                        ? 'bg-pump-green text-pump-black'
-                        : 'bg-pump-black text-pump-white border border-pump-gray-dark hover:border-pump-green'
-                    }`}
-                  >
-                    {val}%
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             {/* Quote Display */}
             {quote && (
@@ -256,11 +233,10 @@ export default function AMMTradingPanel({
                     Price impact
                   </span>
                   <span
-                    className={`text-sm font-mono ${
-                      quote.priceImpact > 5
+                    className={`text-sm font-mono ${quote.priceImpact > 5
                         ? 'text-pump-red'
                         : 'text-pump-white'
-                    }`}
+                      }`}
                   >
                     {quote.priceImpact.toFixed(2)}%
                   </span>
@@ -339,11 +315,10 @@ export default function AMMTradingPanel({
                 parseFloat(amount) <= 0 ||
                 !poolState
               }
-              className={`w-full font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${
-                tradeType === TradeType.BUY_YES
+              className={`w-full font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${tradeType === TradeType.BUY_YES
                   ? 'bg-pump-green hover:bg-pump-lime text-pump-black hover:scale-105 hover:shadow-glow'
                   : 'bg-pump-red hover:bg-[#FF5252] text-pump-white hover:scale-105'
-              }`}
+                }`}
             >
               {loading
                 ? 'PROCESSING...'

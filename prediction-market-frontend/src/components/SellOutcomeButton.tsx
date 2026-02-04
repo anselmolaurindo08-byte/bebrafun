@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import blockchainService from '../services/blockchainService';
 import './SellOutcomeButton.css';
 
@@ -22,19 +21,21 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
         setError(null);
 
         try {
-            const tx = await blockchainService.sellOutcome(
+            const result = await blockchainService.sellShares(
                 pool.id,
-                'YES',
-                userPosition.yesTokens, // Sell all YES tokens
-                publicKey as PublicKey,
-                5 // 5% slippage tolerance
+                'yes',
+                userPosition.yesTokens
             );
 
-            console.log('✅ Sold YES tokens:', tx);
-            alert('Successfully sold YES tokens!');
+            if (result.success) {
+                console.log('✅ Sold YES shares:', result.tx);
+                alert('Successfully sold YES shares!');
 
-            if (onSuccess) {
-                onSuccess();
+                if (onSuccess) {
+                    onSuccess();
+                }
+            } else {
+                throw new Error(result.error || 'Failed to sell YES shares');
             }
         } catch (err: any) {
             console.error('❌ Error selling YES tokens:', err);
@@ -51,19 +52,21 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
         setError(null);
 
         try {
-            const tx = await blockchainService.sellOutcome(
+            const result = await blockchainService.sellShares(
                 pool.id,
-                'NO',
-                userPosition.noTokens, // Sell all NO tokens
-                publicKey as PublicKey,
-                5 // 5% slippage tolerance
+                'no',
+                userPosition.noTokens
             );
 
-            console.log('✅ Sold NO tokens:', tx);
-            alert('Successfully sold NO tokens!');
+            if (result.success) {
+                console.log('✅ Sold NO shares:', result.tx);
+                alert('Successfully sold NO shares!');
 
-            if (onSuccess) {
-                onSuccess();
+                if (onSuccess) {
+                    onSuccess();
+                }
+            } else {
+                throw new Error(result.error || 'Failed to sell NO shares');
             }
         } catch (err: any) {
             console.error('❌ Error selling NO tokens:', err);
@@ -114,7 +117,7 @@ function SellOutcomeButton({ pool, userPosition, onSuccess }: SellOutcomeButtonP
             </div>
 
             <p className="fee-notice">
-                Fee: 0.3% • Slippage tolerance: 5%
+                Fee: 0.3%
             </p>
         </div>
     );
