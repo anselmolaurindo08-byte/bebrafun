@@ -417,16 +417,33 @@ class BlockchainService {
     tradeType: any,
     slippageTolerance: number
   ): any {
-    const solAmount = inputAmount.toNumber() / 1e9;
-    const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no');
+    const isSell = tradeType === 2 || tradeType === 3; // SELL_YES or SELL_NO
 
-    return {
-      outputAmount: new BN(quote.estimatedShares * 1e9),
-      minimumReceived: new BN(quote.estimatedShares * (1 - slippageTolerance / 100) * 1e9),
-      feeAmount: new BN(quote.estimatedShares * 0.003 * 1e9),
-      priceImpact: 0,
-      slippageTolerance
-    };
+    if (isSell) {
+      // For sell: inputAmount is shares, output is SOL
+      const sharesAmount = inputAmount.toNumber() / 1e9;
+      const solReceived = sharesAmount; // 1:1 for now
+
+      return {
+        outputAmount: new BN(solReceived * 1e9), // SOL received
+        minimumReceived: new BN(solReceived * (1 - slippageTolerance / 100) * 1e9),
+        feeAmount: new BN(0), // No fee deduction for sell (fee taken from output)
+        priceImpact: 0,
+        slippageTolerance
+      };
+    } else {
+      // For buy: inputAmount is SOL, output is shares
+      const solAmount = inputAmount.toNumber() / 1e9;
+      const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no');
+
+      return {
+        outputAmount: new BN(quote.estimatedShares * 1e9),
+        minimumReceived: new BN(quote.estimatedShares * (1 - slippageTolerance / 100) * 1e9),
+        feeAmount: new BN(quote.estimatedShares * 0.003 * 1e9),
+        priceImpact: 0,
+        slippageTolerance
+      };
+    }
   }
 
   /**

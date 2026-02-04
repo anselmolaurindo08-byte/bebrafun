@@ -115,6 +115,12 @@ export default function MarketDetailPage() {
                     const onChainPool = await anchorProgramService.getPoolState(new BN(poolIdToUse));
                     if (onChainPool) {
                         // Convert BN values to numbers (fields are snake_case from Rust)
+                        console.log('[fetchAmmPool] Raw pool data:', {
+                            yes_reserve_type: typeof onChainPool.yes_reserve,
+                            yes_reserve_raw: onChainPool.yes_reserve,
+                            yes_reserve_has_toNumber: !!onChainPool.yes_reserve?.toNumber
+                        });
+
                         const yesReserve = onChainPool.yes_reserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
                         const noReserve = onChainPool.no_reserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
                         const baseYesLiquidity = onChainPool.base_yes_liquidity?.toNumber() / 1e9 || 0;
