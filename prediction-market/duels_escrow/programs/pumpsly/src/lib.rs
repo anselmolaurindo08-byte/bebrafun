@@ -264,9 +264,9 @@ pub mod pumpsly {
         pool.no_reserve = initial_liquidity / 2;
         pool.total_liquidity = initial_liquidity;
         
-        // Set base liquidity for price stability (10 SOL equivalent)
+        // Set base liquidity for price stability (25 SOL equivalent)
         // This provides stable pricing even with micro-liquidity pools
-        let base_amount = 10_000_000_000; // 10 SOL in lamports
+        let base_amount = 25_000_000_000; // 25 SOL in lamports
         pool.base_yes_liquidity = base_amount / 2;
         pool.base_no_liquidity = base_amount / 2;
         
