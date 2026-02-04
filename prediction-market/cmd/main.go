@@ -244,6 +244,7 @@ func main() {
 	router.GET("/api/amm/pools", ammHandler.GetAllPools)
 	router.GET("/api/amm/pools/:id", ammHandler.GetPool)
 	router.GET("/api/amm/pools/market/:market_id", ammHandler.GetPoolByMarket)
+	router.GET("/api/amm/pools/onchain/:pool_id", ammHandler.GetPoolByOnchainID) // NEW: Query by blockchain pool_id
 	router.GET("/api/amm/quote", ammHandler.GetTradeQuote)
 	router.GET("/api/amm/prices/:pool_id", ammHandler.GetPriceHistory)
 

@@ -58,6 +58,24 @@ func (h *AMMHandler) GetPoolByMarket(c *gin.Context) {
 	c.JSON(http.StatusOK, h.ammService.ToPoolResponse(pool))
 }
 
+// GetPoolByOnchainID retrieves a pool by blockchain pool ID
+// GET /api/amm/pools/onchain/:pool_id
+func (h *AMMHandler) GetPoolByOnchainID(c *gin.Context) {
+	poolID, err := strconv.ParseUint(c.Param("pool_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pool id"})
+		return
+	}
+
+	pool, err := h.ammService.GetPoolByOnchainID(c.Request.Context(), poolID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "pool not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, h.ammService.ToPoolResponse(pool))
+}
+
 // GetAllPools retrieves all active pools
 // GET /api/amm/pools
 func (h *AMMHandler) GetAllPools(c *gin.Context) {

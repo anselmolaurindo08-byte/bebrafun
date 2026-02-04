@@ -39,6 +39,7 @@ const (
 type AMMPool struct {
 	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	MarketID       *uint      `gorm:"index" json:"market_id"`
+	OnchainPoolID  *uint64    `gorm:"uniqueIndex" json:"onchain_pool_id"` // Blockchain pool_id
 	ProgramID      string     `gorm:"size:255;uniqueIndex;not null" json:"program_id"`
 	Authority      string     `gorm:"size:255;not null" json:"authority"`
 	PoolAddress    *string    `gorm:"size:255;uniqueIndex" json:"pool_address"` // On-chain pool PDA address

@@ -77,6 +77,26 @@ func (s *AMMService) GetPoolByMarketID(ctx context.Context, marketID uint) (*mod
 	return &pool, nil
 }
 
+// GetPoolByOnchainID retrieves a pool by blockchain pool_id
+func (s *AMMService) GetPoolByOnchainID(ctx context.Context, poolID uint64) (*models.AMMPool, error) {
+	var pool models.AMMPool
+	if err := s.db.WithContext(ctx).First(&pool, "onchain_pool_id = ? AND status = ?", poolID, models.PoolStatusActive).Error; err != nil {
+		return nil, fmt.Errorf("pool not found for onchain_pool_id %d: %w", poolID, err)
+	}
+
+	// Fetch real reserve data from Blockchain asynchronously if needed
+	if s.solanaClient != nil {
+		lastFetch, ok := s.fetchCache.Load(pool.ID)
+		if !ok || time.Since(lastFetch.(time.Time)) > 10*time.Second {
+			// Update cache timestamp immediately to prevent redundant calls
+			s.fetchCache.Store(pool.ID, time.Now())
+			go s.updatePoolReserves(context.Background(), pool.ID, pool.Authority, pool.YesMint, pool.NoMint)
+		}
+	}
+
+	return &pool, nil
+}
+
 // GetAllPools retrieves all active pools
 func (s *AMMService) GetAllPools(ctx context.Context, limit, offset int) ([]models.AMMPool, error) {
 	var pools []models.AMMPool
