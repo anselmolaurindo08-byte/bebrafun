@@ -306,6 +306,16 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uint) (*models.User
 	return &user, nil
 }
 
+// GetUserWalletAddress retrieves a user's wallet address by user ID
+func (r *Repository) GetUserWalletAddress(ctx context.Context, userID uint) (string, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Select("wallet_address").Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		return "", err
+	}
+	return user.WalletAddress, nil
+}
+
 // AddToQueue adds a player to the duel matching queue
 func (r *Repository) AddToQueue(ctx context.Context, queueItem *models.DuelQueue) error {
 	return r.db.WithContext(ctx).Create(queueItem).Error

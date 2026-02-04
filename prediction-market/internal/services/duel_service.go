@@ -11,6 +11,7 @@ import (
 	"prediction-market/internal/models"
 	"prediction-market/internal/repository"
 
+	"github.com/gagliardetto/solana-go"
 	"github.com/google/uuid"
 )
 
@@ -604,12 +605,60 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		return nil, fmt.Errorf("duel is not active/finished, current status: %s", duel.Status)
 	}
 
+	// Get player wallet addresses
+	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, duel.Player1ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get player 1 wallet: %w", err)
+	}
+	if duel.Player2ID == nil {
+		return nil, errors.New("duel has no second player")
+	}
+	player2Wallet, err := ds.repo.GetUserWalletAddress(ctx, *duel.Player2ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get player 2 wallet: %w", err)
+	}
+
+	// Convert exit price to lamports (assuming price is in USD, multiply by some factor)
+	// For now, just use the price as-is since it's already a number
+	exitPriceLamports := uint64(exitPrice * 1e6) // Convert to micro-units
+
+	// Call smart contract to resolve duel
+	log.Printf("[ResolveDuelWithPrice] Calling contract resolve_duel for duel %s (duelId=%d, exitPrice=%d)",
+		duelID, duel.DuelID, exitPriceLamports)
+
+	player1Pubkey, err := solana.PublicKeyFromBase58(player1Wallet)
+	if err != nil {
+		return nil, fmt.Errorf("invalid player 1 wallet: %w", err)
+	}
+	player2Pubkey, err := solana.PublicKeyFromBase58(player2Wallet)
+	if err != nil {
+		return nil, fmt.Errorf("invalid player 2 wallet: %w", err)
+	}
+
+	signature, err := ds.anchorClient.ResolveDuel(
+		ctx,
+		uint64(duel.DuelID),
+		exitPriceLamports,
+		player1Pubkey,
+		player2Pubkey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve duel on-chain: %w", err)
+	}
+
+	log.Printf("[ResolveDuelWithPrice] Duel resolved on-chain: %s", signature)
+
+	// Verify the transaction
+	txDetails, err := ds.solanaClient.VerifyTransaction(ctx, signature, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify resolution transaction: %w", err)
+	}
+
+	log.Printf("[ResolveDuelWithPrice] Resolution transaction verified: %+v", txDetails)
+
 	// Determine loser
 	var loserID uint
 	if winnerID == duel.Player1ID {
-		if duel.Player2ID == nil {
-			return nil, errors.New("duel has no second player")
-		}
 		loserID = *duel.Player2ID
 	} else if duel.Player2ID != nil && winnerID == *duel.Player2ID {
 		loserID = duel.Player1ID
@@ -668,7 +717,7 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	duel.Status = models.DuelStatusResolved
 	duel.WinnerID = &winnerID
 	duel.PriceAtEnd = &exitPrice
-	duel.TransactionHash = &txHash
+	duel.TransactionHash = &signature // Use on-chain signature
 	duel.ResolvedAt = timePtr(time.Now())
 
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
@@ -701,22 +750,15 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		return nil, fmt.Errorf("failed to create duel result: %w", err)
 	}
 
-	// Execute automatic payout to winner
-	_, err = ds.payoutService.ExecutePayout(ctx, duel, winnerID)
-	if err != nil {
-		log.Printf("ERROR: Failed to execute payout for duel %s: %v", duelID, err)
-		// Don't fail the entire resolution, but log the error
-		// The duel is still resolved, but payout failed
-	} else {
-		log.Printf("Payout executed successfully for duel %s, winner %d", duelID, winnerID)
-	}
+	// NOTE: Payout is now handled by the smart contract automatically
+	// No need to call payoutService.ExecutePayout anymore
+	log.Printf("Duel %s resolved on-chain. Winner: %d, ExitPrice: %.4f, TxHash: %s",
+		duelID, winnerID, exitPrice, signature)
 
 	// Update statistics
 	if err := ds.updatePlayerStatistics(ctx, duel, winnerID); err != nil {
 		log.Printf("Error updating statistics after resolve: %v", err)
 	}
-
-	log.Printf("Duel %s resolved with price. Winner: %d, ExitPrice: %.4f", duelID, winnerID, exitPrice)
 
 	return duelResult, nil
 }
