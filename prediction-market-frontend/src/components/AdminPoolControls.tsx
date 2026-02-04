@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import './AdminPoolControls.css';
 
