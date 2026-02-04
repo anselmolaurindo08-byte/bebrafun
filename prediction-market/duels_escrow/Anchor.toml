@@ -7,21 +7,12 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-duels_program = "11111111111111111111111111111111"
 pumpsly = "11111111111111111111111111111111"
 
 [programs.devnet]
-duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-duels_program = "11111111111111111111111111111111"
-pumpsly = "11111111111111111111111111111111"
+pumpsly = "Af1k16zHZPdZbYrV8bpUDcFnZPJUra7AvB8jwSDbv6L6"
 
 [programs.mainnet]
-duels_escrow = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-amm_program = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-duels_program = "11111111111111111111111111111111"
 pumpsly = "11111111111111111111111111111111"
 
 [registry]
