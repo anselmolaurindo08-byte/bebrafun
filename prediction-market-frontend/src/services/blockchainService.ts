@@ -447,36 +447,6 @@ class BlockchainService {
     };
   }
 
-  /**
-   * Create pool (wrapper for anchorProgramService)
-   */
-  async createPool(
-    poolId: number,
-    question: string,
-    resolutionTime: Date,
-    initialLiquidity: number
-  ): Promise<{ success: boolean; tx?: string; poolId?: number; error?: string }> {
-    try {
-      const poolIdBN = new BN(poolId);
-      const resolutionTimeBN = new BN(Math.floor(resolutionTime.getTime() / 1000)); // Convert to Unix timestamp
-      const liquidityBN = new BN(initialLiquidity * 1e9);
-
-      const tx = await anchorProgramService.createPool(
-        poolIdBN,
-        question,
-        resolutionTimeBN,
-        liquidityBN
-      );
-
-      return { success: true, tx, poolId };
-    } catch (error: any) {
-      console.error('Create pool error:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to create pool'
-      };
-    }
-  }
 }
 
 export default new BlockchainService();
