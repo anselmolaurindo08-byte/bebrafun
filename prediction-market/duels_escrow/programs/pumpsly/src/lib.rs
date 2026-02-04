@@ -572,7 +572,7 @@ pub mod pumpsly {
     ) -> Result<()> {
         require!(tokens_amount > 0, PredictionMarketError::InvalidAmount);
         
-        let pool = &mut ctx.accounts.pool;
+        let pool = &ctx.accounts.pool;
         require!(
             pool.status == PoolStatus::Active,
             PredictionMarketError::PoolNotActive
@@ -647,6 +647,13 @@ pub mod pumpsly {
             PredictionMarketError::SlippageExceeded
         );
 
+        // Transfer SOL from pool PDA to user (BEFORE taking mutable reference)
+        **ctx.accounts.pool.to_account_info().try_borrow_mut_lamports()? -= sol_out_after_fee;
+        **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += sol_out_after_fee;
+
+        // NOW take mutable reference to update reserves
+        let pool = &mut ctx.accounts.pool;
+
         // Update reserves
         match outcome {
             Outcome::Yes => {
@@ -664,10 +671,6 @@ pub mod pumpsly {
             Outcome::Yes => position.yes_tokens -= tokens_amount,
             Outcome::No => position.no_tokens -= tokens_amount,
         }
-
-        // Transfer SOL from pool PDA to user
-        **ctx.accounts.pool.to_account_info().try_borrow_mut_lamports()? -= sol_out_after_fee;
-        **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += sol_out_after_fee;
 
         emit!(OutcomeSold {
             pool_id: pool.pool_id,
