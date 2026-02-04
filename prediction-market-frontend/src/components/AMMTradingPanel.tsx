@@ -8,11 +8,13 @@ import { TradeType } from '../services/types/blockchain';
 interface AMMTradingPanelProps {
   poolId: string;
   eventTitle: string;
+  onSuccess?: () => void;
 }
 
 export default function AMMTradingPanel({
   poolId,
   eventTitle,
+  onSuccess,
 }: AMMTradingPanelProps) {
   const { connected, balance } = useBlockchainWallet();
   const {
@@ -52,8 +54,13 @@ export default function AMMTradingPanel({
     const parsed = parseFloat(amount);
     if (!amount || isNaN(parsed) || parsed <= 0) return;
     const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
-    await executeTrade(lamports, tradeType);
-  }, [amount, tradeType, executeTrade]);
+    const result = await executeTrade(lamports, tradeType);
+
+    // Call onSuccess if trade was successful
+    if (result && result.status === 'confirmed' && onSuccess) {
+      onSuccess();
+    }
+  }, [amount, tradeType, executeTrade, onSuccess]);
 
   const formatSOL = (bn: BN): string => {
     return (bn.toNumber() / LAMPORTS_PER_SOL).toFixed(6);
@@ -81,8 +88,8 @@ export default function AMMTradingPanel({
               <button
                 onClick={() => setTradeType(TradeType.BUY_YES)}
                 className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${tradeType === TradeType.BUY_YES
-                    ? 'bg-pump-green text-pump-black scale-105'
-                    : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-green'
+                  ? 'bg-pump-green text-pump-black scale-105'
+                  : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-green'
                   }`}
               >
                 BUY YES
@@ -90,8 +97,8 @@ export default function AMMTradingPanel({
               <button
                 onClick={() => setTradeType(TradeType.BUY_NO)}
                 className={`flex-1 py-2.5 rounded-md font-sans font-semibold text-sm transition-all duration-200 ${tradeType === TradeType.BUY_NO
-                    ? 'bg-pump-red text-pump-white scale-105'
-                    : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-red'
+                  ? 'bg-pump-red text-pump-white scale-105'
+                  : 'bg-pump-black text-pump-white border-2 border-pump-gray-dark hover:border-pump-red'
                   }`}
               >
                 BUY NO
@@ -201,8 +208,8 @@ export default function AMMTradingPanel({
               !poolState
             }
             className={`w-full font-sans font-semibold py-3 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${tradeType === TradeType.BUY_YES
-                ? 'bg-pump-green hover:bg-pump-lime text-pump-black hover:scale-105 hover:shadow-glow'
-                : 'bg-pump-red hover:bg-[#FF5252] text-pump-white hover:scale-105'
+              ? 'bg-pump-green hover:bg-pump-lime text-pump-black hover:scale-105 hover:shadow-glow'
+              : 'bg-pump-red hover:bg-[#FF5252] text-pump-white hover:scale-105'
               }`}
           >
             {loading

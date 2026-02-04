@@ -193,6 +193,9 @@ export default function MarketDetailPage() {
                         <AMMTradingPanel
                             poolId={ammPoolId}
                             eventTitle={market.title}
+                            onSuccess={() => {
+                                fetchAmmPool();
+                            }}
                         />
 
                         {/* Sell Outcome Tokens */}
