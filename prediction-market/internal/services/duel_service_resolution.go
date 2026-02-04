@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"internal/models"
+	"prediction-market/internal/models"
 
 	"github.com/google/uuid"
 )
