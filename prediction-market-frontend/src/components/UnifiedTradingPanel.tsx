@@ -80,7 +80,7 @@ export default function UnifiedTradingPanel({
     };
 
     const availableShares = mode === 'sell' && userPosition
-        ? (outcome === 'yes' ? userPosition.yes_tokens : userPosition.no_tokens)
+        ? (outcome === 'yes' ? (userPosition.yes_tokens || 0) : (userPosition.no_tokens || 0))
         : 0;
 
     const canSell = mode === 'sell' && availableShares > 0;
@@ -158,23 +158,23 @@ export default function UnifiedTradingPanel({
                 />
                 {mode === 'sell' && (
                     <p className="text-xs text-pump-gray-light font-sans mt-1">
-                        Available: {availableShares.toFixed(6)} shares
+                        Available: {(availableShares || 0).toFixed(6)} shares
                     </p>
                 )}
             </div>
 
             {/* Current Position */}
-            {userPosition && (userPosition.yes_tokens > 0 || userPosition.no_tokens > 0) && (
+            {userPosition && ((userPosition.yes_tokens || 0) > 0 || (userPosition.no_tokens || 0) > 0) && (
                 <div className="bg-pump-black rounded-md p-3 mb-4">
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
-                    {userPosition.yes_tokens > 0 && (
+                    {(userPosition.yes_tokens || 0) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {userPosition.yes_tokens.toFixed(6)} YES shares
+                            {(userPosition.yes_tokens || 0).toFixed(6)} YES shares
                         </p>
                     )}
-                    {userPosition.no_tokens > 0 && (
+                    {(userPosition.no_tokens || 0) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {userPosition.no_tokens.toFixed(6)} NO shares
+                            {(userPosition.no_tokens || 0).toFixed(6)} NO shares
                         </p>
                     )}
                 </div>
