@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { PublicKey } from '@solana/web3.js';
 import { duelService } from '../../services/duelService';
 import { DuelCurrency } from '../../types/duel';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
@@ -41,32 +40,36 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       setLoading(true);
       setError(null);
 
-      // Step 1: Get server wallet address from config
-      const config = await duelService.getConfig();
-      const serverWallet = new PublicKey(config.serverWallet);
+      // Call smart contract to initialize duel (this handles SOL transfer to escrow)
+      const duelId = Date.now(); // Generate unique duel ID
+      const amountLamports = amount; // Already in SOL, will be converted in blockchainService
+      const predictedOutcome = prediction === 'UP' ? 1 : 0;
 
-      // Step 2: Send SOL transaction FIRST
-      const { sendDuelDeposit } = await import('../../utils/solanaTransactions');
-      const signature = await sendDuelDeposit(
-        blockchainService.getConnection(),
-        publicKey,
-        serverWallet,
-        amount,
-        sendTransaction
+      console.log('[DuelForm] Calling initializeDuel:', { duelId, amount: amountLamports, prediction: predictedOutcome });
+
+      const result = await blockchainService.initializeDuel(
+        duelId,
+        amountLamports,
+        predictedOutcome
       );
 
-      console.log('Deposit transaction sent:', signature);
+      if (!result.success || !result.tx) {
+        throw new Error(result.error || 'Failed to initialize duel on-chain');
+      }
 
-      // Step 3: Create duel WITH signature
+      const signature = result.tx;
+      console.log('[DuelForm] Duel initialized on-chain:', signature);
+
+      // Create duel in backend WITH on-chain signature
       const request: CreateDuelRequest = {
         betAmount: amount,
         currency: selectedToken,
         predictedOutcome: prediction,
-        signature, // Include transaction signature
+        signature, // On-chain transaction signature
       };
 
       const duel = await duelService.createDuel(request);
-      console.log('[DuelForm] Duel created:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
+      console.log('[DuelForm] Duel created in backend:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
       onDuelCreated(duel.id);
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create duel';

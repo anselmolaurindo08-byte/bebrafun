@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { PublicKey } from '@solana/web3.js';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { DepositFlow } from './DepositFlow';
@@ -8,7 +7,6 @@ import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
 import { useDuelPolling } from '../../hooks/useDuelPolling';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
-import { sendDuelDeposit } from '../../utils/solanaTransactions';
 
 interface DuelArenaProps {
   duel: Duel;
@@ -62,22 +60,26 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
         return;
       }
 
-      // Step 1: Get server wallet address
-      const config = await duelService.getConfig();
-      const serverWallet = new PublicKey(config.serverWallet);
+      // Call smart contract to join duel (this handles SOL transfer to escrow)
+      // Need to get the duel's predicted outcome for player 1, then choose opposite
+      const player1Prediction = duel.predictedOutcome; // "UP" or "DOWN"
+      const player2Prediction = player1Prediction === 'UP' ? 0 : 1; // Opposite: 0 = DOWN, 1 = UP
 
-      // Step 2: Send SOL transaction FIRST
-      const signature = await sendDuelDeposit(
-        blockchainService.getConnection(),
-        publicKey,
-        serverWallet,
-        duel.betAmount / 1e9, // Convert lamports to SOL
-        sendTransaction
+      console.log('[DuelArena] Calling joinDuel:', { duelId: duel.duelId, prediction: player2Prediction });
+
+      const result = await blockchainService.joinDuel(
+        duel.duelId, // On-chain duel ID
+        player2Prediction
       );
 
-      console.log('Join deposit transaction sent:', signature);
+      if (!result.success || !result.tx) {
+        throw new Error(result.error || 'Failed to join duel on-chain');
+      }
 
-      // Step 3: Join duel WITH signature
+      const signature = result.tx;
+      console.log('[DuelArena] Joined duel on-chain:', signature);
+
+      // Update backend with on-chain signature
       await duelService.joinDuel(duel.id, signature);
       window.location.reload();
     } catch (err: any) {
