@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	jobs "command-line-argumentsC:\\Users\\mormeli\\.gemini\\antigravity\\scratch\\bebrafun\\prediction-market\\internal\\jobs\\duel_resolver.go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -17,6 +18,7 @@ import (
 	"prediction-market/internal/config"
 	"prediction-market/internal/database"
 	"prediction-market/internal/handlers"
+	"prediction-market/internal/jobs"
 	"prediction-market/internal/repository"
 	"prediction-market/internal/services"
 )
@@ -85,6 +87,11 @@ func main() {
 
 	// Initialize duel service
 	duelService := services.NewDuelService(repo, escrowContract, solanaClient, anchorClient, payoutService)
+
+	// Start duel resolver background job
+	duelResolver := jobs.NewDuelResolver(duelService, 10*time.Second)
+	go duelResolver.Start()
+	defer duelResolver.Stop()
 
 	// Initialize AMM service
 	ammService := services.NewAMMService(database.GetDB(), solanaClient, anchorClient)
