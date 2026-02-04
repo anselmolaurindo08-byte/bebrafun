@@ -133,4 +133,23 @@ jobs:
           echo "Network: ${{ github.event.inputs.network }}"
           echo "Explorer: https://explorer.solana.com/address/$PROGRAM_ID?cluster=${{ github.event.inputs.network }}"
           echo ""
-          echo "Note: security.txt is embedded in the program binary during build"
+
+      - name: Upload Security.txt
+        working-directory: prediction-market/duels_escrow
+        run: |
+          PROGRAM_ID="${{ github.event.inputs.program_id }}"
+          RPC_URL="${{ steps.rpc.outputs.url }}"
+          
+          echo "=== Uploading security.txt ===" 
+          echo "Program ID: $PROGRAM_ID"
+          
+          if [ -f security.txt ]; then
+            npx -y @solana-program/program-metadata@latest write security-txt \
+              $PROGRAM_ID \
+              security.txt \
+              --rpc $RPC_URL \
+              --keypair ~/.config/solana/id.json
+            echo "✅ security.txt uploaded!"
+          else
+            echo "⚠️ security.txt not found, skipping"
+          fi
