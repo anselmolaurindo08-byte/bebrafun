@@ -51,6 +51,7 @@ export default function UnifiedTradingPanel({
         if (!amount || isNaN(parsed) || parsed <= 0 || !poolState) {
             return;
         }
+        // Both buy (SOL) and sell (shares) use same conversion to lamports
         const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
         const tradeType = mode === 'buy'
             ? (outcome === 'yes' ? TradeType.BUY_YES : TradeType.BUY_NO)

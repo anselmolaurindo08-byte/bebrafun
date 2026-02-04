@@ -203,6 +203,28 @@ class AnchorProgramService {
     }
 
     /**
+     * Get pool state directly from blockchain
+     */
+    async getPoolState(poolId: BN): Promise<any> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+
+        console.log('[getPoolState] Fetching pool:', {
+            poolId: poolId.toString(),
+            pda: poolPda.toString()
+        });
+
+        try {
+            const pool = await (program.account as any)['ammPool'].fetch(poolPda);
+            console.log('[getPoolState] Pool found:', pool);
+            return pool;
+        } catch (error) {
+            console.log('[getPoolState] Pool not found:', error);
+            return null;
+        }
+    }
+
+    /**
      * Sell outcome shares for SOL (YES or NO)
      */
     async sellOutcome(

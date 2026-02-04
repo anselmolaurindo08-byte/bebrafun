@@ -107,12 +107,36 @@ export default function MarketDetailPage() {
             }
 
             setAmmPoolId(poolData.poolId || poolData.onchain_pool_id);
-            setPool(poolData);
+
+            // Fetch fresh pool state from blockchain for real-time prices
+            const poolIdToUse = poolData.onchain_pool_id || poolData.poolId;
+            if (poolIdToUse) {
+                try {
+                    const onChainPool = await anchorProgramService.getPoolState(new BN(poolIdToUse));
+                    if (onChainPool) {
+                        // Convert BN values to numbers for display
+                        const poolWithPrices = {
+                            ...poolData,
+                            yes_price: onChainPool.yesPrice?.toNumber() / 1e9 || poolData.yes_price,
+                            no_price: onChainPool.noPrice?.toNumber() / 1e9 || poolData.no_price,
+                            yes_reserve: onChainPool.yesReserve?.toNumber() / 1e9 || poolData.yes_reserve,
+                            no_reserve: onChainPool.noReserve?.toNumber() / 1e9 || poolData.no_reserve,
+                        };
+                        setPool(poolWithPrices);
+                    } else {
+                        setPool(poolData);
+                    }
+                } catch (err) {
+                    console.log('[fetchAmmPool] Could not fetch on-chain pool, using backend data:', err);
+                    setPool(poolData);
+                }
+            } else {
+                setPool(poolData);
+            }
 
             // Fetch user position if wallet connected
             if (connected && publicKey) {
                 try {
-                    const poolIdToUse = poolData.onchain_pool_id || poolData.poolId;
                     console.log('[fetchAmmPool] Fetching user position:', {
                         poolIdToUse,
                         publicKey: publicKey.toString()
