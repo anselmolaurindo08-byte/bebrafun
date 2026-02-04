@@ -79,8 +79,16 @@ export default function UnifiedTradingPanel({
         return (bn.toNumber() / LAMPORTS_PER_SOL).toFixed(6);
     };
 
+    // Helper to safely convert BN to number
+    const bnToNumber = (value: any): number => {
+        if (!value) return 0;
+        if (typeof value === 'number') return value;
+        if (value.toNumber) return value.toNumber();
+        return 0;
+    };
+
     const availableShares = mode === 'sell' && userPosition
-        ? (outcome === 'yes' ? (userPosition.yesTokens || 0) : (userPosition.noTokens || 0))
+        ? (outcome === 'yes' ? bnToNumber(userPosition.yesTokens) : bnToNumber(userPosition.noTokens))
         : 0;
 
     const canSell = mode === 'sell' && availableShares > 0;
@@ -164,17 +172,17 @@ export default function UnifiedTradingPanel({
             </div>
 
             {/* Current Position */}
-            {userPosition && ((userPosition.yesTokens || 0) > 0 || (userPosition.noTokens || 0) > 0) && (
+            {userPosition && (bnToNumber(userPosition.yesTokens) > 0 || bnToNumber(userPosition.noTokens) > 0) && (
                 <div className="bg-pump-black rounded-md p-3 mb-4">
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
-                    {(userPosition.yesTokens || 0) > 0 && (
+                    {bnToNumber(userPosition.yesTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {(userPosition.yesTokens || 0).toFixed(6)} YES shares
+                            {bnToNumber(userPosition.yesTokens).toFixed(6)} YES shares
                         </p>
                     )}
-                    {(userPosition.noTokens || 0) > 0 && (
+                    {bnToNumber(userPosition.noTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {(userPosition.noTokens || 0).toFixed(6)} NO shares
+                            {bnToNumber(userPosition.noTokens).toFixed(6)} NO shares
                         </p>
                     )}
                 </div>
