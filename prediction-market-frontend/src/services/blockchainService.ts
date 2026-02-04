@@ -82,7 +82,7 @@ class BlockchainService {
           no_mint: 'native',
           yes_reserve: initialLiquidity * 1e9,
           no_reserve: initialLiquidity * 1e9,
-          fee_percentage: 0.02,
+          fee_percentage: 200, // 2% in basis points (200 = 2%)
           question,
           resolution_time: resolutionTime.toISOString()
         };
