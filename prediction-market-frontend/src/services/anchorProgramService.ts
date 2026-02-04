@@ -153,8 +153,11 @@ class AnchorProgramService {
 
         const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
 
+        // min_tokens_out set to 0 for no slippage protection
+        const minTokensOut = new BN(0);
+
         const tx = await (program.methods as any)
-            .buyOutcome(outcome, solAmount)
+            .buyOutcome(outcome, solAmount, minTokensOut)
             .accounts({
                 pool: poolPda,
                 userPosition: userPositionPda,
@@ -207,8 +210,11 @@ class AnchorProgramService {
 
         const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
 
+        // min_sol_out set to 0 for no slippage protection
+        const minSolOut = new BN(0);
+
         const tx = await (program.methods as any)
-            .sellOutcome(outcome, sharesAmount)
+            .sellOutcome(outcome, sharesAmount, minSolOut)
             .accounts({
                 pool: poolPda,
                 userPosition: userPositionPda,
