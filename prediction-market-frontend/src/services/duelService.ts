@@ -42,6 +42,7 @@ export const duelService = {
   ): Promise<Duel> => {
     // Create duel record in backend with transaction signature
     const raw = await api.createDuel({
+      duel_id: request.duelId, // CRITICAL: Pass duelId to backend
       bet_amount: request.betAmount,
       market_id: request.marketId,
       event_id: request.eventId,
