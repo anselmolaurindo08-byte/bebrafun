@@ -342,11 +342,52 @@ class BlockchainService {
       const marketIdBN = new BN(marketId);
       const liquidityBN = new BN(initialLiquidity * 1e9);
 
+      // Create pool on-chain
       const tx = await anchorProgramService.createPool(
         poolIdBN,
         marketIdBN,
         liquidityBN
       );
+
+      // Get pool PDA address
+      const [poolPda] = anchorProgramService.getPoolPda(poolIdBN);
+      const program = anchorProgramService.getProgram();
+      const authority = program.provider.publicKey;
+
+      if (!authority) {
+        throw new Error('Wallet not connected');
+      }
+
+      // Persist pool data to backend
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/amm/pools`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            market_id: marketId,
+            program_id: program.programId.toString(),
+            authority: authority.toString(),
+            pool_address: poolPda.toString(),
+            yes_mint: 'native', // SOL-based system uses native SOL
+            no_mint: 'native',
+            yes_reserve: initialLiquidity,
+            no_reserve: initialLiquidity,
+            fee_percentage: 30, // 0.3% fee (30 basis points)
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to persist pool to backend:', await response.text());
+          // Don't fail the whole operation if backend persistence fails
+        } else {
+          console.log('✅ Pool persisted to backend database');
+        }
+      } catch (backendError) {
+        console.error('Backend persistence error:', backendError);
+        // Don't fail the whole operation if backend persistence fails
+      }
 
       return { success: true, tx };
     } catch (error: any) {
