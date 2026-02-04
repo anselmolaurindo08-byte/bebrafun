@@ -52,9 +52,8 @@ func (c *AnchorClient) ResolveDuel(
 	// Discriminator for resolve_duel (8 bytes) + exit_price (8 bytes)
 	data := make([]byte, 16)
 
-	// Compute discriminator: first 8 bytes of sha256("global:resolve_duel")
-	// For now, use a placeholder - this should match the actual discriminator
-	discriminator := []byte{0x51, 0x9c, 0x28, 0x3b, 0x2e, 0x8f, 0x8a, 0x7c} // Placeholder
+	// Discriminator from IDL: [213, 162, 203, 235, 151, 236, 178, 64]
+	discriminator := []byte{213, 162, 203, 235, 151, 236, 178, 64}
 	copy(data[0:8], discriminator)
 
 	// exit_price: u64 (little-endian)
@@ -150,8 +149,8 @@ func (c *AnchorClient) StartDuel(
 	// Discriminator for start_duel (8 bytes) + entry_price (8 bytes)
 	data := make([]byte, 16)
 
-	// Compute discriminator: first 8 bytes of sha256("global:start_duel")
-	discriminator := []byte{0x3d, 0x4e, 0x9f, 0x12, 0xa1, 0xb3, 0xc4, 0xd5} // Placeholder
+	// Discriminator from IDL: [188, 143, 206, 111, 77, 207, 62, 244]
+	discriminator := []byte{188, 143, 206, 111, 77, 207, 62, 244}
 	copy(data[0:8], discriminator)
 
 	// entry_price: u64 (little-endian)
