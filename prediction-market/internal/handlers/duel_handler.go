@@ -531,3 +531,57 @@ func (h *DuelHandler) GetConfig(c *gin.Context) {
 		"network":      network,
 	})
 }
+
+// AutoResolveDuel automatically resolves a duel when timer expires
+// POST /api/duels/:id/auto-resolve
+func (h *DuelHandler) AutoResolveDuel(c *gin.Context) {
+	duelIDStr := c.Param("id")
+	duelID, err := uuid.Parse(duelIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel ID"})
+		return
+	}
+
+	var req struct {
+		ExitPrice float64 `json:"exit_price" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.duelService.AutoResolveDuel(c.Request.Context(), duelID, req.ExitPrice)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// SetChartStartPrice sets the chart start price for a duel
+// POST /api/duels/:id/chart-start
+func (h *DuelHandler) SetChartStartPrice(c *gin.Context) {
+	duelIDStr := c.Param("id")
+	duelID, err := uuid.Parse(duelIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel ID"})
+		return
+	}
+
+	var req struct {
+		Price float64 `json:"price" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.duelService.SetChartStartPrice(c.Request.Context(), duelID, req.Price)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
