@@ -62,7 +62,16 @@ export default function UnifiedTradingPanel({
         const parsed = parseFloat(amount);
         if (!amount || isNaN(parsed) || parsed <= 0) return;
 
-        const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
+        let lamports: BN;
+        if (mode === 'buy') {
+            // For buy: amount is SOL, convert to lamports
+            lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
+        } else {
+            // For sell: amount is shares (already in lamports format on-chain)
+            // User enters human-readable shares, we convert to lamports
+            lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
+        }
+
         const tradeType = mode === 'buy'
             ? (outcome === 'yes' ? TradeType.BUY_YES : TradeType.BUY_NO)
             : (outcome === 'yes' ? TradeType.SELL_YES : TradeType.SELL_NO);
@@ -79,11 +88,12 @@ export default function UnifiedTradingPanel({
         return (bn.toNumber() / LAMPORTS_PER_SOL).toFixed(6);
     };
 
-    // Helper to safely convert BN to number
+    // Helper to safely convert BN shares to human-readable number
+    // Shares are stored in lamports, so we divide by LAMPORTS_PER_SOL
     const bnToNumber = (value: any): number => {
         if (!value) return 0;
-        if (typeof value === 'number') return value;
-        if (value.toNumber) return value.toNumber();
+        if (typeof value === 'number') return value / LAMPORTS_PER_SOL;
+        if (value.toNumber) return value.toNumber() / LAMPORTS_PER_SOL;
         return 0;
     };
 
