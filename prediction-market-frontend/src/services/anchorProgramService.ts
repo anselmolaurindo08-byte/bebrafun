@@ -364,7 +364,7 @@ class AnchorProgramService {
             .initializeDuel(duelId, amount, predictedOutcome)
             .accounts({
                 duel: duelPda,
-                player1: program.provider.publicKey,
+                player_1: program.provider.publicKey,  // Fixed: player_1 not player1
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
