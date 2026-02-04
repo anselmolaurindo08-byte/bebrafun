@@ -241,12 +241,21 @@ class BlockchainService {
   }
 
   /**
-   * Get pool by market ID (not implemented yet - returns null)
+   * Get pool by market ID - fetches from backend API
    */
-  async getPoolByMarketId(_marketId: string): Promise<any> {
-    // TODO: Implement backend API call to get pool by market_id
-    console.warn('getPoolByMarketId not implemented, returning null');
-    return null;
+  async getPoolByMarketId(marketId: string): Promise<any> {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/amm/pools/market/${marketId}`);
+      if (!response.ok) {
+        console.warn(`Pool not found for market ${marketId}`);
+        return null;
+      }
+      const pool = await response.json();
+      return pool;
+    } catch (error) {
+      console.error('Error fetching pool by market ID:', error);
+      return null;
+    }
   }
 
   /**
@@ -308,12 +317,16 @@ class BlockchainService {
   }
 
   /**
-   * Get user account (not implemented - returns null)
+   * Get user account - In SOL-based system, user accounts are not stored on-chain
+   * Returns a minimal object for compatibility
    */
   async getUserAccount(_publicKey: any): Promise<any> {
-    // TODO: Implement if needed
-    console.warn('getUserAccount not implemented');
-    return null;
+    // In the SOL-based system, we don't have on-chain user accounts
+    // User positions are tracked in the backend database
+    return {
+      publicKey: _publicKey?.toString() || '',
+      positions: []
+    };
   }
 
   /**
