@@ -66,6 +66,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       };
 
       const duel = await duelService.createDuel(request);
+      console.log('[DuelForm] Duel created:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
       onDuelCreated(duel.id);
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create duel';
