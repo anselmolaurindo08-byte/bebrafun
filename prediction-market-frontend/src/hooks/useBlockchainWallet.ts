@@ -46,9 +46,15 @@ export function useBlockchainWallet() {
     setError(null);
 
     try {
+      // Get user account data (positions, etc.)
       const userAccount = await blockchainService.getUserAccount(publicKey);
       setAccount(userAccount);
-      setBalance(userAccount.totalBalance);
+
+      // Get SOL balance from connection
+      const connection = blockchainService.getConnection();
+      const lamports = await connection.getBalance(publicKey);
+      const solBalance = lamports / 1e9; // Convert lamports to SOL
+      setBalance(solBalance);
     } catch (err: unknown) {
       if (retries > 0) {
         // Retry after delay
