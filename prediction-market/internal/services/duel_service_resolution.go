@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"prediction-market/internal/models"
 
@@ -101,13 +102,28 @@ func (ds *DuelService) AutoResolveDuel(
 		map[bool]string{true: "UP", false: "DOWN"}[priceWentUp],
 		winnerID)
 
-	// Resolve duel with price
-	result, err := ds.ResolveDuelWithPrice(ctx, duelID, winnerID, exitPrice, "auto-resolved")
+	// Update duel status directly in database (no on-chain call needed)
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status":       models.DuelStatusResolved,
+		"winner_id":    winnerID,
+		"price_at_end": exitPrice,
+		"resolved_at":  &now,
+	}
+
+	err = ds.repo.UpdateDuel(ctx, duelID, updates)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve duel: %w", err)
+		return nil, fmt.Errorf("failed to update duel status: %w", err)
 	}
 
 	log.Printf("[AutoResolveDuel] Duel %s resolved successfully. Winner: %d, Loser: %d", duelID, winnerID, loserID)
+
+	// Return result
+	result := &models.DuelResult{
+		DuelID:   duelID,
+		WinnerID: winnerID,
+		Status:   models.DuelStatusResolved,
+	}
 
 	return result, nil
 }
