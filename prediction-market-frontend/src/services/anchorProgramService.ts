@@ -113,7 +113,8 @@ class AnchorProgramService {
      */
     async createPool(
         poolId: BN,
-        marketId: BN,
+        question: string,
+        resolutionTime: BN,
         initialLiquidity: BN
     ): Promise<string> {
         const program = this.getProgram();
@@ -124,7 +125,7 @@ class AnchorProgramService {
         }
 
         const tx = await (program.methods as any)
-            .createPool(poolId, marketId, initialLiquidity)
+            .createPool(poolId, question, resolutionTime, initialLiquidity)
             .accounts({
                 pool: poolPda,
                 authority: program.provider.publicKey,

@@ -47,24 +47,35 @@ export default function MarketDetailPage() {
     };
 
     const handleCreatePool = async () => {
-        if (!connected || !publicKey || !id) return;
+        if (!connected || !publicKey || !id || !market) return;
 
         setIsCreatingPool(true);
         try {
             // Default initial liquidity: 0.001 SOL (minimum for testing)
             const initialLiquidity = 0.001;
             const poolIdNum = parseInt(id);
-            const marketIdNum = parseInt(id); // Use same ID for now
+
+            // Use market title as question
+            const question = market.title;
+
+            // Default resolution time: 30 days from now
+            const resolutionTime = new Date();
+            resolutionTime.setDate(resolutionTime.getDate() + 30);
 
             const result = await blockchainService.createPool(
                 poolIdNum,
-                marketIdNum,
+                question,
+                resolutionTime,
                 initialLiquidity
             );
 
             if (result.success) {
                 setAmmPoolId(result.tx || '');
-                console.log('Pool created:', result.tx);
+                console.log('✅ Pool created:', result.tx);
+                console.log('Pool ID:', result.poolId);
+
+                // Refresh pool data
+                setTimeout(() => fetchAmmPool(), 2000);
             } else {
                 throw new Error(result.error || 'Failed to create pool');
             }
