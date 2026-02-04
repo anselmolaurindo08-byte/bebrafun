@@ -40,6 +40,70 @@ class BlockchainService {
   }
 
   /**
+   * Create pool on-chain and persist to backend
+   */
+  async createPool(
+    poolId: number,
+    question: string,
+    resolutionTime: Date,
+    initialLiquidity: number
+  ): Promise<{ success: boolean; tx?: string; poolId?: number; error?: string }> {
+    try {
+      const poolIdBN = new BN(poolId);
+      const resolutionTimeBN = new BN(Math.floor(resolutionTime.getTime() / 1000));
+      const liquidityBN = new BN(initialLiquidity * 1e9);
+
+      // Create pool on-chain
+      const tx = await anchorProgramService.createPool(
+        poolIdBN,
+        question,
+        resolutionTimeBN,
+        liquidityBN
+      );
+
+      // Get pool PDA
+      const [poolPda] = anchorProgramService.getPoolPda(poolIdBN);
+
+      // Persist to backend (manual indexing)
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/amm/pools`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            market_id: poolId,
+            onchain_pool_id: poolId,
+            pool_address: poolPda.toString(),
+            program_id: anchorProgramService.getProgramId().toString(),
+            yes_mint: 'native',
+            no_mint: 'native',
+            yes_reserve: initialLiquidity * 1e9,
+            no_reserve: initialLiquidity * 1e9,
+            fee_percentage: 0.02,
+            question,
+            resolution_time: resolutionTime.toISOString()
+          })
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to persist pool to backend:', await response.text());
+        } else {
+          console.log('✅ Pool persisted to backend');
+        }
+      } catch (backendError) {
+        console.error('Backend persistence error (non-fatal):', backendError);
+      }
+
+      return { success: true, tx, poolId };
+    } catch (error: any) {
+      console.error('Create pool error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to create pool'
+      };
+    }
+  }
+
+  /**
    * Sell outcome shares for SOL
    */
   async sellShares(
