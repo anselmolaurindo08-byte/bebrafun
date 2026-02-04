@@ -56,12 +56,30 @@ func (ds *DuelService) AutoResolveDuel(
 	// If Direction is set, use it (0 = UP, 1 = DOWN)
 	// Otherwise check PredictedOutcome string
 	var player1PredictedUp bool
+
+	log.Printf("[AutoResolveDuel] Duel %s: Direction=%v, PredictedOutcome=%v",
+		duelID,
+		func() string {
+			if duel.Direction != nil {
+				return fmt.Sprintf("%d", *duel.Direction)
+			}
+			return "nil"
+		}(),
+		func() string {
+			if duel.PredictedOutcome != nil {
+				return *duel.PredictedOutcome
+			}
+			return "nil"
+		}())
+
 	if duel.Direction != nil {
 		player1PredictedUp = *duel.Direction == 0
+		log.Printf("[AutoResolveDuel] Using Direction field: %d (UP=%v)", *duel.Direction, player1PredictedUp)
 	} else if duel.PredictedOutcome != nil {
 		player1PredictedUp = *duel.PredictedOutcome == "UP"
+		log.Printf("[AutoResolveDuel] Using PredictedOutcome field: %s (UP=%v)", *duel.PredictedOutcome, player1PredictedUp)
 	} else {
-		return nil, errors.New("duel does not have a predicted outcome")
+		return nil, fmt.Errorf("duel does not have a predicted outcome (both Direction and PredictedOutcome are nil)")
 	}
 
 	// Determine winner
