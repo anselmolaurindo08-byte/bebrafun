@@ -114,13 +114,21 @@ export default function MarketDetailPage() {
                 try {
                     const onChainPool = await anchorProgramService.getPoolState(new BN(poolIdToUse));
                     if (onChainPool) {
-                        // Convert BN values to numbers for display
+                        // Convert BN values to numbers
+                        const yesReserve = onChainPool.yesReserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
+                        const noReserve = onChainPool.noReserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
+
+                        // Calculate prices from reserves (AMM formula)
+                        const totalReserve = yesReserve + noReserve;
+                        const yesPrice = totalReserve > 0 ? yesReserve / totalReserve : 0.5;
+                        const noPrice = totalReserve > 0 ? noReserve / totalReserve : 0.5;
+
                         const poolWithPrices = {
                             ...poolData,
-                            yes_price: onChainPool.yesPrice?.toNumber() / 1e9 || poolData.yes_price,
-                            no_price: onChainPool.noPrice?.toNumber() / 1e9 || poolData.no_price,
-                            yes_reserve: onChainPool.yesReserve?.toNumber() / 1e9 || poolData.yes_reserve,
-                            no_reserve: onChainPool.noReserve?.toNumber() / 1e9 || poolData.no_reserve,
+                            yes_price: yesPrice,
+                            no_price: noPrice,
+                            yes_reserve: yesReserve,
+                            no_reserve: noReserve,
                         };
                         setPool(poolWithPrices);
                     } else {
