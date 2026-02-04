@@ -114,17 +114,18 @@ export default function MarketDetailPage() {
                 try {
                     const onChainPool = await anchorProgramService.getPoolState(new BN(poolIdToUse));
                     if (onChainPool) {
-                        // Convert BN values to numbers (fields are snake_case from Rust)
+                        // Convert BN values to numbers
+                        // NOTE: Anchor uses camelCase in JavaScript, not snake_case!
                         console.log('[fetchAmmPool] Raw pool data:', {
-                            yes_reserve_type: typeof onChainPool.yes_reserve,
-                            yes_reserve_raw: onChainPool.yes_reserve,
-                            yes_reserve_has_toNumber: !!onChainPool.yes_reserve?.toNumber
+                            yesReserve_type: typeof onChainPool.yesReserve,
+                            yesReserve_raw: onChainPool.yesReserve,
+                            baseYesLiquidity_raw: onChainPool.baseYesLiquidity
                         });
 
-                        const yesReserve = onChainPool.yes_reserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
-                        const noReserve = onChainPool.no_reserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
-                        const baseYesLiquidity = onChainPool.base_yes_liquidity?.toNumber() / 1e9 || 0;
-                        const baseNoLiquidity = onChainPool.base_no_liquidity?.toNumber() / 1e9 || 0;
+                        const yesReserve = onChainPool.yesReserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
+                        const noReserve = onChainPool.noReserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
+                        const baseYesLiquidity = onChainPool.baseYesLiquidity?.toNumber() / 1e9 || 0;
+                        const baseNoLiquidity = onChainPool.baseNoLiquidity?.toNumber() / 1e9 || 0;
 
                         console.log('[fetchAmmPool] Reserves:', {
                             yesReserve,

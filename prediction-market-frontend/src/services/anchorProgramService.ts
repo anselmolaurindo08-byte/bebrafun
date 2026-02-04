@@ -242,10 +242,10 @@ class AnchorProgramService {
             console.log('[getPoolState] Pool found:', pool);
             console.log('[getPoolState] Pool fields:', {
                 poolId: pool.poolId?.toString(),
-                yesReserve: pool.yes_reserve?.toString(),
-                noReserve: pool.no_reserve?.toString(),
-                baseYesLiquidity: pool.base_yes_liquidity?.toString(),
-                baseNoLiquidity: pool.base_no_liquidity?.toString(),
+                yesReserve: pool.yesReserve?.toString(),
+                noReserve: pool.noReserve?.toString(),
+                baseYesLiquidity: pool.baseYesLiquidity?.toString(),
+                baseNoLiquidity: pool.baseNoLiquidity?.toString(),
                 allKeys: Object.keys(pool)
             });
             return pool;
