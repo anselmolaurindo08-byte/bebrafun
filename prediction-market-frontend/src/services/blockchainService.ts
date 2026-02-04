@@ -78,6 +78,7 @@ class BlockchainService {
           onchain_pool_id: onchainPoolId,
           pool_address: poolPda.toString(),
           program_id: anchorProgramService.getProgramId().toString(),
+          authority: anchorProgramService.getWallet()?.publicKey?.toString() || '',
           yes_mint: 'native',
           no_mint: 'native',
           yes_reserve: initialLiquidity * 1e9,
