@@ -250,10 +250,10 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("insufficient deposit: expected %d lamports, got %d", duel.BetAmount, txDetails.Amount)
 	}
 
-	// Set Player2 and update status to MATCHED
+	// Set Player2 and update status to ACTIVE (both players ready)
 	duel.Player2ID = &playerID
 	duel.Player2Amount = &duel.BetAmount
-	duel.Status = models.DuelStatusMatched
+	duel.Status = models.DuelStatusActive // Changed from MATCHED to ACTIVE
 	now := time.Now()
 	duel.StartedAt = &now
 
