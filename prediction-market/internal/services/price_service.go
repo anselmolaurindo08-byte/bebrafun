@@ -108,6 +108,23 @@ func (ps *PriceService) GetCurrentPrice(symbol string) (float64, error) {
 	return price, nil
 }
 
+// GetPrice returns the latest price for a price pair (e.g., "SOL/USD", "PUMP/USD")
+// This method maps price pairs to Binance symbols
+func (ps *PriceService) GetPrice(pair string) (float64, error) {
+	var symbol string
+
+	switch pair {
+	case "SOL/USD":
+		symbol = "SOLUSDT"
+	case "PUMP/USD":
+		symbol = "PUMPUSDT"
+	default:
+		return 0, fmt.Errorf("unsupported price pair: %s", pair)
+	}
+
+	return ps.GetCurrentPrice(symbol)
+}
+
 func (ps *PriceService) Close() {
 	ps.cancel()
 }

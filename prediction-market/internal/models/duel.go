@@ -61,7 +61,8 @@ type Duel struct {
 	WinnerID         *uint      `json:"winner_id"`
 	PriceAtStart     *float64   `gorm:"type:decimal(20,8)" json:"price_at_start"`
 	PriceAtEnd       *float64   `gorm:"type:decimal(20,8)" json:"price_at_end"`
-	Direction        *int16     `json:"direction"` // 0: UP, 1: DOWN
+	PricePair        *string    `gorm:"size:20" json:"price_pair"` // "SOL/USD" or "PUMP/USD"
+	Direction        *int16     `json:"direction"`                 // 0: UP, 1: DOWN
 	TransactionHash  *string    `gorm:"size:255" json:"transaction_hash"`
 	Confirmations    int16      `gorm:"default:0" json:"confirmations"`
 	EscrowTxHash     *string    `gorm:"size:255" json:"escrow_tx_hash"`

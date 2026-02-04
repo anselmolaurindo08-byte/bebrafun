@@ -21,6 +21,7 @@ type DuelService struct {
 	solanaClient      *blockchain.SolanaClient
 	anchorClient      *blockchain.AnchorClient // NEW: Anchor program client
 	payoutService     *PayoutService
+	priceService      *PriceService // NEW: Price oracle service
 	duelMatchingQueue chan *models.DuelQueue
 }
 
@@ -30,6 +31,7 @@ func NewDuelService(
 	solanaClient *blockchain.SolanaClient,
 	anchorClient *blockchain.AnchorClient,
 	payoutService *PayoutService,
+	priceService *PriceService,
 ) *DuelService {
 	ds := &DuelService{
 		repo:              repo,
@@ -37,6 +39,7 @@ func NewDuelService(
 		solanaClient:      solanaClient,
 		anchorClient:      anchorClient,
 		payoutService:     payoutService,
+		priceService:      priceService,
 		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
 
@@ -285,11 +288,24 @@ func (ds *DuelService) JoinDuel(
 
 	log.Printf("Player %d joined duel %d with verified deposit (tx: %s)", playerID, duel.DuelID, signature)
 
-	// Get entry price (mock for now - TODO: integrate Pyth oracle)
-	// Using $100 as mock price in micro-units (6 decimals)
-	entryPriceMicroUnits := uint64(100_000_000) // $100.00
+	// Determine price pair based on duel currency or default to SOL/USD
+	pricePair := "SOL/USD"
+	if duel.PricePair != nil && *duel.PricePair != "" {
+		pricePair = *duel.PricePair
+	}
 
-	log.Printf("[JoinDuel] Calling start_duel for duel %d with entry price %d", duel.DuelID, entryPriceMicroUnits)
+	// Get real-time entry price
+	entryPrice, err := ds.priceService.GetPrice(pricePair)
+	if err != nil {
+		log.Printf("ERROR: Failed to get price for %s: %v", pricePair, err)
+		return nil, fmt.Errorf("failed to get entry price: %w", err)
+	}
+
+	// Convert to micro-units (6 decimals)
+	entryPriceMicroUnits := uint64(entryPrice * 1e6)
+
+	log.Printf("[JoinDuel] Calling start_duel for duel %d with entry price %d (%.6f %s)",
+		duel.DuelID, entryPriceMicroUnits, entryPrice, pricePair)
 
 	// Call start_duel on-chain to set entry price
 	startSignature, err := ds.anchorClient.StartDuel(
