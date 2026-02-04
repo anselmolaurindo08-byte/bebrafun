@@ -32,8 +32,9 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft());
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  // Initialize start price from duel if available, otherwise 0 until first tick
-  const [startPrice, setStartPrice] = useState<number>(duel.priceAtStart || 0);
+  // Initialize start price to 0, will be set on first WebSocket tick
+  // Don't use duel.priceAtStart because it's the entry price for resolution, not for chart display
+  const [startPrice, setStartPrice] = useState<number>(0);
   const [isResolving, setIsResolving] = useState(false);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -41,7 +42,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   const wsRef = useRef<WebSocket | null>(null);
   // Map currencies to Binance streams
-  const currencySymbol = duel.currency === 'SOL' ? 'SOLUSDT' : 'DOGEUSDT';
+  // currency is a number: 0 = SOL, 1 = PUMP
+  const currencySymbol = duel.currency === 0 ? 'SOLUSDT' : 'PUMPUSDT';
 
   // --- WebSocket & Timer Effect ---
   useEffect(() => {
@@ -61,8 +63,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
       // Capture start price on first tick if not set
       setStartPrice((prev) => {
-          if (prev === 0) return price;
-          return prev;
+        if (prev === 0) return price;
+        return prev;
       });
 
       setData((prevData) => {
@@ -98,9 +100,9 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   // --- Watch for Timer == 0 ---
   useEffect(() => {
-      if (timeLeft === 0 && !isGameEnded && currentPrice > 0) {
-          handleGameEnd();
-      }
+    if (timeLeft === 0 && !isGameEnded && currentPrice > 0) {
+      handleGameEnd();
+    }
   }, [timeLeft, isGameEnded, currentPrice]);
 
 
@@ -110,8 +112,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
     // 1. Freeze Chart (Close WS)
     if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     setIsResolving(true);
@@ -121,24 +123,24 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     // We wait for the backend auto-resolution job to update the duel status.
 
     const pollInterval = setInterval(async () => {
-        try {
-            const updatedDuel = await duelService.getDuel(duel.id);
-            // Check for both RESOLVED and FINISHED statuses
-            // Also check if winnerId is set, as that confirms resolution
-            if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED' || updatedDuel.winnerId) {
-                clearInterval(pollInterval);
+      try {
+        const updatedDuel = await duelService.getDuel(duel.id);
+        // Check for both RESOLVED and FINISHED statuses
+        // Also check if winnerId is set, as that confirms resolution
+        if (updatedDuel.status === 'RESOLVED' || (updatedDuel.status as string) === 'FINISHED' || updatedDuel.winnerId) {
+          clearInterval(pollInterval);
 
-                setResult({
-                    winnerId: updatedDuel.winnerId || "0",
-                    finalPrice: updatedDuel.priceAtEnd || currentPrice, // Use server price if available
-                    payout: (updatedDuel.betAmount || duel.betAmount) * 2
-                });
-                setShowResultModal(true);
-                setIsResolving(false);
-            }
-        } catch (e) {
-            console.error("Polling error:", e);
+          setResult({
+            winnerId: updatedDuel.winnerId || "0",
+            finalPrice: updatedDuel.priceAtEnd || currentPrice, // Use server price if available
+            payout: (updatedDuel.betAmount || duel.betAmount) * 2
+          });
+          setShowResultModal(true);
+          setIsResolving(false);
         }
+      } catch (e) {
+        console.error("Polling error:", e);
+      }
     }, 2000);
   };
 
@@ -148,52 +150,52 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   // --- Render Result Modal ---
   const renderResultModal = () => {
-      if (!showResultModal || !result) return null;
+    if (!showResultModal || !result) return null;
 
-      const isP1Winner = String(result.winnerId) === String(duel.player1Id);
-      // We don't know "Me" here easily without user store,
-      // but we can display "Player 1 Wins" or "Player 2 Wins"
-      // or use addresses/names if available in duel object.
-      // Assuming duel has names (it usually does or we fetch them).
-      // For now, generic text.
+    const isP1Winner = String(result.winnerId) === String(duel.player1Id);
+    // We don't know "Me" here easily without user store,
+    // but we can display "Player 1 Wins" or "Player 2 Wins"
+    // or use addresses/names if available in duel object.
+    // Assuming duel has names (it usually does or we fetch them).
+    // For now, generic text.
 
-      const winnerName = isP1Winner ? "Player 1" : "Player 2";
-      const isPositive = result.finalPrice >= (duel.priceAtStart || startPrice);
-      const resultColor = isPositive ? 'text-pump-green' : 'text-pump-red';
+    const winnerName = isP1Winner ? "Player 1" : "Player 2";
+    const isPositive = result.finalPrice >= (duel.priceAtStart || startPrice);
+    const resultColor = isPositive ? 'text-pump-green' : 'text-pump-red';
 
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm">
-            <div className="bg-pump-black border-2 border-pump-green rounded-xl p-8 max-w-md w-full text-center shadow-[0_0_30px_rgba(0,255,65,0.3)] transform animate-in fade-in zoom-in duration-300">
-                <h2 className="text-3xl font-black font-mono text-white mb-2">DUEL ENDED</h2>
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm">
+        <div className="bg-pump-black border-2 border-pump-green rounded-xl p-8 max-w-md w-full text-center shadow-[0_0_30px_rgba(0,255,65,0.3)] transform animate-in fade-in zoom-in duration-300">
+          <h2 className="text-3xl font-black font-mono text-white mb-2">DUEL ENDED</h2>
 
-                <div className="my-6 space-y-2">
-                    <p className="text-pump-gray text-sm">WINNER</p>
-                    <div className="text-2xl font-bold text-pump-yellow animate-pulse">
-                        {winnerName}
-                    </div>
-                    <div className="text-xs text-pump-gray font-mono">{result.winnerId}</div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-black/40 p-3 rounded border border-pump-gray-dark">
-                        <p className="text-xs text-pump-gray">FINAL PRICE</p>
-                        <p className={`font-mono font-bold ${resultColor}`}>${result.finalPrice.toFixed(4)}</p>
-                    </div>
-                    <div className="bg-black/40 p-3 rounded border border-pump-gray-dark">
-                        <p className="text-xs text-pump-gray">PAYOUT</p>
-                        <p className="font-mono font-bold text-pump-green">{result.payout} {duel.currency}</p>
-                    </div>
-                </div>
-
-                <button
-                    onClick={onResolved}
-                    className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
-                >
-                    CLAIM & EXIT
-                </button>
+          <div className="my-6 space-y-2">
+            <p className="text-pump-gray text-sm">WINNER</p>
+            <div className="text-2xl font-bold text-pump-yellow animate-pulse">
+              {winnerName}
             </div>
+            <div className="text-xs text-pump-gray font-mono">{result.winnerId}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="bg-black/40 p-3 rounded border border-pump-gray-dark">
+              <p className="text-xs text-pump-gray">FINAL PRICE</p>
+              <p className={`font-mono font-bold ${resultColor}`}>${result.finalPrice.toFixed(4)}</p>
+            </div>
+            <div className="bg-black/40 p-3 rounded border border-pump-gray-dark">
+              <p className="text-xs text-pump-gray">PAYOUT</p>
+              <p className="font-mono font-bold text-pump-green">{result.payout} {duel.currency}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onResolved}
+            className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
+          >
+            CLAIM & EXIT
+          </button>
         </div>
-      );
+      </div>
+    );
   };
 
   return (
@@ -226,8 +228,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis hide />
