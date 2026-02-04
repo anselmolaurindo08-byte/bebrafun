@@ -190,6 +190,89 @@ class AnchorProgramService {
         }
     }
 
+    /**
+     * Sell outcome shares for SOL (YES or NO)
+     */
+    async sellOutcome(
+        poolId: BN,
+        outcome: { yes: {} } | { no: {} },
+        sharesAmount: BN
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
+
+        const tx = await (program.methods as any)
+            .sellOutcome(outcome, sharesAmount)
+            .accounts({
+                pool: poolPda,
+                userPosition: userPositionPda,
+                seller: program.provider.publicKey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc();
+
+        return tx;
+    }
+
+    /**
+     * Resolve pool (admin only)
+     */
+    async resolvePool(
+        poolId: BN,
+        outcome: { yes: {} } | { no: {} } | { invalid: {} }
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const tx = await (program.methods as any)
+            .resolvePool(outcome)
+            .accounts({
+                pool: poolPda,
+                authority: program.provider.publicKey,
+            })
+            .rpc();
+
+        return tx;
+    }
+
+    /**
+     * Claim winnings from resolved pool
+     */
+    async claimWinnings(
+        poolId: BN
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [poolPda] = this.getPoolPda(poolId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const [userPositionPda] = this.getUserPositionPda(poolId, program.provider.publicKey);
+
+        const tx = await (program.methods as any)
+            .claimWinnings()
+            .accounts({
+                pool: poolPda,
+                userPosition: userPositionPda,
+                user: program.provider.publicKey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc();
+
+        return tx;
+    }
+
     // ============================================================================
     // DUEL OPERATIONS
     // ============================================================================
