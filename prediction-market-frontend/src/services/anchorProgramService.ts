@@ -124,7 +124,7 @@ class AnchorProgramService {
         }
 
         const tx = await (program.methods as any)
-            .initializePool(poolId, marketId, initialLiquidity)
+            .createPool(poolId, marketId, initialLiquidity)
             .accounts({
                 pool: poolPda,
                 authority: program.provider.publicKey,
