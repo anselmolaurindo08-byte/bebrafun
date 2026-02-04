@@ -220,6 +220,129 @@ class BlockchainService {
   getConnection() {
     return anchorProgramService.getProgram().provider.connection;
   }
+
+  // ============================================================================
+  // COMPATIBILITY METHODS (for hooks)
+  // ============================================================================
+
+  /**
+   * Create standardized error object
+   */
+  createError(type: string, message: string): { type: string; message: string } {
+    return { type, message };
+  }
+
+  /**
+   * Get pool state (alias for getPool)
+   */
+  async getPoolState(poolId: string): Promise<any> {
+    return this.getPool(parseInt(poolId));
+  }
+
+  /**
+   * Get pool by market ID (not implemented yet - returns null)
+   */
+  async getPoolByMarketId(_marketId: string): Promise<any> {
+    // TODO: Implement backend API call to get pool by market_id
+    console.warn('getPoolByMarketId not implemented, returning null');
+    return null;
+  }
+
+  /**
+   * Calculate trade quote (simplified version)
+   */
+  calculateTradeQuote(
+    _poolState: any,
+    inputAmount: any,
+    tradeType: any,
+    slippageTolerance: number
+  ): any {
+    const solAmount = inputAmount.toNumber() / 1e9;
+    const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no');
+
+    return {
+      outputAmount: new BN(quote.estimatedShares * 1e9),
+      minimumReceived: new BN(quote.estimatedShares * (1 - slippageTolerance / 100) * 1e9),
+      feeAmount: new BN(quote.estimatedShares * 0.003 * 1e9),
+      priceImpact: 0,
+      slippageTolerance
+    };
+  }
+
+  /**
+   * Execute trade (wrapper for buyShares/sellShares)
+   */
+  async executeTrade(
+    params: {
+      poolId: string;
+      inputAmount: any;
+      tradeType: any;
+      minOutputAmount?: any;
+      expectedOutputAmount?: any;
+      feeAmount?: any;
+      slippageTolerance?: number;
+      userWallet: any;
+    },
+    _publicKey: any,
+    _sendTransaction: any
+  ): Promise<any> {
+    const solAmount = params.inputAmount.toNumber() / 1e9;
+    const outcome = params.tradeType === 0 ? 'yes' : 'no';
+
+    const result = await this.buyShares(
+      parseInt(params.poolId),
+      outcome,
+      solAmount
+    );
+
+    if (result.success) {
+      return {
+        signature: result.tx,
+        status: 'confirmed',
+        confirmations: 1
+      };
+    } else {
+      throw new Error(result.error || 'Trade failed');
+    }
+  }
+
+  /**
+   * Get user account (not implemented - returns null)
+   */
+  async getUserAccount(_publicKey: any): Promise<any> {
+    // TODO: Implement if needed
+    console.warn('getUserAccount not implemented');
+    return null;
+  }
+
+  /**
+   * Create pool (wrapper for anchorProgramService)
+   */
+  async createPool(
+    poolId: number,
+    marketId: number,
+    initialLiquidity: number
+  ): Promise<{ success: boolean; tx?: string; error?: string }> {
+    try {
+      const poolIdBN = new BN(poolId);
+      const marketIdBN = new BN(marketId);
+      const liquidityBN = new BN(initialLiquidity * 1e9);
+
+      const tx = await anchorProgramService.createPool(
+        poolIdBN,
+        marketIdBN,
+        liquidityBN
+      );
+
+      return { success: true, tx };
+    } catch (error: any) {
+      console.error('Create pool error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to create pool'
+      };
+    }
+  }
 }
 
 export default new BlockchainService();
