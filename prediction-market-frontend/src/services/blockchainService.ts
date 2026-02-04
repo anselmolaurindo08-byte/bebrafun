@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import anchorProgramService from './anchorProgramService';
+import { BlockchainErrorType } from './types/blockchain';
 
 /**
  * Simplified Blockchain Service - SOL-based trading
@@ -228,7 +229,7 @@ class BlockchainService {
   /**
    * Create standardized error object
    */
-  createError(type: string, message: string): { type: string; message: string; name: string } {
+  createError(type: BlockchainErrorType, message: string): { type: BlockchainErrorType; message: string; name: string } {
     return { type, message, name: 'BlockchainError' };
   }
 

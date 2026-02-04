@@ -14,7 +14,6 @@ import ReferralPage from './pages/ReferralPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminContests from './pages/AdminContests';
 import AdminUsers from './pages/AdminUsers';
-import DuelsWalletPage from './pages/DuelsWalletPage';
 import { DuelsPage } from './pages/duels/DuelsPage';
 import { CreateDuelPage } from './pages/duels/CreateDuelPage';
 import { ActiveDuelPage } from './pages/duels/ActiveDuelPage';
@@ -56,14 +55,6 @@ function App() {
             element={
               <ProtectedRoute requireAuth={true}>
                 <CreateDuelPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/duels/wallet"
-            element={
-              <ProtectedRoute requireAuth={true}>
-                <DuelsWalletPage />
               </ProtectedRoute>
             }
           />

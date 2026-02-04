@@ -21,7 +21,7 @@ export default function MarketDetailPage() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isCreatingPool, setIsCreatingPool] = useState(false);
-    const { connected, publicKey, sendTransaction, wallet } = useBlockchainWallet();
+    const { connected, publicKey } = useBlockchainWallet();
 
     useEffect(() => {
         fetchMarket();
