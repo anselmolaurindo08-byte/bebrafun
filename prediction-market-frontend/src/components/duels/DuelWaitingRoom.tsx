@@ -2,17 +2,20 @@ import React, { useEffect, useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus } from '../../types/duel';
 import { useDuel } from '../../hooks/useDuel';
+import CancelDuelButton from '../CancelDuelButton';
 
 interface DuelWaitingRoomProps {
   duel: Duel;
   onMatched: () => void;
   onExpired: () => void;
+  onCancelled?: () => void;
 }
 
 export const DuelWaitingRoom: React.FC<DuelWaitingRoomProps> = ({
   duel,
   onMatched,
   onExpired,
+  onCancelled,
 }) => {
   const { startPolling, stopPolling } = useDuel();
   const [timeLeft, setTimeLeft] = useState<number>(300); // 5 minutes
@@ -70,7 +73,7 @@ export const DuelWaitingRoom: React.FC<DuelWaitingRoomProps> = ({
 
       <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
         <p className="text-pump-gray-light font-sans mb-2">Your Bet</p>
-        <p className="text-3xl font-mono font-bold text-pump-green">{duel.betAmount.toLocaleString()} Tokens</p>
+        <p className="text-3xl font-mono font-bold text-pump-green">{duel.betAmount.toLocaleString()} SOL</p>
       </div>
 
       <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mb-6">
@@ -78,9 +81,15 @@ export const DuelWaitingRoom: React.FC<DuelWaitingRoomProps> = ({
         <p className="text-2xl font-mono font-bold text-pump-yellow">{formatTime(timeLeft)}</p>
       </div>
 
-      <p className="text-pump-gray font-sans text-sm">
+      <p className="text-pump-gray font-sans text-sm mb-6">
         Searching for an opponent with the same bet amount...
       </p>
+
+      {/* Cancel Duel Button */}
+      <CancelDuelButton
+        duel={duel}
+        onSuccess={onCancelled || (() => { })}
+      />
     </div>
   );
 };

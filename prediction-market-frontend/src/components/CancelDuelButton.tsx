@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import blockchainService from '../services/blockchainService';
 import './CancelDuelButton.css';
 
@@ -51,16 +50,18 @@ function CancelDuelButton({ duel, onSuccess }: CancelDuelButtonProps) {
         setError(null);
 
         try {
-            const tx = await blockchainService.cancelDuel(
-                duel.id,
-                publicKey as PublicKey
-            );
+            // Use new simplified API - no PublicKey parameter needed
+            const result = await blockchainService.cancelDuel(duel.id);
 
-            console.log('✅ Duel cancelled:', tx);
-            alert('Duel cancelled successfully! Your funds have been refunded.');
+            if (result.success) {
+                console.log('✅ Duel cancelled:', result.tx);
+                alert('Duel cancelled successfully! Your SOL has been refunded.');
 
-            if (onSuccess) {
-                onSuccess();
+                if (onSuccess) {
+                    onSuccess();
+                }
+            } else {
+                throw new Error(result.error || 'Failed to cancel duel');
             }
         } catch (err: any) {
             console.error('❌ Error cancelling duel:', err);
