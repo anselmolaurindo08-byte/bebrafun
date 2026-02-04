@@ -117,11 +117,16 @@ export default function MarketDetailPage() {
                         // Convert BN values to numbers (fields are snake_case from Rust)
                         const yesReserve = onChainPool.yes_reserve?.toNumber() / 1e9 || poolData.yes_reserve || 0;
                         const noReserve = onChainPool.no_reserve?.toNumber() / 1e9 || poolData.no_reserve || 0;
+                        const baseYesLiquidity = onChainPool.base_yes_liquidity?.toNumber() / 1e9 || 0;
+                        const baseNoLiquidity = onChainPool.base_no_liquidity?.toNumber() / 1e9 || 0;
 
-                        // Calculate prices from reserves (AMM formula)
-                        const totalReserve = yesReserve + noReserve;
-                        const yesPrice = totalReserve > 0 ? yesReserve / totalReserve : 0.5;
-                        const noPrice = totalReserve > 0 ? noReserve / totalReserve : 0.5;
+                        // Calculate prices from reserves + base liquidity (AMM formula)
+                        // Base liquidity provides price stability without being tradeable
+                        const effectiveYesReserve = yesReserve + baseYesLiquidity;
+                        const effectiveNoReserve = noReserve + baseNoLiquidity;
+                        const totalReserve = effectiveYesReserve + effectiveNoReserve;
+                        const yesPrice = totalReserve > 0 ? effectiveYesReserve / totalReserve : 0.5;
+                        const noPrice = totalReserve > 0 ? effectiveNoReserve / totalReserve : 0.5;
 
                         const poolWithPrices = {
                             ...poolData,
