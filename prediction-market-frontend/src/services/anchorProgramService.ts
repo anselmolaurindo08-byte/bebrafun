@@ -204,9 +204,32 @@ class AnchorProgramService {
 
     /**
      * Get pool state directly from blockchain
+     * Works without wallet - creates read-only program if needed
      */
     async getPoolState(poolId: BN): Promise<any> {
-        const program = this.getProgram();
+        let program = this.program;
+
+        // If no program initialized (no wallet), create read-only program
+        if (!program) {
+            const { AnchorProvider, Program } = await import('@coral-xyz/anchor');
+            const { Keypair } = await import('@solana/web3.js');
+
+            // Create dummy wallet for read-only access
+            const dummyWallet = {
+                publicKey: Keypair.generate().publicKey,
+                signTransaction: async (tx: any) => tx,
+                signAllTransactions: async (txs: any[]) => txs,
+            };
+
+            const provider = new AnchorProvider(
+                this.connection,
+                dummyWallet as any,
+                { commitment: 'confirmed' }
+            );
+
+            program = new Program(idl as any, provider);
+        }
+
         const [poolPda] = this.getPoolPda(poolId);
 
         console.log('[getPoolState] Fetching pool:', {
