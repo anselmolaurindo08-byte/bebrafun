@@ -72,6 +72,13 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       console.log('[DuelForm] Creating duel with direction:', request.direction, 'prediction:', prediction);
       const duel = await duelService.createDuel(request);
       console.log('[DuelForm] Duel created in backend:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
+
+      // Save player1Id to localStorage for winner check
+      if (duel.player1Id) {
+        localStorage.setItem('userId', String(duel.player1Id));
+        console.log('[DuelForm] Saved userId to localStorage:', duel.player1Id);
+      }
+
       onDuelCreated(duel.id);
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create duel';
