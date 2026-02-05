@@ -116,8 +116,14 @@ func (ds *DuelService) AutoResolveDuel(
 
 	log.Printf("[AutoResolveDuel] Duel %s resolved successfully. Winner: %d, Loser: %d", duelID, winnerID, loserID)
 
-	// Return result
-	return ds.GetDuelResult(ctx, duelID)
+	// Create and return result from duel data
+	result := &models.DuelResult{
+		DuelID:   duelID,
+		WinnerID: winnerID,
+		LoserID:  loserID,
+	}
+
+	return result, nil
 }
 
 // SetChartStartPrice sets the chart start price for a duel
