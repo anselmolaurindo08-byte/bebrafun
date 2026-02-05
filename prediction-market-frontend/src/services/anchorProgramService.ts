@@ -453,10 +453,22 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
+        // First, fetch the duel account to get player addresses
+        const duelAccount = await this.getDuelAccount(duelId);
+        if (!duelAccount) {
+            throw new Error('Duel not found on-chain');
+        }
+
+        // Fee collector is the server wallet (hardcoded for now)
+        const feeCollector = new PublicKey('ARsNCteRcUeU3kMnWuUMXjEPfSDWhW2Q4eDTGjnSGXRs');
+
         const tx = await (program.methods as any)
             .resolveDuel(exitPrice)
             .accounts({
                 duel: duelPda,
+                player1: duelAccount.player1,
+                player2: duelAccount.player2,
+                feeCollector: feeCollector,
                 authority: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
             })
