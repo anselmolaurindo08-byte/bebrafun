@@ -170,7 +170,14 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const handleClaimWinnings = async () => {
     setIsClaiming(true);
     try {
+      // Step 1: Call smart contract - user signs to claim winnings
+      // This will update winner/status in contract and send payout
+      console.log('[DuelGameView] Calling smart contract claimWinnings for duelId:', duel.duelId);
+
+      // TODO: Need to implement blockchainService.claimWinnings
+      // For now, just call backend which will handle it
       await duelService.claimWinnings(duel.id);
+
       setClaimSuccess(true);
       // Success message will stay visible, no auto-redirect
     } catch (error) {

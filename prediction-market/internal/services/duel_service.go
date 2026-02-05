@@ -980,3 +980,49 @@ func (ds *DuelService) AutoResolveDuel(
 
 	return result, nil
 }
+
+// ClaimWinnings processes a claim request from the winner
+// This is called AFTER the smart contract has sent the payout
+// It just updates the database to mark the duel as claimed
+func (ds *DuelService) ClaimWinnings(
+	ctx context.Context,
+	duelID uuid.UUID,
+	playerID uint,
+) (*models.DuelResult, error) {
+	// Get duel
+	duel, err := ds.repo.GetDuelByID(ctx, duelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	// Check if duel is resolved
+	if duel.Status != models.DuelStatusResolved {
+		return nil, fmt.Errorf("duel is not resolved (status: %s)", duel.Status)
+	}
+
+	// Check if player is the winner
+	if duel.WinnerID == nil || *duel.WinnerID != playerID {
+		return nil, fmt.Errorf("player %d is not the winner", playerID)
+	}
+
+	log.Printf("[ClaimWinnings] Player %d claiming winnings for duel %s", playerID, duelID)
+
+	// Update duel status to CLAIMED
+	duel.Status = models.DuelStatusClaimed
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel: %w", err)
+	}
+
+	// Return result
+	payout := float64(duel.BetAmount * 2)
+	result := &models.DuelResult{
+		DuelID:     duelID,
+		WinnerID:   *duel.WinnerID,
+		ExitPrice:  *duel.PriceAtEnd,
+		EntryPrice: *duel.PriceAtStart,
+		Payout:     payout,
+		CreatedAt:  time.Now(),
+	}
+
+	return result, nil
+}
