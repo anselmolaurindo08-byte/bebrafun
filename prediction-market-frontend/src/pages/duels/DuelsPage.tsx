@@ -10,8 +10,8 @@ export const DuelsPage: React.FC = () => {
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Use polling hook for automatic updates (every 5 seconds)
-  const { duels, loading, error } = useActiveDuelsPolling(5000, isAuthenticated);
+  // Use polling hook for automatic updates (every 15 seconds)
+  const { duels, loading, error } = useActiveDuelsPolling(15000, isAuthenticated);
 
   const handleCreateDuel = () => {
     if (!isAuthenticated) {
