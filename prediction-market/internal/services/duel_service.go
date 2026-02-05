@@ -152,6 +152,49 @@ func (ds *DuelService) CreateDuel(
 
 	log.Printf("Duel %d created with verified deposit from player %d (tx: %s)", duelID, playerID, req.Signature)
 
+	// Get player wallet address for on-chain initialization
+	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, playerID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get player wallet: %v", err)
+		// Rollback: delete duel and transaction from database
+		ds.repo.DeleteDuel(ctx, duel.ID)
+		return nil, fmt.Errorf("failed to get player wallet: %w", err)
+	}
+
+	player1Pubkey, err := solana.PublicKeyFromBase58(player1Wallet)
+	if err != nil {
+		log.Printf("ERROR: Invalid player wallet: %v", err)
+		// Rollback: delete duel and transaction from database
+		ds.repo.DeleteDuel(ctx, duel.ID)
+		return nil, fmt.Errorf("invalid player wallet: %w", err)
+	}
+
+	// Determine predicted outcome (0 = DOWN, 1 = UP)
+	var predictedOutcome uint8
+	if req.Direction != nil && *req.Direction == 1 {
+		predictedOutcome = 1 // UP
+	} else {
+		predictedOutcome = 0 // DOWN
+	}
+
+	// Call initialize_duel on-chain to create duel PDA
+	log.Printf("[CreateDuel] Calling initialize_duel on-chain for duel %d", duelID)
+	signature, err := ds.anchorClient.InitializeDuel(
+		ctx,
+		uint64(duelID),
+		betAmountLamports,
+		predictedOutcome,
+		player1Pubkey,
+	)
+	if err != nil {
+		log.Printf("ERROR: Failed to initialize duel on-chain: %v", err)
+		// Rollback: delete duel and transaction from database
+		ds.repo.DeleteDuel(ctx, duel.ID)
+		return nil, fmt.Errorf("failed to initialize duel on-chain: %w", err)
+	}
+
+	log.Printf("[CreateDuel] Duel initialized on-chain: %s", signature)
+
 	return duel, nil
 }
 
