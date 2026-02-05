@@ -47,6 +47,7 @@ export const duelService = {
       market_id: request.marketId,
       event_id: request.eventId,
       predicted_outcome: request.predictedOutcome,
+      direction: request.direction, // Pass direction (0=UP, 1=DOWN)
       currency: request.currency,
       signature: request.signature,
     });
