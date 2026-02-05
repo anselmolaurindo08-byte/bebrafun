@@ -69,6 +69,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         signature, // On-chain transaction signature
       };
 
+      console.log('[DuelForm] Creating duel with direction:', request.direction, 'prediction:', prediction);
       const duel = await duelService.createDuel(request);
       console.log('[DuelForm] Duel created in backend:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
       onDuelCreated(duel.id);
