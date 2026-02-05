@@ -503,7 +503,7 @@ class AnchorProgramService {
 
     /**
      * Claim duel winnings - winner claims their payout
-     * This updates winner/status in contract and sends payout
+     * This calls resolveDuel with the winner's public key
      */
     async claimDuelWinnings(
         duelId: BN
@@ -515,11 +515,12 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
+        // Call resolveDuel with winner = current user
         const tx = await (program.methods as any)
-            .claimWinnings()
+            .resolveDuel(program.provider.publicKey)
             .accounts({
                 duel: duelPda,
-                winner: program.provider.publicKey,
+                authority: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
             })
             .rpc();
