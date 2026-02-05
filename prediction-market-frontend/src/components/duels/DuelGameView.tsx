@@ -184,16 +184,14 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const renderResultModal = () => {
     if (!showResultModal || !result) return null;
 
-    const { publicKey } = useWallet();
+
+    // Get current user ID from localStorage (set during login)
+    const currentUserId = localStorage.getItem('userId');
 
     const isP1Winner = String(result.winnerId) === String(duel.player1Id);
-    const isP2Winner = String(result.winnerId) === String(duel.player2Id);
 
-    // Check if current user is the winner by comparing wallet addresses
-    const currentUserWallet = publicKey?.toString();
-    const isCurrentUserP1 = currentUserWallet === duel.player1;
-    const isCurrentUserP2 = currentUserWallet === duel.player2;
-    const isWinner = (isP1Winner && isCurrentUserP1) || (isP2Winner && isCurrentUserP2);
+    // Check if current user is the winner by comparing user IDs
+    const isWinner = String(result.winnerId) === String(currentUserId);
 
     const winnerName = isP1Winner ? "Player 1" : "Player 2";
     const isPositive = result.finalPrice >= (duel.priceAtStart || startPrice);
