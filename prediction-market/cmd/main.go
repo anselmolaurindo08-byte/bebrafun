@@ -217,7 +217,7 @@ func main() {
 		api.GET("/duels", duelHandler.GetPlayerDuels)
 		api.GET("/duels/stats", duelHandler.GetPlayerStatistics)
 		api.GET("/duels/config", duelHandler.GetConfig)
-		api.GET("/duels/status/active", duelHandler.GetActiveDuels) // Active duels list
+		// api.GET("/duels/status/active", duelHandler.GetActiveDuels) // MOVED TO PUBLIC ROUTES
 		api.GET("/duels/available", duelHandler.GetAvailableDuels)
 		api.GET("/duels/user/:userId", duelHandler.GetUserDuels)
 		api.POST("/duels/confirm-transaction", duelHandler.ConfirmTransaction)
