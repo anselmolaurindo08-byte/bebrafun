@@ -554,27 +554,11 @@ class BlockchainService {
         throw new Error('Duel is already resolved. Winnings may have been claimed already.');
       }
 
-      if (statusStr !== 'active' && statusStr !== 'countdown') {
-        throw new Error(`Duel status is ${statusStr}, cannot resolve. Expected Active or Countdown.`);
+      if (statusStr !== 'active') {
+        throw new Error(`Duel status is ${statusStr}, cannot claim. Expected Active status. Please wait for duel to start.`);
       }
 
-      // 3. If status is Countdown, call start_duel first
-      if (statusStr === 'countdown') {
-        console.log('[claimDuelWinnings] Duel is in Countdown status, starting duel first...');
-
-        const entryPriceBN = new BN(exitPrice); // Use exit price as entry for now
-        const startTx = await anchorProgramService.startDuel(duelIdBN, entryPriceBN);
-
-        console.log('[claimDuelWinnings] Duel started on-chain, tx:', startTx);
-
-        // Wait for transaction confirmation (not just 2 seconds!)
-        console.log('[claimDuelWinnings] Waiting for start_duel confirmation...');
-        const connection = anchorProgramService.getConnection();
-        await connection.confirmTransaction(startTx, 'confirmed');
-        console.log('[claimDuelWinnings] ✅ start_duel confirmed!');
-      }
-
-      // 4. Call resolve_duel to claim winnings
+      // 3. Call resolve_duel to claim winnings
       console.log('[claimDuelWinnings] Resolving duel with exit price:', exitPrice);
 
       const exitPriceBN = new BN(exitPrice);
