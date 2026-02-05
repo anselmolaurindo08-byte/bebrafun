@@ -256,7 +256,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
                 BACK TO DUELS
               </button>
             </div>
-          ) : isWinner ? (
+          ) : isWinner && duel.status === 'RESOLVED' ? (
             <button
               onClick={handleClaimWinnings}
               disabled={isClaiming}
@@ -264,6 +264,11 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
             >
               {isClaiming ? 'CLAIMING...' : '💰 CLAIM WINNINGS'}
             </button>
+          ) : isWinner && duel.status !== 'RESOLVED' ? (
+            <div className="text-center">
+              <p className="text-pump-gray text-sm mb-4">⏳ Waiting for duel to be resolved...</p>
+              <p className="text-pump-gray text-xs">The system is processing the result. Please wait a moment.</p>
+            </div>
           ) : (
             <button
               onClick={onResolved}
