@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { DepositFlow } from './DepositFlow';
 import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
-import blockchainService from '../../services/blockchainService';
 import { useDuelPolling } from '../../hooks/useDuelPolling';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
 
