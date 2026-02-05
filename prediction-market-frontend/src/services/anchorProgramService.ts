@@ -399,6 +399,22 @@ class AnchorProgramService {
     }
 
     /**
+     * Get on-chain duel account data
+     */
+    async getDuelAccount(duelId: BN): Promise<any | null> {
+        try {
+            const program = this.getProgram();
+            const [duelPda] = this.getDuelPda(duelId);
+
+            const duelAccount = await (program.account as any).duel.fetch(duelPda);
+            return duelAccount;
+        } catch (error) {
+            console.error('[getDuelAccount] Error:', error);
+            return null;
+        }
+    }
+
+    /**
      * Start duel (authority only)
      */
     async startDuel(
