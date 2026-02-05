@@ -134,5 +134,11 @@ export const duelService = {
   ): Promise<void> => {
     await api.setChartStartPrice(duelId, price);
   },
+
+  // Claim winnings from resolved duel
+  claimWinnings: async (duelId: string): Promise<any> => {
+    const response = await api.claimWinnings(duelId);
+    return response;
+  },
 };
 

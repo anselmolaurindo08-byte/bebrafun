@@ -38,6 +38,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [result, setResult] = useState<GameResult | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [claimSuccess, setClaimSuccess] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   // Map currencies to Binance streams
@@ -164,16 +166,30 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const percentChange = startPrice > 0 ? ((currentPrice - startPrice) / startPrice) * 100 : 0;
   const color = percentChange >= 0 ? '#00FF41' : '#FF5252';
 
+  // --- Handle Claim Winnings ---
+  const handleClaimWinnings = async () => {
+    setIsClaiming(true);
+    try {
+      await duelService.claimWinnings(duel.id);
+      setClaimSuccess(true);
+      // Wait a bit to show success message, then exit
+      setTimeout(() => {
+        onResolved();
+      }, 2000);
+    } catch (error) {
+      console.error('[DuelGameView] Claim failed:', error);
+      setIsClaiming(false);
+      alert('Failed to claim winnings. Please try again.');
+    }
+  };
+
   // --- Render Result Modal ---
   const renderResultModal = () => {
     if (!showResultModal || !result) return null;
 
     const isP1Winner = String(result.winnerId) === String(duel.player1Id);
-    // We don't know "Me" here easily without user store,
-    // but we can display "Player 1 Wins" or "Player 2 Wins"
-    // or use addresses/names if available in duel object.
-    // Assuming duel has names (it usually does or we fetch them).
-    // For now, generic text.
+    // Check if current user is the winner (assuming we have player1Id as current user)
+    const isWinner = isP1Winner;
 
     const winnerName = isP1Winner ? "Player 1" : "Player 2";
     const isPositive = result.finalPrice >= (duel.priceAtStart || startPrice);
@@ -203,12 +219,27 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
             </div>
           </div>
 
-          <button
-            onClick={onResolved}
-            className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
-          >
-            CLAIM & EXIT
-          </button>
+          {claimSuccess ? (
+            <div className="text-center">
+              <p className="text-pump-green text-xl font-bold mb-2 animate-pulse">✓ WINNINGS CLAIMED!</p>
+              <p className="text-pump-gray text-sm">Redirecting...</p>
+            </div>
+          ) : isWinner ? (
+            <button
+              onClick={handleClaimWinnings}
+              disabled={isClaiming}
+              className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClaiming ? 'CLAIMING...' : '💰 CLAIM WINNINGS'}
+            </button>
+          ) : (
+            <button
+              onClick={onResolved}
+              className="w-full bg-pump-gray hover:bg-pump-gray-dark text-white font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
+            >
+              CLOSE
+            </button>
+          )}
         </div>
       </div>
     );

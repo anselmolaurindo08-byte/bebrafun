@@ -260,6 +260,11 @@ class ApiService {
         });
     }
 
+    async claimWinnings(duelId: string): Promise<any> {
+        const response = await this.api.post<ApiResponse<any>>(`/api/duels/${duelId}/claim`);
+        return response.data;
+    }
+
     // Wallet/Blockchain endpoints
     async connectWallet(data: { wallet_address: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/wallet/connect', data);
