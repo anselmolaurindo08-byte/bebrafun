@@ -73,15 +73,20 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
         player2Prediction
       );
 
+      console.log('[DuelArena] Join duel result:', result);
+
       if (!result.success || !result.tx) {
+        console.error('[DuelArena] Join duel failed:', result.error);
         throw new Error(result.error || 'Failed to join duel on-chain');
       }
 
       const signature = result.tx;
-      console.log('[DuelArena] Joined duel on-chain:', signature);
+      console.log('[DuelArena] Joined duel on-chain, signature:', signature);
 
       // Update backend with on-chain signature
+      console.log('[DuelArena] Calling backend API to join duel:', { duelId: duel.id, signature });
       const updatedDuel = await duelService.joinDuel(duel.id, signature);
+      console.log('[DuelArena] Backend API response:', updatedDuel);
 
       // Save player2Id to localStorage for winner check
       if (updatedDuel.player2Id) {
