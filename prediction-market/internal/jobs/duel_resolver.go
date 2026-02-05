@@ -69,12 +69,28 @@ func (dr *DuelResolver) resolveExpiredDuels() {
 	resolvedCount := 0
 
 	for _, duel := range duels {
-		// Check if duel has expired (started_at + 1 minute)
-		if duel.StartedAt == nil {
+		// For Countdown duels, check UpdatedAt (when Player 2 joined)
+		// For Active duels, check StartedAt
+		var checkTime *time.Time
+		var expiryDuration time.Duration
+
+		if duel.Status == models.DuelStatusCountdown {
+			// Countdown duels expire 60 seconds after Player 2 joins
+			checkTime = duel.UpdatedAt
+			expiryDuration = 60 * time.Second
+		} else if duel.Status == models.DuelStatusActive {
+			// Active duels expire 1 minute after they start
+			checkTime = duel.StartedAt
+			expiryDuration = 1 * time.Minute
+		} else {
+			continue // Skip other statuses
+		}
+
+		if checkTime == nil {
 			continue
 		}
 
-		expiryTime := duel.StartedAt.Add(1 * time.Minute)
+		expiryTime := checkTime.Add(expiryDuration)
 		if now.Before(expiryTime) {
 			continue // Not expired yet
 		}
