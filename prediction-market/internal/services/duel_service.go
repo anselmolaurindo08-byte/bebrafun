@@ -949,6 +949,16 @@ func (ds *DuelService) AutoResolveDuel(
 		}
 
 		log.Printf("[AutoResolveDuel] Started duel %s with entry price %.4f", duelID, *duel.PriceAtStart)
+
+		// Call smart contract start_duel to update on-chain status
+		entryPriceLamports := uint64(*duel.PriceAtStart * 1_000_000) // Convert to micro-units
+		signature, err := ds.anchorClient.StartDuel(ctx, duel.ID, entryPriceLamports)
+		if err != nil {
+			log.Printf("[AutoResolveDuel] WARNING: Failed to start duel on-chain: %v", err)
+			// Don't fail the entire operation - DB is already updated
+		} else {
+			log.Printf("[AutoResolveDuel] Duel started on-chain: %s", signature)
+		}
 	}
 
 	// Get entry price
