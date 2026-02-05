@@ -513,11 +513,13 @@ class BlockchainService {
    * Claim duel winnings - winner claims their payout from smart contract
    */
   async claimDuelWinnings(
-    duelId: number
+    duelId: number,
+    exitPrice: number
   ): Promise<{ success: boolean; tx?: string; error?: string }> {
     try {
       const duelIdBN = new BN(duelId);
-      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN);
+      const exitPriceBN = new BN(exitPrice);
+      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN, exitPriceBN);
 
       return { success: true, tx };
     } catch (error: any) {

@@ -503,10 +503,11 @@ class AnchorProgramService {
 
     /**
      * Claim duel winnings - winner claims their payout
-     * This calls resolveDuel with all required accounts
+     * Calls resolveDuel with exit_price to determine winner and pay out
      */
     async claimDuelWinnings(
-        duelId: BN
+        duelId: BN,
+        exitPrice: BN
     ): Promise<string> {
         const program = this.getProgram();
         const [duelPda] = this.getDuelPda(duelId);
@@ -518,14 +519,18 @@ class AnchorProgramService {
         // Fetch duel data to get player1 and player2
         const duelAccount = await program.account.duel.fetch(duelPda);
 
-        // Call resolveDuel with winner = current user
+        // Fee collector address (platform wallet)
+        const feeCollector = new PublicKey('FEEcmF91FVTq3NTTxJLKoFDSAHNUMXj3STBZcfMKLMbh');
+
+        // Call resolveDuel with exit_price
         const tx = await (program.methods as any)
-            .resolveDuel(program.provider.publicKey)
+            .resolveDuel(exitPrice)
             .accounts({
                 duel: duelPda,
                 player1: duelAccount.player1,
                 player2: duelAccount.player2,
-                winner: program.provider.publicKey,
+                feeCollector: feeCollector,
+                authority: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
             })
             .rpc();

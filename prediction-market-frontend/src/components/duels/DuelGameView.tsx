@@ -172,10 +172,10 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     setIsClaiming(true);
     try {
       // Step 1: Call smart contract - user signs to claim winnings
-      // This will update winner/status in contract and send payout
-      console.log('[DuelGameView] Calling smart contract claimWinnings for duelId:', duel.duelId);
+      // This will determine winner, update contract status, and send payout
+      console.log('[DuelGameView] Calling smart contract claimWinnings for duelId:', duel.duelId, 'exitPrice:', duel.priceAtEnd);
 
-      const result = await blockchainService.claimDuelWinnings(duel.duelId);
+      const result = await blockchainService.claimDuelWinnings(duel.duelId, duel.priceAtEnd || 0);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to claim winnings on-chain');
