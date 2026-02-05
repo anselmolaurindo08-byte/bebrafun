@@ -172,10 +172,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     try {
       await duelService.claimWinnings(duel.id);
       setClaimSuccess(true);
-      // Wait a bit to show success message, then exit
-      setTimeout(() => {
-        onResolved();
-      }, 2000);
+      // Success message will stay visible, no auto-redirect
     } catch (error) {
       console.error('[DuelGameView] Claim failed:', error);
       setIsClaiming(false);
@@ -221,8 +218,14 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
           {claimSuccess ? (
             <div className="text-center">
-              <p className="text-pump-green text-xl font-bold mb-2 animate-pulse">✓ WINNINGS CLAIMED!</p>
-              <p className="text-pump-gray text-sm">Redirecting...</p>
+              <p className="text-pump-green text-xl font-bold mb-4 animate-pulse">✓ WINNINGS CLAIMED!</p>
+              <p className="text-pump-gray text-sm mb-4">Your winnings have been transferred to your wallet.</p>
+              <button
+                onClick={onResolved}
+                className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
+              >
+                BACK TO DUELS
+              </button>
             </div>
           ) : isWinner ? (
             <button
