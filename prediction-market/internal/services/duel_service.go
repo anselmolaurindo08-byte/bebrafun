@@ -568,12 +568,30 @@ func (ds *DuelService) CancelDuel(ctx context.Context, duelID uuid.UUID, playerI
 		return errors.New("cannot cancel active or resolved duel")
 	}
 
-	// Cancel escrow if matched
-	if duel.Status == models.DuelStatusMatched && duel.EscrowTxHash != nil {
-		_, err := ds.escrowContract.CancelEscrow(ctx, duel.DuelID)
+	// Call smart contract to cancel and refund if duel is on-chain
+	if duel.Status == models.DuelStatusPending && duel.Player1ID == playerID {
+		// Get player 1 wallet address
+		player1, err := ds.repo.GetUserByID(ctx, duel.Player1ID)
 		if err != nil {
-			log.Printf("Warning: failed to cancel escrow: %v", err)
-			// Continue with cancellation even if blockchain fails
+			return fmt.Errorf("failed to get player 1: %w", err)
+		}
+
+		if player1.WalletAddress == nil || *player1.WalletAddress == "" {
+			return errors.New("player 1 wallet address not found")
+		}
+
+		player1Pubkey, err := solana.PublicKeyFromBase58(*player1.WalletAddress)
+		if err != nil {
+			return fmt.Errorf("invalid player 1 wallet address: %w", err)
+		}
+
+		// Call smart contract to cancel and refund
+		signature, err := ds.anchorClient.CancelDuel(ctx, duel.DuelID, player1Pubkey)
+		if err != nil {
+			log.Printf("[CancelDuel] Warning: failed to cancel on-chain: %v", err)
+			// Continue with database update even if blockchain fails
+		} else {
+			log.Printf("[CancelDuel] On-chain cancel successful, tx: %s", signature)
 		}
 	}
 
