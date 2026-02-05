@@ -44,6 +44,7 @@ type SolanaConfig struct {
 	ProgramID              string
 	ServerWalletPrivateKey string
 	ServerWalletPublicKey  string
+	AuthorityPrivateKey    string // Authority wallet for signing on-chain transactions (start_duel, resolve_duel)
 	EscrowProgramID        string
 	PlatformFeePercent     float64
 }
@@ -75,6 +76,7 @@ func Load() (*Config, error) {
 			ProgramID:              getEnv("PROGRAM_ID", "6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH"),
 			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
 			ServerWalletPublicKey:  getEnv("SERVER_WALLET_PUBLIC_KEY", ""),
+			AuthorityPrivateKey:    getEnv("SOLANA_AUTHORITY_PRIVATE_KEY", ""),
 			EscrowProgramID:        getEnv("ESCROW_PROGRAM_ID", "F1CFijTZ6QEWPEoSTZ9BfYc4bhD6ejK5oRZhK5YYH9SY"),
 			PlatformFeePercent:     getEnvFloat("PLATFORM_FEE_PERCENT", 5.0),
 		},
