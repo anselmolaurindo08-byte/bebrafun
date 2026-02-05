@@ -1007,21 +1007,15 @@ func (ds *DuelService) ClaimWinnings(
 
 	log.Printf("[ClaimWinnings] Player %d claiming winnings for duel %s", playerID, duelID)
 
-	// Update duel status to CLAIMED
-	duel.Status = models.DuelStatusClaimed
-	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
-		return nil, fmt.Errorf("failed to update duel: %w", err)
-	}
+	// Note: Status stays RESOLVED - we don't have CLAIMED status
+	// Smart contract already sent payout, this just confirms claim in DB
 
 	// Return result
-	payout := float64(duel.BetAmount * 2)
 	result := &models.DuelResult{
 		DuelID:     duelID,
 		WinnerID:   *duel.WinnerID,
 		ExitPrice:  *duel.PriceAtEnd,
 		EntryPrice: *duel.PriceAtStart,
-		Payout:     payout,
-		CreatedAt:  time.Now(),
 	}
 
 	return result, nil
