@@ -335,7 +335,7 @@ func (ds *DuelService) JoinDuel(
 	duel.Status = models.DuelStatusCountdown
 	now := time.Now()
 	duel.StartedAt = &now
-	entryPriceFloat := float64(entryPriceMicroUnits) / 1e6 // Convert to dollars
+	entryPriceFloat := float64(entryPriceCents) / 100 // Convert cents to dollars
 	duel.PriceAtStart = &entryPriceFloat
 
 	// Save final state to database
