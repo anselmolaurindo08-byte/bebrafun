@@ -90,6 +90,18 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
     }
   };
 
+  const handleCancelDuel = async () => {
+    try {
+      setError(null);
+      await duelService.cancelDuel(duel.id);
+      // Navigate back to duels list
+      onResolved();
+    } catch (err: any) {
+      console.error('Failed to cancel duel:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to cancel duel');
+    }
+  };
+
   // Convert lamports to SOL for display
   const displayAmount = duel.betAmount / 1e9;
 
@@ -212,8 +224,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
         <button
           onClick={() => {
             if (confirm('Are you sure you want to cancel this duel? Your deposit will be refunded.')) {
-              // TODO: Implement cancel duel logic
-              alert('Cancel duel functionality coming soon!');
+              handleCancelDuel();
             }
           }}
           className="w-full bg-pump-red hover:bg-red-600 text-white font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105"

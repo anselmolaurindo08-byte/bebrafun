@@ -83,10 +83,6 @@ export const duelService = {
     await api.depositToDuel(duelId, request);
   },
 
-  cancelDuel: async (duelId: string): Promise<void> => {
-    await api.cancelDuel(duelId);
-  },
-
   joinDuel: async (
     duelId: string,
     signature: string
@@ -140,6 +136,10 @@ export const duelService = {
   claimWinnings: async (duelId: string): Promise<any> => {
     const response = await api.claimWinnings(duelId);
     return response;
+  },
+
+  cancelDuel: async (duelId: string): Promise<void> => {
+    await api.cancelDuel(duelId);
   },
 };
 
