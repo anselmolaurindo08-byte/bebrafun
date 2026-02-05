@@ -126,16 +126,16 @@ func (c *AnchorClient) StartDuel(
 	duelID uint64,
 	entryPrice uint64,
 ) (string, error) {
-	// Get server wallet private key
-	privateKeyStr := os.Getenv("SERVER_WALLET_PRIVATE_KEY")
+	// Get authority wallet private key
+	privateKeyStr := os.Getenv("SOLANA_AUTHORITY_PRIVATE_KEY")
 	if privateKeyStr == "" {
-		return "", fmt.Errorf("SERVER_WALLET_PRIVATE_KEY not set")
+		return "", fmt.Errorf("SOLANA_AUTHORITY_PRIVATE_KEY not set")
 	}
 
 	// Parse private key
 	privateKey, err := solana.PrivateKeyFromBase58(privateKeyStr)
 	if err != nil {
-		return "", fmt.Errorf("invalid server wallet private key: %w", err)
+		return "", fmt.Errorf("invalid authority wallet private key: %w", err)
 	}
 
 	authority := privateKey.PublicKey()
