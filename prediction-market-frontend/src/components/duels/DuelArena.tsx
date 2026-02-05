@@ -208,7 +208,19 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
         >
           {isJoining ? 'Joining...' : 'JOIN DUEL'}
         </button>
-      ) : isParticipant && (duel.status === DuelStatus.MATCHED || duel.status === DuelStatus.PENDING) && !iHaveDeposited ? (
+      ) : isPlayer1 && duel.status === DuelStatus.PENDING && !duel.player2Id ? (
+        <button
+          onClick={() => {
+            if (confirm('Are you sure you want to cancel this duel? Your deposit will be refunded.')) {
+              // TODO: Implement cancel duel logic
+              alert('Cancel duel functionality coming soon!');
+            }
+          }}
+          className="w-full bg-pump-red hover:bg-red-600 text-white font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105"
+        >
+          CANCEL DUEL
+        </button>
+      ) : isParticipant && duel.status === DuelStatus.MATCHED && !iHaveDeposited ? (
         <button
           onClick={() => setShowDepositFlow(true)}
           className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow animate-pulse"
