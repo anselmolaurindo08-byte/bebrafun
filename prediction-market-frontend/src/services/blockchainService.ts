@@ -509,6 +509,26 @@ class BlockchainService {
     };
   }
 
+  /**
+   * Claim duel winnings - winner claims their payout from smart contract
+   */
+  async claimDuelWinnings(
+    duelId: number
+  ): Promise<{ success: boolean; tx?: string; error?: string }> {
+    try {
+      const duelIdBN = new BN(duelId);
+      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN);
+
+      return { success: true, tx };
+    } catch (error: any) {
+      console.error('Claim duel winnings error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to claim duel winnings'
+      };
+    }
+  }
+
 }
 
 export default new BlockchainService();

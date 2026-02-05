@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
+import blockchainService from '../../services/blockchainService';
 
 interface DuelGameViewProps {
   duel: Duel;
@@ -174,8 +175,15 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
       // This will update winner/status in contract and send payout
       console.log('[DuelGameView] Calling smart contract claimWinnings for duelId:', duel.duelId);
 
-      // TODO: Need to implement blockchainService.claimWinnings
-      // For now, just call backend which will handle it
+      const result = await blockchainService.claimDuelWinnings(duel.duelId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to claim winnings on-chain');
+      }
+
+      console.log('✅ Winnings claimed on-chain, payout tx:', result.tx);
+
+      // Step 2: Update backend status after on-chain success
       await duelService.claimWinnings(duel.id);
 
       setClaimSuccess(true);

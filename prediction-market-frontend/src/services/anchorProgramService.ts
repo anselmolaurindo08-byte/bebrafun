@@ -500,6 +500,32 @@ class AnchorProgramService {
 
         return tx;
     }
+
+    /**
+     * Claim duel winnings - winner claims their payout
+     * This updates winner/status in contract and sends payout
+     */
+    async claimDuelWinnings(
+        duelId: BN
+    ): Promise<string> {
+        const program = this.getProgram();
+        const [duelPda] = this.getDuelPda(duelId);
+
+        if (!program.provider.publicKey) {
+            throw new Error('Wallet not connected');
+        }
+
+        const tx = await (program.methods as any)
+            .claimWinnings()
+            .accounts({
+                duel: duelPda,
+                winner: program.provider.publicKey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc();
+
+        return tx;
+    }
 }
 
 export default new AnchorProgramService();
