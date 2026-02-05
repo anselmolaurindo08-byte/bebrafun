@@ -509,80 +509,19 @@ class BlockchainService {
     };
   }
 
-
   /**
    * Claim duel winnings - winner claims their payout from smart contract
-   * Checks on-chain status first and handles Countdown/WaitingForPlayer2/Resolved states
    */
   async claimDuelWinnings(
-    duelId: number,
-    exitPrice: number
+    duelId: number
   ): Promise<{ success: boolean; tx?: string; error?: string }> {
     try {
       const duelIdBN = new BN(duelId);
-
-      // 1. Read on-chain duel data to check status
-      console.log('[claimDuelWinnings] Reading on-chain duel data for duelId:', duelId);
-      const duelAccount = await anchorProgramService.getDuelAccount(duelIdBN);
-
-      if (!duelAccount) {
-        throw new Error(`Duel ${duelId} not found on-chain`);
-      }
-
-      console.log('[claimDuelWinnings] On-chain duel status:', {
-        duelId: duelAccount.duelId?.toString(),
-        status: duelAccount.status,
-        amount: duelAccount.amount?.toNumber(),
-        player1: duelAccount.player1?.toString(),
-        player2: duelAccount.player2?.toString()
-      });
-
-      // 2. Check if duel can be resolved
-      const status = duelAccount.status;
-
-      // Convert status object to string if needed
-      const statusStr = typeof status === 'object'
-        ? Object.keys(status)[0]?.toLowerCase()
-        : String(status).toLowerCase();
-
-      console.log('[claimDuelWinnings] Duel status:', statusStr);
-
-      if (statusStr === 'waitingforplayer2') {
-        throw new Error('Duel is waiting for Player 2 to join. Cannot claim winnings.');
-      }
-
-      if (statusStr === 'resolved') {
-        throw new Error('Duel is already resolved. Winnings may have been claimed already.');
-      }
-
-      if (statusStr !== 'active' && statusStr !== 'countdown') {
-        throw new Error(`Duel status is ${statusStr}, cannot resolve. Expected Active or Countdown.`);
-      }
-
-      // 3. If status is Countdown, call start_duel first
-      if (statusStr === 'countdown') {
-        console.log('[claimDuelWinnings] Duel is in Countdown status, starting duel first...');
-
-        const entryPriceBN = new BN(exitPrice); // Use exit price as entry for now
-        const startTx = await anchorProgramService.startDuel(duelIdBN, entryPriceBN);
-
-        console.log('[claimDuelWinnings] Duel started on-chain:', startTx);
-
-        // Wait for confirmation
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-
-      // 4. Call resolve_duel to claim winnings
-      console.log('[claimDuelWinnings] Resolving duel with exit price:', exitPrice);
-
-      const exitPriceBN = new BN(exitPrice);
-      const tx = await anchorProgramService.resolveDuel(duelIdBN, exitPriceBN);
-
-      console.log('[claimDuelWinnings] ✅ Winnings claimed successfully:', tx);
+      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN);
 
       return { success: true, tx };
     } catch (error: any) {
-      console.error('[claimDuelWinnings] Error:', error);
+      console.error('Claim duel winnings error:', error);
       return {
         success: false,
         error: error.message || 'Failed to claim duel winnings'
