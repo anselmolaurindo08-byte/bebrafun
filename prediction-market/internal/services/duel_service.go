@@ -94,6 +94,21 @@ func (ds *DuelService) CreateDuel(
 		duelAddress = &req.DuelAddress
 	}
 
+	// DEBUG: Log direction field
+	log.Printf("[CreateDuel] Direction field from request: %v (PredictedOutcome: %v)",
+		func() string {
+			if req.Direction != nil {
+				return fmt.Sprintf("%d", *req.Direction)
+			}
+			return "nil"
+		}(),
+		func() string {
+			if req.PredictedOutcome != nil {
+				return *req.PredictedOutcome
+			}
+			return "nil"
+		}())
+
 	// Create duel in database with PENDING status (waiting for opponent)
 	duel := &models.Duel{
 		ID:               uuid.New(),
