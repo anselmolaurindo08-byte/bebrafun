@@ -928,9 +928,27 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("failed to get duel: %w", err)
 	}
 
-	// Check if duel is in correct status
-	if duel.Status != models.DuelStatusActive {
-		return nil, fmt.Errorf("duel is not active (status: %s)", duel.Status)
+	// Check if duel is in correct status (allow both Countdown and Active)
+	if duel.Status != models.DuelStatusActive && duel.Status != models.DuelStatusCountdown {
+		return nil, fmt.Errorf("duel is not active or countdown (status: %s)", duel.Status)
+	}
+
+	// If still in Countdown, transition to Active first
+	if duel.Status == models.DuelStatusCountdown {
+		// Set entry price if not set
+		if duel.PriceAtStart == nil {
+			duel.PriceAtStart = &exitPrice // Use current price as entry
+		}
+
+		duel.Status = models.DuelStatusActive
+		now := time.Now()
+		duel.StartedAt = &now
+
+		if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+			return nil, fmt.Errorf("failed to start duel: %w", err)
+		}
+
+		log.Printf("[AutoResolveDuel] Started duel %s with entry price %.4f", duelID, *duel.PriceAtStart)
 	}
 
 	// Get entry price
