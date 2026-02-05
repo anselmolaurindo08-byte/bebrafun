@@ -516,8 +516,18 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        // Fetch duel data to get player1 and player2
-        const duelAccount = await program.account.duel.fetch(duelPda);
+        // Fetch duel account data to get player1 and player2
+        const duelAccountInfo = await program.provider.connection.getAccountInfo(duelPda);
+        if (!duelAccountInfo) {
+            throw new Error('Duel account not found');
+        }
+
+        // Deserialize duel account data
+        // Layout: duel_id (8) + player_1 (32) + player_2 (33) + ...
+        const data = duelAccountInfo.data;
+        const player1 = new PublicKey(data.slice(8, 40)); // bytes 8-39
+        const player2Exists = data[40] === 1; // Option<Pubkey> discriminator
+        const player2 = player2Exists ? new PublicKey(data.slice(41, 73)) : player1;
 
         // Fee collector address (platform wallet)
         const feeCollector = new PublicKey('FEEcmF91FVTq3NTTxJLKoFDSAHNUMXj3STBZcfMKLMbh');
@@ -527,8 +537,8 @@ class AnchorProgramService {
             .resolveDuel(exitPrice)
             .accounts({
                 duel: duelPda,
-                player1: duelAccount.player1,
-                player2: duelAccount.player2,
+                player1: player1,
+                player2: player2,
                 feeCollector: feeCollector,
                 authority: program.provider.publicKey,
                 systemProgram: SystemProgram.programId,
