@@ -152,27 +152,6 @@ func (ds *DuelService) CreateDuel(
 
 	log.Printf("Duel %d created with verified deposit from player %d (tx: %s)", duelID, playerID, req.Signature)
 
-	// Add to matching queue
-	queueItem := &models.DuelQueue{
-		ID:               uuid.New(),
-		PlayerID:         playerID,
-		BetAmount:        betAmountLamports,
-		MarketID:         req.MarketID,
-		EventID:          req.EventID,
-		PredictedOutcome: req.PredictedOutcome,
-		Status:           "WAITING",
-		CreatedAt:        time.Now(),
-	}
-
-	select {
-	case ds.duelMatchingQueue <- queueItem:
-		log.Printf("Added duel %d to matching queue", duelID)
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		log.Printf("Warning: matching queue full, duel will wait")
-	}
-
 	return duel, nil
 }
 
