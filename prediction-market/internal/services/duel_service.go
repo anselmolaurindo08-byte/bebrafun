@@ -966,16 +966,12 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
 
-	// Create result record
-	payout := float64(duel.BetAmount * 2)
-
+	// Return minimal result
 	result := &models.DuelResult{
 		DuelID:     duelID,
 		WinnerID:   winnerID,
 		ExitPrice:  exitPrice,
 		EntryPrice: *entryPrice,
-		Payout:     payout,
-		CreatedAt:  now,
 	}
 
 	return result, nil
