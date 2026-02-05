@@ -977,6 +977,18 @@ func (ds *DuelService) AutoResolveDuel(
 	return result, nil
 }
 
+// SetChartStartPrice sets the chart start price for a duel
+// This is a stub method - chart functionality not fully implemented
+func (ds *DuelService) SetChartStartPrice(
+	ctx context.Context,
+	duelID uuid.UUID,
+	price float64,
+) error {
+	log.Printf("[SetChartStartPrice] Setting chart start price for duel %s: %.4f", duelID, price)
+	// TODO: Implement chart start price logic if needed
+	return nil
+}
+
 // ClaimWinnings processes a claim request from the winner
 // This is called AFTER the smart contract has sent the payout
 // It just updates the database to mark the duel as claimed
