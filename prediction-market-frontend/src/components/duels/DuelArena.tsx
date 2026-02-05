@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { DepositFlow } from './DepositFlow';
 import { DuelGameView } from './DuelGameView';
 import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
+import blockchainService from '../../services/blockchainService';
 import { useDuelPolling } from '../../hooks/useDuelPolling';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
 
@@ -94,7 +96,20 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   const handleCancelDuel = async () => {
     try {
       setError(null);
+
+      // Step 1: Call smart contract directly - user signs with their wallet for refund
+      console.log('[DuelArena] Calling smart contract cancelDuel for duelId:', duel.duelId);
+      const result = await blockchainService.cancelDuel(duel.duelId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to cancel duel on-chain');
+      }
+
+      console.log('✅ Duel cancelled on-chain, refund tx:', result.tx);
+
+      // Step 2: Update backend status after on-chain success
       await duelService.cancelDuel(duel.id);
+
       // Navigate back to duels list
       onResolved();
     } catch (err: any) {
