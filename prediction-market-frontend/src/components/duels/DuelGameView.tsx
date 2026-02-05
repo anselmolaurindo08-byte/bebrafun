@@ -208,6 +208,15 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     // Check if current user is the winner by comparing user IDs
     const isWinner = String(result.winnerId) === String(currentUserId);
 
+    // Debug logging
+    console.log('[DuelGameView] Winner check:', {
+      winnerId: result.winnerId,
+      currentUserId,
+      isWinner,
+      player1Id: duel.player1Id,
+      player2Id: duel.player2Id
+    });
+
     const winnerName = isP1Winner ? "Player 1" : "Player 2";
     const isPositive = result.finalPrice >= (duel.priceAtStart || startPrice);
     const resultColor = isPositive ? 'text-pump-green' : 'text-pump-red';
@@ -232,7 +241,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
             </div>
             <div className="bg-black/40 p-3 rounded border border-pump-gray-dark">
               <p className="text-xs text-pump-gray">PAYOUT</p>
-              <p className="font-mono font-bold text-pump-green">{result.payout} {duel.currency}</p>
+              <p className="font-mono font-bold text-pump-green">{(result.payout / 1e9).toFixed(4)} SOL</p>
             </div>
           </div>
 
