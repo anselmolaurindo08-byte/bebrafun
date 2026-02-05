@@ -576,17 +576,17 @@ func (ds *DuelService) CancelDuel(ctx context.Context, duelID uuid.UUID, playerI
 			return fmt.Errorf("failed to get player 1: %w", err)
 		}
 
-		if player1.WalletAddress == nil || *player1.WalletAddress == "" {
+		if player1.WalletAddress == "" {
 			return errors.New("player 1 wallet address not found")
 		}
 
-		player1Pubkey, err := solana.PublicKeyFromBase58(*player1.WalletAddress)
+		player1Pubkey, err := solana.PublicKeyFromBase58(player1.WalletAddress)
 		if err != nil {
 			return fmt.Errorf("invalid player 1 wallet address: %w", err)
 		}
 
 		// Call smart contract to cancel and refund
-		signature, err := ds.anchorClient.CancelDuel(ctx, duel.DuelID, player1Pubkey)
+		signature, err := ds.anchorClient.CancelDuel(ctx, uint64(duel.DuelID), player1Pubkey)
 		if err != nil {
 			log.Printf("[CancelDuel] Warning: failed to cancel on-chain: %v", err)
 			// Continue with database update even if blockchain fails
