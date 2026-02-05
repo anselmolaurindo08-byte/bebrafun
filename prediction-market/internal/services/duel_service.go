@@ -913,3 +913,70 @@ func (ds *DuelService) GenerateShareURL(
 func timePtr(t time.Time) *time.Time {
 	return &t
 }
+
+// AutoResolveDuel automatically resolves a duel when timer expires
+// This function ONLY determines the winner and updates the database
+// It does NOT call the smart contract - that happens when user clicks "CLAIM"
+func (ds *DuelService) AutoResolveDuel(
+	ctx context.Context,
+	duelID uuid.UUID,
+	exitPrice float64,
+) (*models.DuelResult, error) {
+	// Get duel
+	duel, err := ds.repo.GetDuelByID(ctx, duelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	// Check if duel is in correct status
+	if duel.Status != models.DuelStatusActive {
+		return nil, fmt.Errorf("duel is not active (status: %s)", duel.Status)
+	}
+
+	// Get entry price
+	entryPrice := duel.PriceAtStart
+	if entryPrice == nil {
+		return nil, fmt.Errorf("duel has no entry price")
+	}
+
+	// Determine winner based on price movement
+	var winnerID uint
+	if exitPrice >= *entryPrice {
+		// Price went UP - Player 1 wins
+		winnerID = duel.Player1ID
+	} else {
+		// Price went DOWN - Player 2 wins
+		if duel.Player2ID == nil {
+			return nil, fmt.Errorf("duel has no player 2")
+		}
+		winnerID = *duel.Player2ID
+	}
+
+	log.Printf("[AutoResolveDuel] Duel %s resolved: entry=%.4f, exit=%.4f, winner=%d",
+		duelID, *entryPrice, exitPrice, winnerID)
+
+	// Update duel status to RESOLVED
+	duel.Status = models.DuelStatusResolved
+	duel.WinnerID = &winnerID
+	duel.PriceAtEnd = &exitPrice
+	now := time.Now()
+	duel.ResolvedAt = &now
+
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel: %w", err)
+	}
+
+	// Create result record
+	payout := float64(duel.BetAmount * 2)
+
+	result := &models.DuelResult{
+		DuelID:     duelID,
+		WinnerID:   winnerID,
+		ExitPrice:  exitPrice,
+		EntryPrice: *entryPrice,
+		Payout:     payout,
+		CreatedAt:  now,
+	}
+
+	return result, nil
+}
