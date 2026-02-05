@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,9 +37,28 @@ func (h *DuelHandler) CreateDuel(c *gin.Context) {
 	}
 
 	var req models.CreateDuelRequest
+
+	// DEBUG: Read and log raw JSON body
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+	log.Printf("[CreateDuel Handler] Raw JSON body: %s", string(bodyBytes))
+
+	// Restore body for binding
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// DEBUG: Log parsed direction value
+	if req.Direction != nil {
+		log.Printf("[CreateDuel Handler] Parsed Direction: %d", *req.Direction)
+	} else {
+		log.Printf("[CreateDuel Handler] Parsed Direction: nil")
 	}
 
 	duel, err := h.duelService.CreateDuel(c.Request.Context(), playerID, &req)

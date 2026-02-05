@@ -30,7 +30,7 @@ export interface Duel {
   priceAtStart?: number;       // Entry price for resolution
   priceAtEnd?: number;         // Exit price for resolution
   chartStartPrice?: number;    // First WebSocket price for chart display
-  direction?: 'UP' | 'DOWN';   // Alias for predictedOutcome if needed
+  direction?: number;          // 0 = UP, 1 = DOWN (matches backend int16 and contract u8)
   transactionHash?: string;
   confirmations?: number;      // Added missing field
 }
