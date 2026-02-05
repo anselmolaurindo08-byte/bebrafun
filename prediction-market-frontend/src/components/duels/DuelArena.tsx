@@ -40,7 +40,8 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   // const opponentDeposited = (isPlayer1 && player2Deposited) || (isPlayer2 && player1Deposited);
 
   // Assuming backend provides these fields, or we check contract state
-  const isActive = duel.status === DuelStatus.ACTIVE;
+  // Keep DuelGameView mounted for ACTIVE and RESOLVED status so result modal can show
+  const isActive = duel.status === DuelStatus.ACTIVE || duel.status === DuelStatus.RESOLVED;
 
   const handleDepositComplete = (_signature: string) => {
     // Ideally refetch duel to check backend confirmation status
