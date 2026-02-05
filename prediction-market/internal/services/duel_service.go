@@ -303,17 +303,17 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("failed to get entry price: %w", err)
 	}
 
-	// Convert to micro-units (6 decimals)
-	entryPriceMicroUnits := uint64(entryPrice * 1e6)
+	// Convert to cents (2 decimals) for price comparison
+	entryPriceCents := uint64(entryPrice * 100)
 
-	log.Printf("[JoinDuel] Starting duel %d with entry price %d (%.6f %s)",
-		duel.DuelID, entryPriceMicroUnits, entryPrice, pricePair)
+	log.Printf("[JoinDuel] Starting duel %d with entry price %d cents (%.2f %s)",
+		duel.DuelID, entryPriceCents, entryPrice, pricePair)
 
 	// Call start_duel on-chain to set entry price
 	startSignature, err := ds.anchorClient.StartDuel(
 		ctx,
 		uint64(duel.DuelID),
-		entryPriceMicroUnits,
+		entryPriceCents,
 	)
 	if err != nil {
 		log.Printf("ERROR: Failed to start duel %s on-chain: %v", duel.ID, err)
@@ -690,13 +690,13 @@ func (ds *DuelService) ResolveDuelWithPrice(
 		return nil, fmt.Errorf("failed to get player 2 wallet: %w", err)
 	}
 
-	// Convert exit price to lamports (assuming price is in USD, multiply by some factor)
-	// For now, just use the price as-is since it's already a number
-	exitPriceLamports := uint64(exitPrice * 1e6) // Convert to micro-units
+	// Convert exit price to cents (2 decimals) for price comparison
+	// This must match the format used for entry_price in start_duel
+	exitPriceCents := uint64(exitPrice * 100)
 
 	// Call smart contract to resolve duel
-	log.Printf("[ResolveDuelWithPrice] Calling contract resolve_duel for duel %s (duelId=%d, exitPrice=%d)",
-		duelID, duel.DuelID, exitPriceLamports)
+	log.Printf("[ResolveDuelWithPrice] Calling contract resolve_duel for duel %s (duelId=%d, exitPrice=%d cents)",
+		duelID, duel.DuelID, exitPriceCents)
 
 	player1Pubkey, err := solana.PublicKeyFromBase58(player1Wallet)
 	if err != nil {
@@ -710,7 +710,7 @@ func (ds *DuelService) ResolveDuelWithPrice(
 	signature, err := ds.anchorClient.ResolveDuel(
 		ctx,
 		uint64(duel.DuelID),
-		exitPriceLamports,
+		exitPriceCents,
 		player1Pubkey,
 		player2Pubkey,
 	)
@@ -932,8 +932,8 @@ func (ds *DuelService) AutoResolveDuel(
 		log.Printf("[AutoResolveDuel] Started duel %s with entry price %.4f", duelID, *duel.PriceAtStart)
 
 		// Call smart contract start_duel to update on-chain status
-		entryPriceLamports := uint64(*duel.PriceAtStart * 1_000_000) // Convert to micro-units
-		signature, err := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceLamports)
+		entryPriceCents := uint64(*duel.PriceAtStart * 100) // Convert to cents
+		signature, err := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceCents)
 		if err != nil {
 			log.Printf("[AutoResolveDuel] WARNING: Failed to start duel on-chain: %v", err)
 			// Don't fail the entire operation - DB is already updated
