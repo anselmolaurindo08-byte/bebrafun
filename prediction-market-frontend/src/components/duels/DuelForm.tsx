@@ -45,7 +45,10 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       const amountLamports = amount; // Already in SOL, will be converted in blockchainService
       const predictedOutcome = prediction === 'UP' ? 1 : 0;
 
-      console.log('[DuelForm] Calling initializeDuel:', { duelId, amount: amountLamports, prediction: predictedOutcome });
+      console.log('=== [DuelForm] INITIALIZE DUEL START ===');
+      console.log('[DuelForm] Generated duelId:', duelId);
+      console.log('[DuelForm] Amount (SOL):', amountLamports);
+      console.log('[DuelForm] Predicted outcome:', predictedOutcome, '(', prediction, ')');
 
       const result = await blockchainService.initializeDuel(
         duelId,
@@ -54,11 +57,14 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
       );
 
       if (!result.success || !result.tx) {
+        console.error('[DuelForm] ❌ Initialize duel FAILED:', result.error);
         throw new Error(result.error || 'Failed to initialize duel on-chain');
       }
 
       const signature = result.tx;
-      console.log('[DuelForm] Duel initialized on-chain:', signature);
+      console.log('[DuelForm] ✅ Duel initialized on-chain!');
+      console.log('[DuelForm] Transaction signature:', signature);
+      console.log('[DuelForm] Solana Explorer:', `https://explorer.solana.com/tx/${signature}?cluster=devnet`);
 
       // Create duel in backend WITH on-chain signature AND duelId
       const request: CreateDuelRequest = {
@@ -69,9 +75,20 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         signature, // On-chain transaction signature
       };
 
-      console.log('[DuelForm] Creating duel with direction:', request.direction, 'prediction:', prediction);
+      console.log('[DuelForm] Sending to backend:', {
+        duelId: request.duelId,
+        betAmount: request.betAmount,
+        direction: request.direction,
+        signature: request.signature
+      });
+
       const duel = await duelService.createDuel(request);
-      console.log('[DuelForm] Duel created in backend:', { id: duel.id, duelId: duel.duelId, fullDuel: duel });
+
+      console.log('[DuelForm] ✅ Backend response:');
+      console.log('[DuelForm] - UUID:', duel.id);
+      console.log('[DuelForm] - DuelID from backend:', duel.duelId);
+      console.log('[DuelForm] - DuelID match:', duel.duelId === duelId ? '✅ MATCH' : '❌ MISMATCH');
+      console.log('=== [DuelForm] INITIALIZE DUEL COMPLETE ===');
 
       // Save player1Id to localStorage for winner check
       if (duel.player1Id) {

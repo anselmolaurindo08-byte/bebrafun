@@ -55,9 +55,7 @@ export const duelService = {
   },
 
   getDuel: async (duelId: string): Promise<Duel> => {
-    console.log('[duelService] Getting duel:', duelId);
     const raw = await api.getDuel(duelId);
-    console.log('[duelService] Duel fetched:', raw);
     return mapDuel(raw);
   },
 

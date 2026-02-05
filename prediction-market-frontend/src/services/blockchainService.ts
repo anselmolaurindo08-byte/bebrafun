@@ -274,18 +274,32 @@ class BlockchainService {
     predictedOutcome: number
   ): Promise<{ success: boolean; tx?: string; error?: string }> {
     try {
+      console.log('[blockchainService] initializeDuel called with:', {
+        duelId,
+        amount,
+        predictedOutcome
+      });
+
       const duelIdBN = new BN(duelId);
       const amountBN = new BN(amount * 1e9); // Convert to lamports
 
+      console.log('[blockchainService] Converted values:', {
+        duelIdBN: duelIdBN.toString(),
+        amountBN: amountBN.toString(),
+        amountLamports: amount * 1e9
+      });
+
+      console.log('[blockchainService] Calling anchorProgramService.initializeDuel...');
       const tx = await anchorProgramService.initializeDuel(
         duelIdBN,
         amountBN,
         predictedOutcome
       );
 
+      console.log('[blockchainService] ✅ Transaction successful:', tx);
       return { success: true, tx };
     } catch (error: any) {
-      console.error('Initialize duel error:', error);
+      console.error('[blockchainService] ❌ Initialize duel error:', error);
       return {
         success: false,
         error: error.message || 'Failed to initialize duel'

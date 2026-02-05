@@ -82,11 +82,16 @@ func (ds *DuelService) CreateDuel(
 	var duelID int64
 	if req.DuelID != nil && *req.DuelID > 0 {
 		duelID = *req.DuelID
-		log.Printf("Using duel ID from frontend: %d", duelID)
+		log.Printf("=== [CreateDuel] Using duel ID from frontend: %d ===", duelID)
 	} else {
 		duelID = time.Now().UnixNano()
-		log.Printf("Generated new duel ID: %d", duelID)
+		log.Printf("=== [CreateDuel] ⚠️  Generated NEW duel ID (frontend didn't provide): %d ===", duelID)
 	}
+
+	log.Printf("[CreateDuel] Request details:")
+	log.Printf("  - DuelID: %d", duelID)
+	log.Printf("  - BetAmount: %.9f SOL (%d lamports)", req.BetAmount, betAmountLamports)
+	log.Printf("  - Signature: %s", req.Signature)
 
 	// Prepare duel address if provided
 	var duelAddress *string
@@ -310,6 +315,10 @@ func (ds *DuelService) JoinDuel(
 		duel.DuelID, entryPriceCents, entryPrice, pricePair)
 
 	// Call start_duel on-chain to set entry price
+	log.Printf("=== [JoinDuel] Calling StartDuel on-chain ===")
+	log.Printf("[JoinDuel] DuelID for on-chain call: %d", duel.DuelID)
+	log.Printf("[JoinDuel] Entry price (cents): %d", entryPriceCents)
+
 	startSignature, err := ds.anchorClient.StartDuel(
 		ctx,
 		uint64(duel.DuelID),
