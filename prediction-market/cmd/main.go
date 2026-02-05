@@ -229,6 +229,7 @@ func main() {
 		api.POST("/duels/:id/cancel", duelHandler.CancelDuel)
 		api.GET("/duels/:id/result", duelHandler.GetDuelResult)
 		api.POST("/duels/:id/auto-resolve", duelHandler.AutoResolveDuel)
+		api.POST("/duels/:id/claim", duelHandler.ClaimWinnings)
 		api.POST("/duels/:id/chart-start", duelHandler.SetChartStartPrice)
 
 		// AMM endpoints (POST only - protected)

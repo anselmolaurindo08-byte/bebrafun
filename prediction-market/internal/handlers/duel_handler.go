@@ -581,6 +581,31 @@ func (h *DuelHandler) AutoResolveDuel(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ClaimWinnings allows the winner to claim their winnings from a resolved duel
+// POST /api/duels/:id/claim
+func (h *DuelHandler) ClaimWinnings(c *gin.Context) {
+	playerID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	duelIDStr := c.Param("id")
+	duelID, err := uuid.Parse(duelIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid duel ID"})
+		return
+	}
+
+	result, err := h.duelService.ClaimWinnings(c.Request.Context(), duelID, playerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // SetChartStartPrice sets the chart start price for a duel
 // POST /api/duels/:id/chart-start
 func (h *DuelHandler) SetChartStartPrice(c *gin.Context) {
