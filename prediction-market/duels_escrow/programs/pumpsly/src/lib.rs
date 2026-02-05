@@ -147,13 +147,22 @@ pub mod pumpsly {
         exit_price: u64,
     ) -> Result<()> {
         let duel = &ctx.accounts.duel;
+        
+        // Allow both Countdown and Active status
         require!(
-            duel.status == DuelStatus::Active,
+            duel.status == DuelStatus::Active || duel.status == DuelStatus::Countdown,
             PredictionMarketError::InvalidDuelStatus
         );
 
+        // If entry_price not set (still in Countdown), use exit_price as entry
+        let entry_price = if duel.entry_price == 0 {
+            exit_price
+        } else {
+            duel.entry_price
+        };
+
         // Determine winner based on price movement and predictions
-        let price_went_up = exit_price > duel.entry_price;
+        let price_went_up = exit_price > entry_price;
         let player_1_correct = (duel.player_1_prediction == 1 && price_went_up) ||
                                (duel.player_1_prediction == 0 && !price_went_up);
         
@@ -188,6 +197,7 @@ pub mod pumpsly {
 
         // Update duel state
         let duel = &mut ctx.accounts.duel;
+        duel.entry_price = entry_price; // Set if it was 0
         duel.exit_price = exit_price;
         duel.winner = Some(winner_pubkey);
         duel.status = DuelStatus::Resolved;
