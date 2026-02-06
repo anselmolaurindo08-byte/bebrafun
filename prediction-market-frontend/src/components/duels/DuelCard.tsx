@@ -37,17 +37,33 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
           <div className="w-8 h-8 bg-pump-gray-dark rounded-full flex items-center justify-center">
             👤
           </div>
-          <span className="text-pump-white font-sans font-semibold">
-            {duel.player1Username || 'Player 1'}
-          </span>
+          <div>
+            <span className="text-pump-white font-sans font-semibold block">
+              {duel.player1Username || 'Player 1'}
+            </span>
+            <span className="text-xs text-pump-green mt-0.5 block">
+              {(() => {
+                const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
+                return outcome === 'UP' ? '▲ HIGHER' : '▼ LOWER';
+              })()}
+            </span>
+          </div>
         </div>
         <span className="text-pump-gray font-mono">vs</span>
         <div className="flex items-center gap-3">
           {duel.player2Id ? (
             <>
-              <span className="text-pump-white font-sans font-semibold">
-                {duel.player2Username || 'Player 2'}
-              </span>
+              <div>
+                <span className="text-pump-white font-sans font-semibold block text-right">
+                  {duel.player2Username || 'Player 2'}
+                </span>
+                <span className="text-xs text-pump-red mt-0.5 block text-right">
+                  {(() => {
+                    const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
+                    return outcome === 'UP' ? '▼ LOWER' : '▲ HIGHER';
+                  })()}
+                </span>
+              </div>
               <div className="w-8 h-8 bg-pump-gray-dark rounded-full flex items-center justify-center">
                 👤
               </div>
@@ -64,6 +80,11 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
           <p className="text-pump-green font-mono font-bold text-lg">
             {(duel.betAmount / 1_000_000_000).toLocaleString()} {duel.currency === 'SOL' ? 'SOL' : String(duel.currency)}
           </p>
+          {duel.marketId && (
+            <p className="text-pump-gray font-sans text-xs mt-1">
+              📊 Market #{duel.marketId}
+            </p>
+          )}
         </div>
         <div className={`px-3 py-1.5 rounded-full text-xs font-sans font-semibold ${getStatusColor(duel.status)}`}>
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}
