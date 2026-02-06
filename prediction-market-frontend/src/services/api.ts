@@ -187,7 +187,7 @@ class ApiService {
     }
 
     // Duel endpoints
-    async createDuel(data: { duel_id?: number; bet_amount: number; market_id?: string; event_id?: string; predicted_outcome?: string; direction?: number; currency?: string; signature: string }): Promise<any> {
+    async createDuel(data: { duel_id?: number; bet_amount: number; market_id?: number; event_id?: string; predicted_outcome?: string; direction?: number; currency?: string; signature: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/duels', data);
         return response.data;
     }
