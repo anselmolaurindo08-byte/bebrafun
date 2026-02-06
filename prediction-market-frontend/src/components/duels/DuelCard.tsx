@@ -80,11 +80,14 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
           <p className="text-pump-green font-mono font-bold text-lg">
             {(duel.betAmount / 1_000_000_000).toLocaleString()} {typeof duel.currency === 'number' ? (duel.currency === 0 ? 'SOL' : duel.currency === 1 ? 'PUMP' : 'USDC') : duel.currency}
           </p>
-          {duel.marketId && (
-            <p className="text-pump-gray font-sans text-xs mt-1">
-              📊 {duel.marketId === 1 ? 'SOL/USDT' : duel.marketId === 2 ? 'PUMP/USDT' : `Market #${duel.marketId}`}
-            </p>
-          )}
+          {(() => {
+            const marketId = getMarketId(duel);
+            return marketId ? (
+              <p className="text-pump-gray font-sans text-xs mt-1">
+                📊 {marketId === 1 ? 'SOL/USDT' : marketId === 2 ? 'PUMP/USDT' : `Market #${marketId}`}
+              </p>
+            ) : null;
+          })()}
         </div>
         <div className={`px-3 py-1.5 rounded-full text-xs font-sans font-semibold ${getStatusColor(duel.status)}`}>
           {DUEL_STATUS_LABELS[duel.status] ?? String(duel.status)}

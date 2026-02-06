@@ -156,11 +156,14 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   return (
     <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-8">
       <h2 className="text-2xl font-mono font-bold text-pump-white mb-2 text-center">Duel Arena</h2>
-      {duel.marketId && (
-        <p className="text-pump-gray font-sans text-sm text-center mb-6">
-          📊 Chart: {duel.marketId === 1 ? 'SOL/USDT' : duel.marketId === 2 ? 'PUMP/USDT' : `Market #${duel.marketId}`}
-        </p>
-      )}
+      {(() => {
+        const marketId = getMarketId(duel);
+        return marketId ? (
+          <p className="text-pump-gray font-sans text-sm text-center mb-6">
+            📊 Chart: {marketId === 1 ? 'SOL/USDT' : marketId === 2 ? 'PUMP/USDT' : `Market #${marketId}`}
+          </p>
+        ) : null;
+      })()}
 
       {/* Players */}
       <div className="grid grid-cols-2 gap-6 mb-8">
