@@ -31,8 +31,8 @@ export interface Duel {
   priceAtStart?: number;       // Entry price for resolution
   priceAtEnd?: number;         // Exit price for resolution
   chartStartPrice?: number;    // First WebSocket price for chart display
-  direction?: number;          // 0 = UP, 1 = DOWN (matches backend int16 and contract u8) - Player 1's prediction
-  player2Direction?: number;   // 0 = UP, 1 = DOWN - Player 2's prediction
+  direction?: number;          // 1 = UP, 0 = DOWN (matches blockchain u8) - Player 1's prediction
+  player2Direction?: number;   // 1 = UP, 0 = DOWN - Player 2's prediction
   transactionHash?: string;
   confirmations?: number;      // Added missing field
 }

@@ -72,7 +72,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         betAmount: amount,
         currency: DuelCurrency.SOL, // Bet currency is always SOL
         marketId: selectedToken === DuelCurrency.SOL ? 1 : 2, // 1 = SOL/USDT, 2 = PUMP/USDT (as number)
-        direction: prediction === 'UP' ? 0 : 1, // Send as number: 0=UP, 1=DOWN
+        direction: prediction === 'UP' ? 1 : 0, // FIXED: Match blockchain - 1=UP, 0=DOWN
         signature, // On-chain transaction signature
       };
 

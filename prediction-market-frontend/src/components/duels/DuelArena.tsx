@@ -20,7 +20,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [player2Direction, setPlayer2Direction] = useState<0 | 1>(0); // 0 = UP, 1 = DOWN
+  const [player2Direction, setPlayer2Direction] = useState<0 | 1>(1); // 1 = UP, 0 = DOWN (matches blockchain)
 
   // Use polling hook for automatic updates (every 3 seconds)
   const { duel: polledDuel } = useDuelPolling(initialDuel.id, 3000, true);
@@ -65,7 +65,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
 
       // Call smart contract to join duel (this handles SOL transfer to escrow)
       // Player 2 uses their selected direction
-      const player2Prediction = player2Direction; // Use selected direction: 0 = UP, 1 = DOWN
+      const player2Prediction = player2Direction; // Use selected direction: 1 = UP, 0 = DOWN
 
       console.log('[DuelArena] Calling joinDuel:', { duelId: duel.duelId, prediction: player2Prediction });
 
@@ -185,7 +185,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
             <p className="text-xs text-pump-green mt-1">
               {(() => {
                 // Fallback: if predictedOutcome is not set, derive from direction
-                const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
+                const outcome = duel.predictedOutcome || (duel.direction === 1 ? 'UP' : 'DOWN');
                 return outcome === 'UP' ? '▲ HIGHER' : '▼ LOWER';
               })()}
             </p>
@@ -217,7 +217,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
               <p className="text-xs text-pump-green mt-1">
                 {/* Show Player 2's actual prediction from database */}
                 {duel.player2Direction !== undefined && duel.player2Direction !== null
-                  ? (duel.player2Direction === 0 ? '▲ HIGHER' : '▼ LOWER')
+                  ? (duel.player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER')
                   : '? PENDING'}
               </p>
             </div>
@@ -274,8 +274,8 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setPlayer2Direction(0)}
-                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 0
+                onClick={() => setPlayer2Direction(1)}
+                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 1
                   ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
                   }`}
@@ -284,8 +284,8 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
               </button>
               <button
                 type="button"
-                onClick={() => setPlayer2Direction(1)}
-                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 1
+                onClick={() => setPlayer2Direction(0)}
+                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 0
                   ? 'bg-pump-red text-pump-black border-2 border-pump-red shadow-glow'
                   : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-red'
                   }`}
