@@ -155,7 +155,12 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
 
   return (
     <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-8">
-      <h2 className="text-2xl font-mono font-bold text-pump-white mb-8 text-center">Duel Arena</h2>
+      <h2 className="text-2xl font-mono font-bold text-pump-white mb-2 text-center">Duel Arena</h2>
+      {duel.marketId && (
+        <p className="text-pump-gray font-sans text-sm text-center mb-6">
+          📊 Chart: {duel.marketId === 1 ? 'SOL/USDC' : duel.marketId === 2 ? 'PUMP/USDC' : `Market #${duel.marketId}`}
+        </p>
+      )}
 
       {/* Players */}
       <div className="grid grid-cols-2 gap-6 mb-8">
@@ -179,7 +184,9 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
           </div>
           <div className="text-center">
             <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
-            <p className="text-2xl font-mono font-bold text-pump-green">{displayAmount} {duel.currency}</p>
+            <p className="text-2xl font-mono font-bold text-pump-green">
+              {displayAmount} {typeof duel.currency === 'number' ? (duel.currency === 0 ? 'SOL' : duel.currency === 1 ? 'PUMP' : 'USDC') : duel.currency}
+            </p>
           </div>
           {player1Deposited && (
             <div className="mt-4 bg-pump-gray-darker border-2 border-pump-green rounded p-2 text-center">
@@ -211,7 +218,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
             <div className="text-center">
               <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
               <p className="text-2xl font-mono font-bold text-pump-green">
-                {displayAmount} {duel.currency}
+                {displayAmount} {typeof duel.currency === 'number' ? (duel.currency === 0 ? 'SOL' : duel.currency === 1 ? 'PUMP' : 'USDC') : duel.currency}
               </p>
             </div>
             {player2Deposited && (
@@ -275,7 +282,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
           onClick={() => setShowDepositFlow(true)}
           className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow animate-pulse"
         >
-          DEPOSIT FUNDS ({displayAmount} {duel.currency})
+          DEPOSIT FUNDS ({displayAmount} {typeof duel.currency === 'number' ? (duel.currency === 0 ? 'SOL' : duel.currency === 1 ? 'PUMP' : 'USDC') : duel.currency})
         </button>
       ) : null}
     </div>
