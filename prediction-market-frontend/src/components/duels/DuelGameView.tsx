@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'rec
 import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
 import blockchainService from '../../services/blockchainService';
+import { getMarketId, getChartSymbol } from '../../utils/duelHelpers';
 
 interface DuelGameViewProps {
   duel: Duel;
@@ -47,7 +48,9 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   // marketId: 1 = SOL/USDT, 2 = PUMP/USDT
   // currency is just the bet currency (always SOL)
 
-  const currencySymbol = duel.marketId === 2 ? 'PUMPUSDT' : 'SOLUSDT';
+  // Get marketId from duel (handles both camelCase and snake_case from backend)
+  const marketId = getMarketId(duel);
+  const currencySymbol = getChartSymbol(marketId);
 
   // --- WebSocket & Timer Effect ---
   useEffect(() => {
@@ -55,6 +58,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     console.log('[DuelGameView] Duel loaded:', {
       id: duel.id,
       marketId: duel.marketId,
+      market_id: (duel as any).market_id,
+      resolvedMarketId: marketId,
       currency: duel.currency,
       chart: currencySymbol
     });
