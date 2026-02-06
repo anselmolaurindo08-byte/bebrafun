@@ -214,11 +214,11 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
                 {duel.player2Username || 'Player 2'}
                 {isPlayer2 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
               </p>
-              <p className="text-xs text-pump-green mt-1">
-                {/* Show Player 2's actual prediction from database */}
-                {duel.player2Direction !== undefined && duel.player2Direction !== null
-                  ? (duel.player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER')
-                  : '? PENDING'}
+              <p className="text-xs text-pump-gray-light mt-1">
+                {/* Show local selection if not joined yet, otherwise show backend value */}
+                {!duel.player2Id
+                  ? (player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER')
+                  : (duel.player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER')}
               </p>
             </div>
             <div className="text-center">

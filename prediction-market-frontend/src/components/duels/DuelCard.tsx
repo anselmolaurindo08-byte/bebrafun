@@ -43,10 +43,7 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
               {duel.player1Username || 'Player 1'}
             </span>
             <span className="text-xs text-pump-green mt-0.5 block">
-              {(() => {
-                const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
-                return outcome === 'UP' ? '▲ HIGHER' : '▼ LOWER';
-              })()}
+              {duel.direction === 1 ? '▲ HIGHER' : '▼ LOWER'}
             </span>
           </div>
         </div>
@@ -59,10 +56,7 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
                   {duel.player2Username || 'Player 2'}
                 </span>
                 <span className="text-xs text-pump-red mt-0.5 block text-right">
-                  {(() => {
-                    const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
-                    return outcome === 'UP' ? '▼ LOWER' : '▲ HIGHER';
-                  })()}
+                  {duel.player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER'}
                 </span>
               </div>
               <div className="w-8 h-8 bg-pump-gray-dark rounded-full flex items-center justify-center">
