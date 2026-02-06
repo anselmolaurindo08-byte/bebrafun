@@ -169,7 +169,13 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
               {duel.player1Username || 'Player 1'}
               {isPlayer1 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
             </p>
-            <p className="text-xs text-pump-green mt-1">{duel.predictedOutcome === 'UP' ? '▲ HIGHER' : '▼ LOWER'}</p>
+            <p className="text-xs text-pump-green mt-1">
+              {(() => {
+                // Fallback: if predictedOutcome is not set, derive from direction
+                const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
+                return outcome === 'UP' ? '▲ HIGHER' : '▼ LOWER';
+              })()}
+            </p>
           </div>
           <div className="text-center">
             <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
@@ -193,7 +199,14 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
                 {duel.player2Username || 'Player 2'}
                 {isPlayer2 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
               </p>
-              <p className="text-xs text-pump-red mt-1">{duel.predictedOutcome === 'UP' ? '▼ LOWER' : '▲ HIGHER'}</p>
+              <p className="text-xs text-pump-red mt-1">
+                {(() => {
+                  // Fallback: if predictedOutcome is not set, derive from direction
+                  const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
+                  // Player 2 has opposite prediction
+                  return outcome === 'UP' ? '▼ LOWER' : '▲ HIGHER';
+                })()}
+              </p>
             </div>
             <div className="text-center">
               <p className="text-pump-gray font-sans text-sm mb-1">Bet Amount</p>
