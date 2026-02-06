@@ -14,6 +14,7 @@ const (
 	DuelStatusWaitingDeposit        DuelStatus = "WAITING_DEPOSIT"
 	DuelStatusConfirmingTransaction DuelStatus = "CONFIRMING_TRANSACTIONS"
 	DuelStatusCountdown             DuelStatus = "COUNTDOWN"
+	DuelStatusStarting              DuelStatus = "STARTING" // 5-second countdown before duel starts
 	DuelStatusActive                DuelStatus = "ACTIVE"
 	DuelStatusFinished              DuelStatus = "FINISHED"
 	DuelStatusResolved              DuelStatus = "RESOLVED"
@@ -69,7 +70,8 @@ type Duel struct {
 	EscrowTxHash     *string    `gorm:"size:255" json:"escrow_tx_hash"`
 	ResolutionTxHash *string    `gorm:"size:255" json:"resolution_tx_hash"`
 	CreatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	StartedAt        *time.Time `json:"started_at"`
+	StartingAt       *time.Time `json:"starting_at"` // When 5-second countdown started
+	StartedAt        *time.Time `json:"started_at"`  // When actual 1-min duel timer started
 	ResolvedAt       *time.Time `json:"resolved_at"`
 	ExpiresAt        *time.Time `json:"expires_at"`
 	UpdatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`

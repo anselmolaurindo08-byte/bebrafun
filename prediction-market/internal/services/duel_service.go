@@ -356,22 +356,67 @@ func (ds *DuelService) JoinDuel(
 
 	log.Printf("[JoinDuel] Duel started on-chain: %s", startSignature)
 
-	// Update duel status to ACTIVE immediately (on-chain contract sets it to Active)
+	// Set status to STARTING (5-second countdown before actual start)
+	duel.Status = models.DuelStatusStarting
+	startingAt := time.Now()
+	duel.StartingAt = &startingAt
+	// DO NOT set PriceAtStart yet - will be set after countdown!
+
+	// Save state to database
+	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
+		return nil, fmt.Errorf("failed to update duel to starting: %w", err)
+	}
+
+	log.Printf("Duel %d entering 5-second countdown. Status: STARTING", duel.DuelID)
+
+	// Start background countdown goroutine
+	go ds.handleDuelCountdown(duel.ID, pricePair)
+
+	return duel, nil
+}
+
+// handleDuelCountdown waits 5 seconds then records entry price and starts the duel
+func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
+	// Wait 5 seconds for WebSocket to connect and get accurate price
+	time.Sleep(5 * time.Second)
+
+	ctx := context.Background()
+
+	// Get fresh duel data
+	duel, err := ds.repo.GetDuel(ctx, duelID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get duel %s after countdown: %v", duelID, err)
+		return
+	}
+
+	// Check if duel is still in STARTING status
+	if duel.Status != models.DuelStatusStarting {
+		log.Printf("Duel %s is no longer in STARTING status (current: %s), skipping countdown completion", duelID, duel.Status)
+		return
+	}
+
+	// Get CURRENT price (WebSocket should be connected by now)
+	entryPrice, err := ds.priceService.GetPrice(pricePair)
+	if err != nil {
+		log.Printf("ERROR: Failed to get entry price for %s after countdown: %v", pricePair, err)
+		// Use fallback or cancel duel
+		// For now, we'll use the fallback price that GetPrice returns
+	}
+
+	// Record entry price and start duel
+	duel.PriceAtStart = &entryPrice
 	duel.Status = models.DuelStatusActive
 	now := time.Now()
 	duel.StartedAt = &now
-	entryPriceFloat := float64(entryPriceCents) / 100 // Convert cents to dollars
-	duel.PriceAtStart = &entryPriceFloat
 
-	// Save final state to database
+	// Save to database
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
-		return nil, fmt.Errorf("failed to update duel to active: %w", err)
+		log.Printf("ERROR: Failed to update duel %s to ACTIVE after countdown: %v", duelID, err)
+		return
 	}
 
-	log.Printf("Duel %d started successfully. Entry price: $%.2f, Status: ACTIVE",
-		duel.DuelID, entryPriceFloat)
-
-	return duel, nil
+	log.Printf("✅ Duel %s started after countdown with entry price: $%.6f (from %s)",
+		duelID, entryPrice, pricePair)
 }
 
 // DepositToDuel deposits tokens to escrow for a duel
