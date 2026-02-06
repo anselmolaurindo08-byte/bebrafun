@@ -1025,7 +1025,7 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("duel has no direction/prediction for Player 1")
 	}
 
-	player1PredictedUp := *duel.Direction == 0 // 0 = UP, 1 = DOWN
+	player1PredictedUp := *duel.Direction == 1 // FIXED: 1 = UP, 0 = DOWN (matches blockchain)
 	player1Correct := (player1PredictedUp && priceWentUp) || (!player1PredictedUp && !priceWentUp)
 
 	// Check Player 2's prediction
@@ -1033,7 +1033,7 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("duel has no direction/prediction for Player 2")
 	}
 
-	player2PredictedUp := *duel.Player2Direction == 0 // 0 = UP, 1 = DOWN
+	player2PredictedUp := *duel.Player2Direction == 1 // FIXED: 1 = UP, 0 = DOWN (matches blockchain)
 	player2Correct := (player2PredictedUp && priceWentUp) || (!player2PredictedUp && !priceWentUp)
 
 	// Determine winner based on who was correct
