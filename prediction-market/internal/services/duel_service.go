@@ -383,7 +383,7 @@ func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
 	ctx := context.Background()
 
 	// Get fresh duel data
-	duel, err := ds.repo.GetDuel(ctx, duelID)
+	duel, err := ds.repo.GetDuelByID(ctx, duelID)
 	if err != nil {
 		log.Printf("ERROR: Failed to get duel %s after countdown: %v", duelID, err)
 		return
