@@ -213,6 +213,7 @@ type DuelResponse struct {
 	Player2       *UserInfo  `json:"player_2"`
 	BetAmount     int64      `json:"bet_amount"`
 	Currency      int16      `json:"currency"`
+	MarketID      *uint      `json:"market_id"` // Chart selection: 1=SOL/USDC, 2=PUMP/USDC
 	Player1Amount int64      `json:"player_1_amount"`
 	Player2Amount *int64     `json:"player_2_amount"`
 	Status        string     `json:"status"`
