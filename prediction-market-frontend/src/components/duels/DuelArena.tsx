@@ -84,9 +84,13 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       const signature = result.tx;
       console.log('[DuelArena] Joined duel on-chain, signature:', signature);
 
-      // Update backend with on-chain signature
-      console.log('[DuelArena] Calling backend API to join duel:', { duelId: duel.id, signature });
-      const updatedDuel = await duelService.joinDuel(duel.id, signature);
+      // Update backend with on-chain signature AND player 2's prediction
+      console.log('[DuelArena] Calling backend API to join duel:', {
+        duelId: duel.id,
+        signature,
+        direction: player2Prediction
+      });
+      const updatedDuel = await duelService.joinDuel(duel.id, signature, player2Prediction);
       console.log('[DuelArena] Backend API response:', updatedDuel);
 
       // Save player2Id to localStorage for winner check

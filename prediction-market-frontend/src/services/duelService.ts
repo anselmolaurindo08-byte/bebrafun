@@ -84,10 +84,11 @@ export const duelService = {
 
   joinDuel: async (
     duelId: string,
-    signature: string
+    signature: string,
+    direction?: number // Player 2's prediction: 0=UP, 1=DOWN
   ): Promise<Duel> => {
-    // Update duel in backend with transaction signature
-    const raw = await api.joinDuel(duelId, { signature });
+    // Update duel in backend with transaction signature and prediction
+    const raw = await api.joinDuel(duelId, { signature, direction });
     return mapDuel(raw);
   },
 
