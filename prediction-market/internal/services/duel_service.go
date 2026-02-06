@@ -34,17 +34,19 @@ func NewDuelService(
 	priceService *PriceService,
 ) *DuelService {
 	ds := &DuelService{
-		repo:              repo,
-		escrowContract:    escrowContract,
-		solanaClient:      solanaClient,
-		anchorClient:      anchorClient,
-		payoutService:     payoutService,
-		priceService:      priceService,
-		duelMatchingQueue: make(chan *models.DuelQueue, 1000),
+		repo:           repo,
+		escrowContract: escrowContract,
+		solanaClient:   solanaClient,
+		anchorClient:   anchorClient,
+		payoutService:  payoutService,
+		priceService:   priceService,
+		// DISABLED: Automatic matchmaking - duels are now manually joined
+		// duelMatchingQueue: make(chan *models.DuelQueue, 1000),
 	}
 
+	// DISABLED: Automatic matchmaking goroutine
 	// Start matching goroutine
-	go ds.matchDuels()
+	// go ds.matchDuels()
 
 	return ds
 }
