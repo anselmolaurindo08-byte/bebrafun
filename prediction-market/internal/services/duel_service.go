@@ -319,17 +319,8 @@ func (ds *DuelService) JoinDuel(
 		pricePair = *duel.PricePair
 	}
 
-	// NOTE: We don't get entry price here anymore!
-	// Entry price will be recorded AFTER 5-second countdown by handleDuelCountdown()
-	// For now, pass placeholder value (1) to contract to satisfy entry_price > 0 check
-	placeholderPriceCents := uint64(1)
-
-	log.Printf("[JoinDuel] Starting duel %d with placeholder price for contract", duel.DuelID)
-	log.Printf("[JoinDuel] Real entry price will be recorded after 5-second countdown")
-
 	// NOTE: We DON'T call StartDuel here anymore!
 	// StartDuel will be called ONCE in AutoResolveDuel with the REAL entry price
-	// This prevents the placeholder price (1) from being permanently set
 	log.Printf("[JoinDuel] Skipping StartDuel - will be called in AutoResolveDuel with real price")
 
 	// Set status to STARTING (5-second countdown before actual start)
