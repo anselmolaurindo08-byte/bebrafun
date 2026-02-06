@@ -20,6 +20,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [player2Direction, setPlayer2Direction] = useState<0 | 1>(0); // 0 = UP, 1 = DOWN
 
   // Use polling hook for automatic updates (every 3 seconds)
   const { duel: polledDuel } = useDuelPolling(initialDuel.id, 3000, true);
@@ -63,9 +64,8 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       }
 
       // Call smart contract to join duel (this handles SOL transfer to escrow)
-      // Need to get the duel's predicted outcome for player 1, then choose opposite
-      const player1Prediction = duel.predictedOutcome; // "UP" or "DOWN"
-      const player2Prediction = player1Prediction === 'UP' ? 0 : 1; // Opposite: 0 = DOWN, 1 = UP
+      // Player 2 uses their selected direction
+      const player2Prediction = player2Direction; // Use selected direction: 0 = UP, 1 = DOWN
 
       console.log('[DuelArena] Calling joinDuel:', { duelId: duel.duelId, prediction: player2Prediction });
 
@@ -214,13 +214,11 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
                 {duel.player2Username || 'Player 2'}
                 {isPlayer2 && <span className="ml-2 text-pump-green text-xs font-mono border border-pump-green rounded px-1">(YOU)</span>}
               </p>
-              <p className="text-xs text-pump-red mt-1">
-                {(() => {
-                  // Fallback: if predictedOutcome is not set, derive from direction
-                  const outcome = duel.predictedOutcome || (duel.direction === 0 ? 'UP' : 'DOWN');
-                  // Player 2 has opposite prediction
-                  return outcome === 'UP' ? '▼ LOWER' : '▲ HIGHER';
-                })()}
+              <p className="text-xs text-pump-green mt-1">
+                {/* Show Player 2's actual prediction from database */}
+                {duel.player2Direction !== undefined && duel.player2Direction !== null
+                  ? (duel.player2Direction === 0 ? '▲ HIGHER' : '▼ LOWER')
+                  : '? PENDING'}
               </p>
             </div>
             <div className="text-center">
@@ -267,13 +265,48 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
 
       {/* Actions */}
       {canJoin ? (
-        <button
-          onClick={handleJoinDuel}
-          disabled={isJoining}
-          className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isJoining ? 'Joining...' : 'JOIN DUEL'}
-        </button>
+        <div className="space-y-4">
+          {/* Direction Selection for Player 2 */}
+          <div>
+            <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
+              Your Prediction (1 min)
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPlayer2Direction(0)}
+                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 0
+                  ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
+                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
+                  }`}
+              >
+                ▲ HIGHER
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayer2Direction(1)}
+                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 1
+                  ? 'bg-pump-red text-pump-black border-2 border-pump-red shadow-glow'
+                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-red'
+                  }`}
+              >
+                ▼ LOWER
+              </button>
+            </div>
+            <p className="text-xs text-pump-gray-light mt-2 text-center">
+              Player 1 predicts: {duel.predictedOutcome === 'UP' ? '▲ HIGHER' : '▼ LOWER'}
+            </p>
+          </div>
+
+          {/* Join Button */}
+          <button
+            onClick={handleJoinDuel}
+            disabled={isJoining}
+            className="w-full bg-pump-green hover:bg-pump-lime text-pump-black font-sans font-semibold py-3 px-4 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isJoining ? 'Joining...' : 'JOIN DUEL'}
+          </button>
+        </div>
       ) : isPlayer1 && duel.status === DuelStatus.PENDING && !duel.player2Id ? (
         <button
           onClick={() => {
