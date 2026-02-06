@@ -53,11 +53,13 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const marketId = getMarketId(duel);
   const currencySymbol = getChartSymbol(marketId);
 
+
   // --- WebSocket & Timer Effect ---
   useEffect(() => {
     // DEBUG: Log duel object ONCE on mount
     console.log('[DuelGameView] Duel loaded:', {
       id: duel.id,
+      status: duel.status,
       marketId: duel.marketId,
       market_id: (duel as any).market_id,
       resolvedMarketId: marketId,
@@ -65,8 +67,17 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
       chart: currencySymbol
     });
 
+    // CRITICAL: Only start WebSocket and timer when duel is ACTIVE
+    // Don't start for PENDING (waiting for Player 2) or STARTING (countdown phase)
+    if (duel.status !== 'ACTIVE') {
+      console.log('[DuelGameView] Duel not ACTIVE yet (status:', duel.status, '), skipping WebSocket/timer setup');
+      return;
+    }
+
     // If game already ended (e.g. strict mode re-mount), don't restart logic
     if (isGameEnded) return;
+
+    console.log('[DuelGameView] Starting WebSocket and timer for ACTIVE duel');
 
     // 1. Connect to Binance WebSocket
     const symbol = currencySymbol.toLowerCase();
@@ -120,7 +131,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
       if (wsRef.current) wsRef.current.close();
       clearInterval(timer);
     };
-  }, [currencySymbol, isGameEnded]); // Dependency on isGameEnded to stop setup if ended
+  }, [currencySymbol, isGameEnded, duel.status]); // Added duel.status dependency
 
   // --- Watch for Timer == 0 ---
   useEffect(() => {
