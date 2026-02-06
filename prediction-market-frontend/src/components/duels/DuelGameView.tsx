@@ -304,7 +304,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
         <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 text-center">
           <p className="text-pump-gray font-sans text-xs mb-1">CURRENT PRICE</p>
           <p className="text-2xl font-mono font-bold" style={{ color }}>
-            ${currentPrice.toFixed(4)}
+            ${currentPrice.toFixed(marketId === 2 ? 6 : 4)}
           </p>
         </div>
         <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 text-center">
