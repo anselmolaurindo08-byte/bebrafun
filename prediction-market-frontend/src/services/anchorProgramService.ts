@@ -561,11 +561,14 @@ class AnchorProgramService {
             throw new Error('Duel account not found');
         }
 
+        console.log('[claimDuelWinnings] RAW Duel account:', duelAccount);
         console.log('[claimDuelWinnings] Duel account data:', {
             player1: duelAccount.player1?.toString() || duelAccount.player_1?.toString(),
             player2: duelAccount.player2?.toString() || duelAccount.player_2?.toString(),
             player1Prediction: duelAccount.player1Prediction || duelAccount.player_1_prediction,
-            player2Prediction: duelAccount.player2Prediction || duelAccount.player_2_prediction
+            player2Prediction: duelAccount.player2Prediction || duelAccount.player_2_prediction,
+            playerOnePrediction: duelAccount.playerOnePrediction,
+            playerTwoPrediction: duelAccount.playerTwoPrediction
         });
 
         // Get player addresses from deserialized account
