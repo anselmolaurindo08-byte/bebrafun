@@ -44,7 +44,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   const wsRef = useRef<WebSocket | null>(null);
   // Map marketId to Binance streams
-  // marketId: 1 = SOL/USDC, 2 = PUMP/USDC
+  // marketId: 1 = SOL/USDT, 2 = PUMP/USDT
   // currency is just the bet currency (always SOL)
   const currencySymbol = duel.marketId === 2 ? 'PUMPUSDT' : 'SOLUSDT';
 

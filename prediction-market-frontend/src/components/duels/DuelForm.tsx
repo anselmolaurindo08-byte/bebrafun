@@ -71,17 +71,12 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
         duelId, // CRITICAL: Pass the same duelId used on-chain
         betAmount: amount,
         currency: DuelCurrency.SOL, // Bet currency is always SOL
-        marketId: selectedToken === DuelCurrency.SOL ? 1 : 2, // 1 = SOL/USDC, 2 = PUMP/USDC (as number)
+        marketId: selectedToken === DuelCurrency.SOL ? 1 : 2, // 1 = SOL/USDT, 2 = PUMP/USDT (as number)
         direction: prediction === 'UP' ? 0 : 1, // Send as number: 0=UP, 1=DOWN
         signature, // On-chain transaction signature
       };
 
-      console.log('[DuelForm] Sending to backend:', {
-        duelId: request.duelId,
-        betAmount: request.betAmount,
-        direction: request.direction,
-        signature: request.signature
-      });
+      console.log('[DuelForm] Sending to backend:', request);
 
       const duel = await duelService.createDuel(request);
 
@@ -127,7 +122,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
                 : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-purple'
                 }`}
             >
-              SOL/USDC
+              SOL/USDT
             </button>
             <button
               type="button"
@@ -137,7 +132,7 @@ export const DuelForm: React.FC<DuelFormProps> = ({ onDuelCreated, onError }) =>
                 : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
                 }`}
             >
-              PUMP/USDC
+              PUMP/USDT
             </button>
           </div>
         </div>

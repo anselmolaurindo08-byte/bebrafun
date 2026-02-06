@@ -158,7 +158,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       <h2 className="text-2xl font-mono font-bold text-pump-white mb-2 text-center">Duel Arena</h2>
       {duel.marketId && (
         <p className="text-pump-gray font-sans text-sm text-center mb-6">
-          📊 Chart: {duel.marketId === 1 ? 'SOL/USDC' : duel.marketId === 2 ? 'PUMP/USDC' : `Market #${duel.marketId}`}
+          📊 Chart: {duel.marketId === 1 ? 'SOL/USDT' : duel.marketId === 2 ? 'PUMP/USDT' : `Market #${duel.marketId}`}
         </p>
       )}
 

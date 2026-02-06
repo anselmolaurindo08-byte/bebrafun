@@ -82,7 +82,7 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
           </p>
           {duel.marketId && (
             <p className="text-pump-gray font-sans text-xs mt-1">
-              📊 {duel.marketId === 1 ? 'SOL/USDC' : duel.marketId === 2 ? 'PUMP/USDC' : `Market #${duel.marketId}`}
+              📊 {duel.marketId === 1 ? 'SOL/USDT' : duel.marketId === 2 ? 'PUMP/USDT' : `Market #${duel.marketId}`}
             </p>
           )}
         </div>
