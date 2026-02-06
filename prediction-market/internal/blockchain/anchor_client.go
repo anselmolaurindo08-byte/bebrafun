@@ -173,6 +173,9 @@ func (c *AnchorClient) GetDuelPDA(duelID uint64) (solana.PublicKey, uint8, error
 		duelIDBytes[i] = byte(duelID >> (i * 8))
 	}
 
+	log.Printf("[GetDuelPDA] DuelID: %d", duelID)
+	log.Printf("[GetDuelPDA] DuelID bytes (LE): %v", duelIDBytes)
+
 	seeds := [][]byte{
 		[]byte("duel"),
 		duelIDBytes,
@@ -183,7 +186,7 @@ func (c *AnchorClient) GetDuelPDA(duelID uint64) (solana.PublicKey, uint8, error
 		return solana.PublicKey{}, 0, fmt.Errorf("failed to derive duel PDA: %w", err)
 	}
 
-	log.Printf("[GetDuelPDA] DuelID: %d, PDA: %s, Bump: %d", duelID, pda.String(), bump)
+	log.Printf("[GetDuelPDA] Derived PDA: %s, Bump: %d", pda.String(), bump)
 	return pda, bump, nil
 }
 

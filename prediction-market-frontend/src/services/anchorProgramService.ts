@@ -96,10 +96,19 @@ class AnchorProgramService {
      * Derive duel PDA
      */
     getDuelPda(duelId: BN): [PublicKey, number] {
-        return PublicKey.findProgramAddressSync(
-            [Buffer.from('duel'), duelId.toArrayLike(Buffer, 'le', 8)],
+        const duelIdBytes = duelId.toArrayLike(Buffer, 'le', 8);
+        console.log('[getDuelPda] DuelID:', duelId.toString());
+        console.log('[getDuelPda] DuelID bytes (LE):', Array.from(duelIdBytes));
+
+        const [pda, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from('duel'), duelIdBytes],
             PROGRAM_ID
         );
+
+        console.log('[getDuelPda] Derived PDA:', pda.toBase58());
+        console.log('[getDuelPda] Bump:', bump);
+
+        return [pda, bump];
     }
 
 
