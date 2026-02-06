@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/gagliardetto/solana-go"
@@ -182,6 +183,7 @@ func (c *AnchorClient) GetDuelPDA(duelID uint64) (solana.PublicKey, uint8, error
 		return solana.PublicKey{}, 0, fmt.Errorf("failed to derive duel PDA: %w", err)
 	}
 
+	log.Printf("[GetDuelPDA] DuelID: %d, PDA: %s, Bump: %d", duelID, pda.String(), bump)
 	return pda, bump, nil
 }
 
