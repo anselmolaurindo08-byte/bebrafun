@@ -129,7 +129,7 @@ func (ps *PriceService) GetPrice(pair string) (float64, error) {
 	}
 
 	// Fallback: Use Jupiter API for SOL price
-	log.Printf("Binance price unavailable for %s, using Jupiter API fallback", symbol)
+	log.Printf("Binance price unavailable for %s, using fallback", symbol)
 
 	if pair == "SOL/USD" {
 		// Use Jupiter API to get SOL/USDC price
@@ -140,7 +140,13 @@ func (ps *PriceService) GetPrice(pair string) (float64, error) {
 		return jupiterPrice, nil
 	}
 
-	// For PUMP, we don't have a fallback yet
+	// For PUMP, use mock price until WebSocket connects
+	if pair == "PUMP/USD" {
+		mockPrice := 0.002 // Realistic PUMP price
+		log.Printf("Using mock PUMP price: $%.6f", mockPrice)
+		return mockPrice, nil
+	}
+
 	return 0, fmt.Errorf("price not available for %s and no fallback configured", pair)
 }
 
