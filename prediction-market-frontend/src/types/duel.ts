@@ -17,7 +17,8 @@ export interface Duel {
   winnerId?: string;
   currency: DuelCurrency | number; // Can be string enum or int from backend
   createdAt: string;
-  startedAt?: string;
+  startingAt?: string;  // When 5-second countdown started
+  startedAt?: string;   // When actual 1-min duel timer started
   resolvedAt?: string;
   expiresAt?: string;
   escrowTxHash?: string;
@@ -38,6 +39,7 @@ export interface Duel {
 export const DuelStatus = {
   PENDING: 'PENDING',
   MATCHED: 'MATCHED',
+  STARTING: 'STARTING',  // 5-second countdown before duel starts
   ACTIVE: 'ACTIVE',
   RESOLVED: 'RESOLVED',
   CANCELLED: 'CANCELLED',
@@ -48,6 +50,7 @@ export type DuelStatus = (typeof DuelStatus)[keyof typeof DuelStatus];
 export const DUEL_STATUS_LABELS: Record<DuelStatus, string> = {
   [DuelStatus.PENDING]: 'Waiting for Opponent',
   [DuelStatus.MATCHED]: 'Opponent Found',
+  [DuelStatus.STARTING]: 'Preparing...',
   [DuelStatus.ACTIVE]: 'Live',
   [DuelStatus.RESOLVED]: 'Resolved',
   [DuelStatus.CANCELLED]: 'Cancelled',

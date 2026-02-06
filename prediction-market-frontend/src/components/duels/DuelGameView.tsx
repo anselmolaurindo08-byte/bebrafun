@@ -4,6 +4,7 @@ import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
 import blockchainService from '../../services/blockchainService';
 import { getMarketId, getChartSymbol } from '../../utils/duelHelpers';
+import { CountdownOverlay } from './CountdownOverlay';
 
 interface DuelGameViewProps {
   duel: Duel;
@@ -299,6 +300,11 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   return (
     <div className="space-y-6 relative">
+      {/* Countdown Overlay for STARTING status */}
+      {duel.status === 'STARTING' && duel.startingAt && (
+        <CountdownOverlay startingAt={duel.startingAt} />
+      )}
+
       {/* Header Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 text-center">
