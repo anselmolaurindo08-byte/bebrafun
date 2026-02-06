@@ -311,34 +311,29 @@ func (ds *DuelService) JoinDuel(
 
 	log.Printf("Player %d joined duel %d with verified deposit (tx: %s)", playerID, duel.DuelID, signature)
 
-	// Determine price pair based on duel currency or default to SOL/USD
+	// Determine price pair for later use in countdown
 	pricePair := "SOL/USD"
 	if duel.PricePair != nil && *duel.PricePair != "" {
 		pricePair = *duel.PricePair
 	}
 
-	// Get real-time entry price
-	entryPrice, err := ds.priceService.GetPrice(pricePair)
-	if err != nil {
-		log.Printf("ERROR: Failed to get price for %s: %v", pricePair, err)
-		return nil, fmt.Errorf("failed to get entry price: %w", err)
-	}
+	// NOTE: We don't get entry price here anymore!
+	// Entry price will be recorded AFTER 5-second countdown by handleDuelCountdown()
+	// For now, pass placeholder value (1) to contract to satisfy entry_price > 0 check
+	placeholderPriceCents := uint64(1)
 
-	// Convert to cents (2 decimals) for price comparison
-	entryPriceCents := uint64(entryPrice * 100)
+	log.Printf("[JoinDuel] Starting duel %d with placeholder price for contract", duel.DuelID)
+	log.Printf("[JoinDuel] Real entry price will be recorded after 5-second countdown")
 
-	log.Printf("[JoinDuel] Starting duel %d with entry price %d cents (%.2f %s)",
-		duel.DuelID, entryPriceCents, entryPrice, pricePair)
-
-	// Call start_duel on-chain to set entry price
+	// Call start_duel on-chain with placeholder price
 	log.Printf("=== [JoinDuel] Calling StartDuel on-chain ===")
 	log.Printf("[JoinDuel] DuelID for on-chain call: %d", duel.DuelID)
-	log.Printf("[JoinDuel] Entry price (cents): %d", entryPriceCents)
+	log.Printf("[JoinDuel] Placeholder price (cents): %d", placeholderPriceCents)
 
 	startSignature, err := ds.anchorClient.StartDuel(
 		ctx,
 		uint64(duel.DuelID),
-		entryPriceCents,
+		placeholderPriceCents,
 	)
 	if err != nil {
 		log.Printf("ERROR: Failed to start duel %s on-chain: %v", duel.ID, err)
