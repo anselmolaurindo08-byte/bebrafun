@@ -553,18 +553,24 @@ class AnchorProgramService {
             throw new Error('Wallet not connected');
         }
 
-        // Fetch duel account data to get player1 and player2
-        const duelAccountInfo = await program.provider.connection.getAccountInfo(duelPda);
-        if (!duelAccountInfo) {
+
+        // CRITICAL FIX: Use Anchor's fetch() instead of manual parsing
+        // Manual parsing was causing wrong player addresses to be passed
+        const duelAccount = await (program.account as any).duel.fetch(duelPda);
+        if (!duelAccount) {
             throw new Error('Duel account not found');
         }
 
-        // Deserialize duel account data
-        // Layout: duel_id (8) + player_1 (32) + player_2 (33) + ...
-        const data = duelAccountInfo.data;
-        const player1 = new PublicKey(data.slice(8, 40)); // bytes 8-39
-        const player2Exists = data[40] === 1; // Option<Pubkey> discriminator
-        const player2 = player2Exists ? new PublicKey(data.slice(41, 73)) : player1;
+        console.log('[claimDuelWinnings] Duel account data:', {
+            player1: duelAccount.player1?.toString() || duelAccount.player_1?.toString(),
+            player2: duelAccount.player2?.toString() || duelAccount.player_2?.toString(),
+            player1Prediction: duelAccount.player1Prediction || duelAccount.player_1_prediction,
+            player2Prediction: duelAccount.player2Prediction || duelAccount.player_2_prediction
+        });
+
+        // Get player addresses from deserialized account
+        const player1 = duelAccount.player1 || duelAccount.player_1;
+        const player2 = duelAccount.player2 || duelAccount.player_2 || player1;
 
         // Fee collector address (platform wallet)
         const feeCollector = new PublicKey('FEEcmF91FVTq3NTTxJLKoFDSAHNUMXj3STBZcfMKLMbh');
