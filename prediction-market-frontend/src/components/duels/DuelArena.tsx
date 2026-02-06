@@ -20,13 +20,15 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
   const [showDepositFlow, setShowDepositFlow] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [player2Direction, setPlayer2Direction] = useState<0 | 1>(1); // 1 = UP, 0 = DOWN (matches blockchain)
 
   // Use polling hook for automatic updates (every 3 seconds)
   const { duel: polledDuel } = useDuelPolling(initialDuel.id, 3000, true);
 
   // Use polled duel if available, otherwise use initial
   const duel = polledDuel || initialDuel;
+
+  // Player 2 automatically bets OPPOSITE of Player 1
+  const player2Direction = duel.direction === 1 ? 0 : 1; // Opposite: if P1=UP(1), P2=DOWN(0)
 
   const currentUserId = user?.id?.toString();
   const isPlayer1 = currentUserId === String(duel.player1Id);
@@ -266,35 +268,16 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
       {/* Actions */}
       {canJoin ? (
         <div className="space-y-4">
-          {/* Direction Selection for Player 2 */}
-          <div>
-            <label className="block text-sm font-sans font-medium text-pump-gray-light mb-2">
-              Your Prediction (1 min)
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPlayer2Direction(1)}
-                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 1
-                  ? 'bg-pump-green text-pump-black border-2 border-pump-green shadow-glow'
-                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-green'
-                  }`}
-              >
-                ▲ HIGHER
-              </button>
-              <button
-                type="button"
-                onClick={() => setPlayer2Direction(0)}
-                className={`flex-1 py-3 rounded-md font-sans font-bold transition-all ${player2Direction === 0
-                  ? 'bg-pump-red text-pump-black border-2 border-pump-red shadow-glow'
-                  : 'bg-pump-black text-pump-gray border-2 border-pump-gray-dark hover:border-pump-red'
-                  }`}
-              >
-                ▼ LOWER
-              </button>
-            </div>
-            <p className="text-xs text-pump-gray-light mt-2 text-center">
+          {/* Show Player 2's automatic opposite prediction */}
+          <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-4">
+            <p className="text-sm font-sans font-medium text-pump-gray-light mb-2 text-center">
               Player 1 predicts: {duel.direction === 1 ? '▲ HIGHER' : '▼ LOWER'}
+            </p>
+            <p className="text-lg font-sans font-bold text-center mb-1">
+              You will bet: {player2Direction === 1 ? '▲ HIGHER' : '▼ LOWER'}
+            </p>
+            <p className="text-xs text-pump-gray text-center">
+              (Automatically set to opposite)
             </p>
           </div>
 
