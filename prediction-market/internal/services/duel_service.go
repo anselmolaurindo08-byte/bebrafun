@@ -327,31 +327,10 @@ func (ds *DuelService) JoinDuel(
 	log.Printf("[JoinDuel] Starting duel %d with placeholder price for contract", duel.DuelID)
 	log.Printf("[JoinDuel] Real entry price will be recorded after 5-second countdown")
 
-	// Call start_duel on-chain with placeholder price
-	log.Printf("=== [JoinDuel] Calling StartDuel on-chain ===")
-	log.Printf("[JoinDuel] DuelID for on-chain call: %d", duel.DuelID)
-	log.Printf("[JoinDuel] Placeholder price (cents): %d", placeholderPriceCents)
-
-	startSignature, err := ds.anchorClient.StartDuel(
-		ctx,
-		uint64(duel.DuelID),
-		placeholderPriceCents,
-	)
-	if err != nil {
-		log.Printf("ERROR: Failed to start duel %s on-chain: %v", duel.ID, err)
-
-		// Rollback: remove player 2 and revert to PENDING
-		duel.Player2ID = nil
-		duel.Player2Amount = nil
-		duel.Status = models.DuelStatusPending
-		if updateErr := ds.repo.UpdateDuel(ctx, duel); updateErr != nil {
-			log.Printf("ERROR: Failed to rollback duel %s: %v", duel.ID, updateErr)
-		}
-
-		return nil, fmt.Errorf("failed to start duel on-chain: %w", err)
-	}
-
-	log.Printf("[JoinDuel] Duel started on-chain: %s", startSignature)
+	// NOTE: We DON'T call StartDuel here anymore!
+	// StartDuel will be called ONCE in AutoResolveDuel with the REAL entry price
+	// This prevents the placeholder price (1) from being permanently set
+	log.Printf("[JoinDuel] Skipping StartDuel - will be called in AutoResolveDuel with real price")
 
 	// Set status to STARTING (5-second countdown before actual start)
 	duel.Status = models.DuelStatusStarting
