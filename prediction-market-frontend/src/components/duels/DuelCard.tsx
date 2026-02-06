@@ -2,6 +2,7 @@ import React from 'react';
 import type { Duel } from '../../types/duel';
 import { DuelStatus, DUEL_STATUS_LABELS } from '../../types/duel';
 import { useNavigate } from 'react-router-dom';
+import { getMarketId } from '../../utils/duelHelpers';
 
 interface DuelCardProps {
   duel: Duel;
