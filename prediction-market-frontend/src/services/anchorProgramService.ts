@@ -561,19 +561,21 @@ class AnchorProgramService {
             throw new Error('Duel account not found');
         }
 
+        // CRITICAL: Parse JSON to properly access all fields
+        // Anchor's deserialization doesn't make all fields directly accessible
+        const duelJson = JSON.parse(JSON.stringify(duelAccount));
+
         console.log('[claimDuelWinnings] RAW Duel account (stringified):', JSON.stringify(duelAccount, null, 2));
         console.log('[claimDuelWinnings] Duel account data:', {
-            player1: duelAccount.player1?.toString() || duelAccount.player_1?.toString(),
-            player2: duelAccount.player2?.toString() || duelAccount.player_2?.toString(),
-            player1Prediction: duelAccount.player1Prediction || duelAccount.player_1_prediction,
-            player2Prediction: duelAccount.player2Prediction || duelAccount.player_2_prediction,
-            playerOnePrediction: duelAccount.playerOnePrediction,
-            playerTwoPrediction: duelAccount.playerTwoPrediction
+            player1: duelJson.player1,
+            player2: duelJson.player2,
+            player1Prediction: duelJson.player1Prediction,
+            player2Prediction: duelJson.player2Prediction
         });
 
-        // Get player addresses from deserialized account
-        const player1 = duelAccount.player1 || duelAccount.player_1;
-        const player2 = duelAccount.player2 || duelAccount.player_2;
+        // Get player addresses from parsed JSON
+        const player1 = duelJson.player1;
+        const player2 = duelJson.player2;
 
         if (!player1 || !player2) {
             throw new Error('Missing player addresses in duel account');
