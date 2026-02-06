@@ -294,7 +294,7 @@ export const DuelArena: React.FC<DuelArenaProps> = ({ duel: initialDuel, onResol
               </button>
             </div>
             <p className="text-xs text-pump-gray-light mt-2 text-center">
-              Player 1 predicts: {duel.predictedOutcome === 'UP' ? '▲ HIGHER' : '▼ LOWER'}
+              Player 1 predicts: {duel.direction === 1 ? '▲ HIGHER' : '▼ LOWER'}
             </p>
           </div>
 
