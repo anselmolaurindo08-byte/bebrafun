@@ -46,7 +46,17 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   // Map marketId to Binance streams
   // marketId: 1 = SOL/USDT, 2 = PUMP/USDT
   // currency is just the bet currency (always SOL)
+
+  // DEBUG: Log duel object to see what we're working with
+  console.log('[DuelGameView] Duel object:', {
+    id: duel.id,
+    marketId: duel.marketId,
+    currency: duel.currency,
+    betAmount: duel.betAmount
+  });
+
   const currencySymbol = duel.marketId === 2 ? 'PUMPUSDT' : 'SOLUSDT';
+  console.log('[DuelGameView] Selected chart:', currencySymbol, 'based on marketId:', duel.marketId);
 
   // --- WebSocket & Timer Effect ---
   useEffect(() => {
