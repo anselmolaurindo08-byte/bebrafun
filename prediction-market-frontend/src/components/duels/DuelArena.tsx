@@ -7,6 +7,7 @@ import { useUserStore } from '../../store/userStore';
 import { duelService } from '../../services/duelService';
 import { useDuelPolling } from '../../hooks/useDuelPolling';
 import { useBlockchainWallet } from '../../hooks/useBlockchainWallet';
+import { getMarketId } from '../../utils/duelHelpers';
 
 interface DuelArenaProps {
   duel: Duel;
