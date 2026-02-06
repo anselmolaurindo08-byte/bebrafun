@@ -242,6 +242,13 @@ func (ds *DuelService) JoinDuel(
 		return nil, fmt.Errorf("failed to get duel: %w", err)
 	}
 
+	// CRITICAL DEBUG: Log direction parameter
+	if direction == nil {
+		log.Printf("[JoinDuel] WARNING: direction is NIL for duel %s", duelID)
+	} else {
+		log.Printf("[JoinDuel] direction received: %d for duel %s", *direction, duelID)
+	}
+
 	// Verify duel is in PENDING status
 	if duel.Status != models.DuelStatusPending {
 		return nil, fmt.Errorf("duel is not available to join, current status: %s", duel.Status)
