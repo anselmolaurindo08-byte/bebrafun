@@ -75,7 +75,7 @@ export const DIRECTION_LABELS = {
 export interface CreateDuelRequest {
   duelId?: number; // On-chain duel ID (CRITICAL for backend sync)
   betAmount: number;
-  marketId?: string;
+  marketId?: number; // Market ID: 1=SOL/USDC, 2=PUMP/USDC
   eventId?: string;
   currency: DuelCurrency;
   predictedOutcome?: 'UP' | 'DOWN';
