@@ -78,11 +78,11 @@ export const DuelCard: React.FC<DuelCardProps> = ({ duel }) => {
         <div>
           <p className="text-pump-gray font-sans text-xs mb-1">Bet Amount</p>
           <p className="text-pump-green font-mono font-bold text-lg">
-            {(duel.betAmount / 1_000_000_000).toLocaleString()} {duel.currency === 'SOL' ? 'SOL' : String(duel.currency)}
+            {(duel.betAmount / 1_000_000_000).toLocaleString()} {typeof duel.currency === 'number' ? (duel.currency === 0 ? 'SOL' : duel.currency === 1 ? 'PUMP' : 'USDC') : duel.currency}
           </p>
           {duel.marketId && (
             <p className="text-pump-gray font-sans text-xs mt-1">
-              📊 Market #{duel.marketId}
+              📊 {duel.marketId === 1 ? 'SOL/USDC' : duel.marketId === 2 ? 'PUMP/USDC' : `Market #${duel.marketId}`}
             </p>
           )}
         </div>
