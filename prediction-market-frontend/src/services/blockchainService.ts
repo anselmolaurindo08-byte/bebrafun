@@ -575,8 +575,8 @@ class BlockchainService {
       // 3. Call resolve_duel to claim winnings
       console.log('[claimDuelWinnings] Resolving duel with exit price:', exitPrice);
 
-      const exitPriceBN = new BN(exitPrice);
-      const tx = await anchorProgramService.resolveDuel(duelIdBN, exitPriceBN);
+      const exitPriceBN = new BN(Math.floor(exitPrice * 100)); // Convert to cents
+      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN, exitPriceBN);
 
       console.log('[claimDuelWinnings] ✅ Winnings claimed successfully:', tx);
 
