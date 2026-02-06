@@ -570,7 +570,11 @@ class AnchorProgramService {
 
         // Get player addresses from deserialized account
         const player1 = duelAccount.player1 || duelAccount.player_1;
-        const player2 = duelAccount.player2 || duelAccount.player_2 || player1;
+        const player2 = duelAccount.player2 || duelAccount.player_2;
+
+        if (!player1 || !player2) {
+            throw new Error('Missing player addresses in duel account');
+        }
 
         // Fee collector address (platform wallet)
         const feeCollector = new PublicKey('FEEcmF91FVTq3NTTxJLKoFDSAHNUMXj3STBZcfMKLMbh');
