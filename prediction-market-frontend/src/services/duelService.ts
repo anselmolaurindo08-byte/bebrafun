@@ -20,6 +20,7 @@ function mapDuel(raw: any): Duel {
     player2Avatar: raw.player_2_avatar ?? raw.player2Avatar,
     betAmount: raw.bet_amount ?? raw.betAmount ?? 0,
     currency: raw.currency ?? 0,
+    marketId: raw.market_id ?? raw.marketId, // Map market_id from backend
     player1Amount: raw.player_1_amount ?? raw.player1Amount ?? 0,
     player2Amount: raw.player_2_amount ?? raw.player2Amount,
     status: raw.status ?? 0,
