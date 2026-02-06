@@ -133,6 +133,30 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     };
   }, [currencySymbol, isGameEnded, duel.status]); // Added duel.status dependency
 
+  // --- Check if duel is already RESOLVED on mount ---
+  useEffect(() => {
+    if (duel.status === 'RESOLVED' && !showResultModal && !result) {
+      console.log('[DuelGameView] Duel already RESOLVED, fetching result...');
+
+      // Fetch result from backend
+      duelService.getDuel(duel.id)
+        .then(updatedDuel => {
+          console.log('[DuelGameView] Fetched resolved duel:', updatedDuel);
+
+          setResult({
+            winnerId: updatedDuel.winnerId || "0",
+            finalPrice: updatedDuel.priceAtEnd || 0,
+            payout: (updatedDuel.betAmount || duel.betAmount) * 2
+          });
+          setShowResultModal(true);
+          setIsGameEnded(true);
+        })
+        .catch(error => {
+          console.error('[DuelGameView] Failed to fetch resolved duel:', error);
+        });
+    }
+  }, [duel.status, duel.id, showResultModal, result]);
+
   // --- Watch for Timer == 0 ---
   useEffect(() => {
     if (timeLeft === 0 && !isGameEnded && currentPrice > 0) {
