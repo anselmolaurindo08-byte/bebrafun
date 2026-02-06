@@ -959,17 +959,33 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("duel has no entry price")
 	}
 
-	// Determine winner based on price movement
+	// Determine winner based on price movement and predictions
+	// direction: 0 = UP, 1 = DOWN
 	var winnerID uint
-	if exitPrice >= *entryPrice {
-		// Price went UP - Player 1 wins
+	priceWentUp := exitPrice >= *entryPrice
+
+	// Check Player 1's prediction
+	if duel.Direction == nil {
+		return nil, fmt.Errorf("duel has no direction/prediction")
+	}
+
+	player1PredictedUp := *duel.Direction == 0 // 0 = UP, 1 = DOWN
+
+	// Player 1 wins if their prediction matches the price movement
+	if (player1PredictedUp && priceWentUp) || (!player1PredictedUp && !priceWentUp) {
 		winnerID = duel.Player1ID
+		log.Printf("[AutoResolveDuel] Player 1 wins: predicted %s, price went %s",
+			map[bool]string{true: "UP", false: "DOWN"}[player1PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[priceWentUp])
 	} else {
-		// Price went DOWN - Player 2 wins
+		// Player 2 wins (opposite prediction)
 		if duel.Player2ID == nil {
 			return nil, fmt.Errorf("duel has no player 2")
 		}
 		winnerID = *duel.Player2ID
+		log.Printf("[AutoResolveDuel] Player 2 wins: predicted %s, price went %s",
+			map[bool]string{true: "DOWN", false: "UP"}[player1PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[priceWentUp])
 	}
 
 	log.Printf("[AutoResolveDuel] Duel %s resolved: entry=%.4f, exit=%.4f, winner=%d",
