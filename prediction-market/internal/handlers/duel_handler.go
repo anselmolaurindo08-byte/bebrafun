@@ -160,6 +160,7 @@ func (h *DuelHandler) JoinDuel(c *gin.Context) {
 
 	var req struct {
 		Signature string `json:"signature" binding:"required"`
+		Direction *int16 `json:"direction"` // Player 2's prediction: 0=UP, 1=DOWN
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -167,7 +168,7 @@ func (h *DuelHandler) JoinDuel(c *gin.Context) {
 		return
 	}
 
-	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID, req.Signature)
+	duel, err := h.duelService.JoinDuel(c.Request.Context(), duelID, playerID, req.Signature, req.Direction)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

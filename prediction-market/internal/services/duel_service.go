@@ -234,6 +234,7 @@ func (ds *DuelService) JoinDuel(
 	duelID uuid.UUID,
 	playerID uint,
 	signature string,
+	direction *int16, // Player 2's prediction: 0=UP, 1=DOWN
 ) (*models.Duel, error) {
 	// Get duel
 	duel, err := ds.repo.GetDuelByID(ctx, duelID)
@@ -285,6 +286,7 @@ func (ds *DuelService) JoinDuel(
 	// Set Player2 and update status to COUNTDOWN temporarily
 	duel.Player2ID = &playerID
 	duel.Player2Amount = &duel.BetAmount
+	duel.Player2Direction = direction // Save Player 2's prediction
 
 	// Save to database with COUNTDOWN status first
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
@@ -1020,25 +1022,45 @@ func (ds *DuelService) AutoResolveDuel(
 
 	// Check Player 1's prediction
 	if duel.Direction == nil {
-		return nil, fmt.Errorf("duel has no direction/prediction")
+		return nil, fmt.Errorf("duel has no direction/prediction for Player 1")
 	}
 
 	player1PredictedUp := *duel.Direction == 0 // 0 = UP, 1 = DOWN
+	player1Correct := (player1PredictedUp && priceWentUp) || (!player1PredictedUp && !priceWentUp)
 
-	// Player 1 wins if their prediction matches the price movement
-	if (player1PredictedUp && priceWentUp) || (!player1PredictedUp && !priceWentUp) {
+	// Check Player 2's prediction
+	if duel.Player2Direction == nil {
+		return nil, fmt.Errorf("duel has no direction/prediction for Player 2")
+	}
+
+	player2PredictedUp := *duel.Player2Direction == 0 // 0 = UP, 1 = DOWN
+	player2Correct := (player2PredictedUp && priceWentUp) || (!player2PredictedUp && !priceWentUp)
+
+	// Determine winner based on who was correct
+	// If both correct or both wrong, it's a tie (shouldn't happen in normal flow)
+	if player1Correct && !player2Correct {
 		winnerID = duel.Player1ID
-		log.Printf("[AutoResolveDuel] Player 1 wins: predicted %s, price went %s",
+		log.Printf("[AutoResolveDuel] Player 1 wins: P1 predicted %s, P2 predicted %s, price went %s",
 			map[bool]string{true: "UP", false: "DOWN"}[player1PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[player2PredictedUp],
 			map[bool]string{true: "UP", false: "DOWN"}[priceWentUp])
-	} else {
-		// Player 2 wins (opposite prediction)
+	} else if player2Correct && !player1Correct {
 		if duel.Player2ID == nil {
 			return nil, fmt.Errorf("duel has no player 2")
 		}
 		winnerID = *duel.Player2ID
-		log.Printf("[AutoResolveDuel] Player 2 wins: predicted %s, price went %s",
-			map[bool]string{true: "DOWN", false: "UP"}[player1PredictedUp],
+		log.Printf("[AutoResolveDuel] Player 2 wins: P1 predicted %s, P2 predicted %s, price went %s",
+			map[bool]string{true: "UP", false: "DOWN"}[player1PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[player2PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[priceWentUp])
+	} else {
+		// Both correct or both wrong - this is a tie
+		// For now, give win to Player 1 (or implement tie logic)
+		winnerID = duel.Player1ID
+		log.Printf("[AutoResolveDuel] TIE (both %s): P1 predicted %s, P2 predicted %s, price went %s - giving win to Player 1",
+			map[bool]string{true: "correct", false: "wrong"}[player1Correct],
+			map[bool]string{true: "UP", false: "DOWN"}[player1PredictedUp],
+			map[bool]string{true: "UP", false: "DOWN"}[player2PredictedUp],
 			map[bool]string{true: "UP", false: "DOWN"}[priceWentUp])
 	}
 

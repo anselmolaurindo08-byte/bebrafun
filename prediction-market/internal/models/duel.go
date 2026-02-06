@@ -64,7 +64,8 @@ type Duel struct {
 	PriceAtEnd       *float64   `gorm:"type:decimal(20,8)" json:"price_at_end"`      // Exit price for resolution
 	ChartStartPrice  *float64   `gorm:"type:decimal(20,8)" json:"chart_start_price"` // First WebSocket price for chart display
 	PricePair        *string    `gorm:"size:20" json:"price_pair"`                   // "SOL/USD" or "PUMP/USD"
-	Direction        *int16     `json:"direction"`                                   // 0: UP, 1: DOWN
+	Direction        *int16     `json:"direction"`                                   // Player 1: 0: UP, 1: DOWN
+	Player2Direction *int16     `json:"player_2_direction"`                          // Player 2: 0: UP, 1: DOWN
 	TransactionHash  *string    `gorm:"size:255" json:"transaction_hash"`
 	Confirmations    int16      `gorm:"default:0" json:"confirmations"`
 	EscrowTxHash     *string    `gorm:"size:255" json:"escrow_tx_hash"`
