@@ -572,11 +572,13 @@ class BlockchainService {
         throw new Error(`Duel status is ${statusStr}, cannot claim. Expected Active status. Please wait for duel to start.`);
       }
 
-      // 3. Call resolve_duel to claim winnings
+      // 3. Call claimDuelWinnings which validates player addresses
       console.log('[claimDuelWinnings] Resolving duel with exit price:', exitPrice);
 
-      const exitPriceBN = new BN(Math.floor(exitPrice * 100)); // Convert to cents
-      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN, exitPriceBN);
+      // Convert to micro-dollars (10^-6) to support sub-cent prices
+      // Example: $0.002148 → 2148 micro-dollars
+      const exitPriceMicroDollars = new BN(Math.floor(exitPrice * 1000000));
+      const tx = await anchorProgramService.claimDuelWinnings(duelIdBN, exitPriceMicroDollars);
 
       console.log('[claimDuelWinnings] ✅ Winnings claimed successfully:', tx);
 

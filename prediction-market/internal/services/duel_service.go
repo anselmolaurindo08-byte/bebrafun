@@ -999,8 +999,10 @@ func (ds *DuelService) AutoResolveDuel(
 		log.Printf("[AutoResolveDuel] Started duel %s with entry price %.4f", duelID, *duel.PriceAtStart)
 
 		// Call smart contract start_duel to update on-chain status
-		entryPriceCents := uint64(*duel.PriceAtStart * 100) // Convert to cents
-		signature, err := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceCents)
+		// Convert to micro-dollars (10^-6) to support sub-cent prices
+		// Example: $0.002148 → 2148 micro-dollars
+		entryPriceMicroDollars := uint64(*duel.PriceAtStart * 1000000)
+		signature, err := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceMicroDollars)
 		if err != nil {
 			log.Printf("[AutoResolveDuel] WARNING: Failed to start duel on-chain: %v", err)
 			// Don't fail the entire operation - DB is already updated
