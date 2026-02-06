@@ -116,6 +116,19 @@ func (ds *DuelService) CreateDuel(
 			return "nil"
 		}())
 
+	// Map market_id to price pair for price feed
+	var pricePair *string
+	if req.MarketID != nil {
+		switch *req.MarketID {
+		case 1:
+			pair := "SOL/USD"
+			pricePair = &pair
+		case 2:
+			pair := "PUMP/USD"
+			pricePair = &pair
+		}
+	}
+
 	// Create duel in database with PENDING status (waiting for opponent)
 	duel := &models.Duel{
 		ID:               uuid.New(),
@@ -128,6 +141,7 @@ func (ds *DuelService) CreateDuel(
 		EventID:          req.EventID,
 		PredictedOutcome: req.PredictedOutcome,
 		Direction:        req.Direction,
+		PricePair:        pricePair, // Set price pair based on market_id
 		Status:           models.DuelStatusPending,
 		CreatedAt:        time.Now(),
 		ExpiresAt:        timePtr(time.Now().Add(5 * time.Minute)), // 5 min expiry
