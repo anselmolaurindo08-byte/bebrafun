@@ -342,8 +342,8 @@ func (ds *DuelService) JoinDuel(
 
 	log.Printf("[JoinDuel] Duel started on-chain: %s", startSignature)
 
-	// Update duel status to COUNTDOWN (cron job will set to ACTIVE later)
-	duel.Status = models.DuelStatusCountdown
+	// Update duel status to ACTIVE immediately (on-chain contract sets it to Active)
+	duel.Status = models.DuelStatusActive
 	now := time.Now()
 	duel.StartedAt = &now
 	entryPriceFloat := float64(entryPriceCents) / 100 // Convert cents to dollars
@@ -351,10 +351,10 @@ func (ds *DuelService) JoinDuel(
 
 	// Save final state to database
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
-		return nil, fmt.Errorf("failed to update duel to countdown: %w", err)
+		return nil, fmt.Errorf("failed to update duel to active: %w", err)
 	}
 
-	log.Printf("Duel %d started successfully. Entry price: $%.2f, Status: COUNTDOWN",
+	log.Printf("Duel %d started successfully. Entry price: $%.2f, Status: ACTIVE",
 		duel.DuelID, entryPriceFloat)
 
 	return duel, nil
