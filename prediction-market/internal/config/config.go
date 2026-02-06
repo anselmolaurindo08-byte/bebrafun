@@ -73,7 +73,7 @@ func Load() (*Config, error) {
 		Solana: SolanaConfig{
 			Network:                getEnv("SOLANA_NETWORK", "devnet"),
 			SolanaRPCURL:           getEnv("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
-			ProgramID:              getEnv("PROGRAM_ID", "6rz87uKkR5nnwsBc6cYJ8EreCFSTcekbEMUou4bkkjCH"),
+			ProgramID:              getEnv("PROGRAM_ID", "BRMPh8spJYvp9VAbYGfvECE2MdsYaEGsL94RYH58aius"),
 			ServerWalletPrivateKey: getEnv("SERVER_WALLET_PRIVATE_KEY", ""),
 			ServerWalletPublicKey:  getEnv("SERVER_WALLET_PUBLIC_KEY", ""),
 			AuthorityPrivateKey:    getEnv("SOLANA_AUTHORITY_PRIVATE_KEY", ""),
