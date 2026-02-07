@@ -1009,7 +1009,15 @@ func (ds *DuelService) AutoResolveDuel(
 
 	// Check Player 2's prediction
 	if duel.Player2Direction == nil {
-		return nil, fmt.Errorf("duel has no direction/prediction for Player 2")
+		// FALLBACK: If Player2Direction missing, infer as opposite of Player1
+		// In duels, players always take opposite sides
+		if duel.Direction != nil {
+			opposite := int16(1 - *duel.Direction)
+			duel.Player2Direction = &opposite
+			log.Printf("[AutoResolveDuel] WARNING: Player2Direction missing, inferred as %d (opposite of P1=%d)", opposite, *duel.Direction)
+		} else {
+			return nil, fmt.Errorf("duel has no direction for either player")
+		}
 	}
 
 	player2PredictedUp := *duel.Player2Direction == 1 // FIXED: 1 = UP, 0 = DOWN (matches blockchain)
@@ -1055,6 +1063,39 @@ func (ds *DuelService) AutoResolveDuel(
 
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
 		return nil, fmt.Errorf("failed to update duel: %w", err)
+	}
+
+	// === CRITICAL: Call resolve_duel on-chain to pay out SOL ===
+	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, duel.Player1ID)
+	if err != nil {
+		log.Printf("[AutoResolveDuel] WARNING: Failed to get P1 wallet: %v", err)
+	}
+	var player2Wallet string
+	if duel.Player2ID != nil {
+		player2Wallet, err = ds.repo.GetUserWalletAddress(ctx, *duel.Player2ID)
+		if err != nil {
+			log.Printf("[AutoResolveDuel] WARNING: Failed to get P2 wallet: %v", err)
+		}
+	}
+
+	if player1Wallet != "" && player2Wallet != "" {
+		p1Pubkey, err1 := solana.PublicKeyFromBase58(player1Wallet)
+		p2Pubkey, err2 := solana.PublicKeyFromBase58(player2Wallet)
+		if err1 == nil && err2 == nil {
+			exitPriceMicroDollars := uint64(exitPrice * 1000000)
+			sig, err := ds.anchorClient.ResolveDuel(ctx, uint64(duel.DuelID), exitPriceMicroDollars, p1Pubkey, p2Pubkey)
+			if err != nil {
+				log.Printf("[AutoResolveDuel] WARNING: On-chain resolve failed: %v", err)
+			} else {
+				log.Printf("[AutoResolveDuel] ✅ On-chain resolve tx: %s", sig)
+				duel.ResolutionTxHash = &sig
+				_ = ds.repo.UpdateDuel(ctx, duel) // Update tx hash
+			}
+		} else {
+			log.Printf("[AutoResolveDuel] WARNING: Invalid wallet addresses: P1=%v P2=%v", err1, err2)
+		}
+	} else {
+		log.Printf("[AutoResolveDuel] WARNING: Missing wallet addresses: P1='%s' P2='%s'", player1Wallet, player2Wallet)
 	}
 
 	// Return minimal result
