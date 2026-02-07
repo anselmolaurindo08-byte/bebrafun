@@ -34,8 +34,8 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
 
   const [timeLeft, setTimeLeft] = useState(getInitialTimeLeft());
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  // Initialize start price from duel.chartStartPrice if available, otherwise 0
-  const [startPrice, setStartPrice] = useState<number>(duel.chartStartPrice || 0);
+  // Initialize start price from backend entry price or chartStartPrice
+  const [startPrice, setStartPrice] = useState<number>(duel.priceAtStart || duel.chartStartPrice || 0);
   const [isResolving, setIsResolving] = useState(false);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -66,10 +66,10 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
       chart: currencySymbol
     });
 
-    // CRITICAL: Only start WebSocket and timer when duel is ACTIVE
-    // Don't start for PENDING (waiting for Player 2) or STARTING (countdown phase)
-    if (duel.status !== 'ACTIVE') {
-      console.log('[DuelGameView] Duel not ACTIVE yet (status:', duel.status, '), skipping WebSocket/timer setup');
+    // Start WebSocket and chart for ACTIVE, STARTING, and COUNTDOWN statuses
+    // This eliminates the ~20s delay before chart data appears
+    if (duel.status !== 'ACTIVE' && duel.status !== 'STARTING' && duel.status !== 'COUNTDOWN') {
+      console.log('[DuelGameView] Duel not in playable status (status:', duel.status, '), skipping WebSocket/timer setup');
       return;
     }
 

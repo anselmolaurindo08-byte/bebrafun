@@ -40,8 +40,12 @@ export interface Duel {
 export const DuelStatus = {
   PENDING: 'PENDING',
   MATCHED: 'MATCHED',
+  WAITING_DEPOSIT: 'WAITING_DEPOSIT',
+  CONFIRMING_TRANSACTIONS: 'CONFIRMING_TRANSACTIONS',
+  COUNTDOWN: 'COUNTDOWN',
   STARTING: 'STARTING',  // 5-second countdown before duel starts
   ACTIVE: 'ACTIVE',
+  FINISHED: 'FINISHED',
   RESOLVED: 'RESOLVED',
   CANCELLED: 'CANCELLED',
   EXPIRED: 'EXPIRED',
@@ -51,8 +55,12 @@ export type DuelStatus = (typeof DuelStatus)[keyof typeof DuelStatus];
 export const DUEL_STATUS_LABELS: Record<DuelStatus, string> = {
   [DuelStatus.PENDING]: 'Waiting for Opponent',
   [DuelStatus.MATCHED]: 'Opponent Found',
+  [DuelStatus.WAITING_DEPOSIT]: 'Waiting for Deposit',
+  [DuelStatus.CONFIRMING_TRANSACTIONS]: 'Confirming...',
+  [DuelStatus.COUNTDOWN]: 'Countdown',
   [DuelStatus.STARTING]: 'Preparing...',
   [DuelStatus.ACTIVE]: 'Live',
+  [DuelStatus.FINISHED]: 'Finished',
   [DuelStatus.RESOLVED]: 'Resolved',
   [DuelStatus.CANCELLED]: 'Cancelled',
   [DuelStatus.EXPIRED]: 'Expired',
