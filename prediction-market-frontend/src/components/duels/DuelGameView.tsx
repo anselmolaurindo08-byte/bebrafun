@@ -42,6 +42,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const [result, setResult] = useState<GameResult | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(false);
+  const [claimTxHash, setClaimTxHash] = useState<string>('');
 
   const wsRef = useRef<WebSocket | null>(null);
   // Map marketId to Binance streams
@@ -221,13 +222,18 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const handleClaimWinnings = async () => {
     setIsClaiming(true);
     try {
-      // Backend handles on-chain resolution via AutoResolveDuel (server-side authority key)
-      // Frontend just confirms the claim in the DB
       console.log('[DuelGameView] Claiming winnings for duel:', duel.id);
 
-      await duelService.claimWinnings(duel.id);
+      const response = await duelService.claimWinnings(duel.id);
 
-      console.log('✅ Winnings claimed successfully');
+      // Extract resolution tx hash from backend response
+      const txHash = response?.resolution_tx_hash || '';
+      if (txHash) {
+        console.log('✅ Winnings claimed! Tx:', txHash);
+        setClaimTxHash(txHash);
+      } else {
+        console.log('✅ Winnings claimed (no tx hash in response)');
+      }
       setClaimSuccess(true);
     } catch (error) {
       console.error('[DuelGameView] Claim failed:', error);
@@ -287,12 +293,23 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
           </div>
 
           {claimSuccess ? (
-            <div className="text-center">
-              <p className="text-pump-green text-xl font-bold mb-4 animate-pulse">✓ WINNINGS CLAIMED!</p>
-              <p className="text-pump-gray text-sm mb-4">Your winnings have been transferred to your wallet.</p>
+            <div className="text-center space-y-3">
+              <p className="text-pump-green text-xl font-bold animate-pulse">✓ WINNINGS CLAIMED!</p>
+              {claimTxHash ? (
+                <a
+                  href={`https://explorer.solana.com/tx/${claimTxHash}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-sm text-pump-green hover:text-green-300 underline font-mono break-all"
+                >
+                  🔗 View transaction on Solana Explorer
+                </a>
+              ) : (
+                <p className="text-pump-gray text-sm">Your winnings have been transferred to your wallet.</p>
+              )}
               <button
                 onClick={onResolved}
-                className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105"
+                className="w-full bg-pump-green hover:bg-green-400 text-black font-black font-mono py-3 px-6 rounded transition-transform hover:scale-105 mt-2"
               >
                 BACK TO DUELS
               </button>

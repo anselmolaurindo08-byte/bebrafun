@@ -604,7 +604,17 @@ func (h *DuelHandler) ClaimWinnings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	// Include resolution tx hash for frontend to show Solana Explorer link
+	duel, _ := h.duelService.GetDuelByID(c.Request.Context(), duelID)
+	txHash := ""
+	if duel != nil && duel.ResolutionTxHash != nil {
+		txHash = *duel.ResolutionTxHash
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"result":             result,
+		"resolution_tx_hash": txHash,
+	})
 }
 
 // SetChartStartPrice sets the chart start price for a duel
