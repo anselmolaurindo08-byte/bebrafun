@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Duel } from '../../types/duel';
 import { duelService } from '../../services/duelService';
@@ -44,83 +44,101 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   const [claimSuccess, setClaimSuccess] = useState(false);
   const [claimTxHash, setClaimTxHash] = useState<string>('');
 
-  const wsRef = useRef<WebSocket | null>(null);
-  // Map marketId to Binance streams
-  // marketId: 1 = SOL/USDT, 2 = PUMP/USDT
-  // currency is just the bet currency (always SOL)
+  // Map marketId to Pyth feed IDs
+  // marketId: 1 = SOL/USD, 2 = PUMP/USD
 
   // Get marketId from duel (handles both camelCase and snake_case from backend)
   const marketId = getMarketId(duel);
   const currencySymbol = getChartSymbol(marketId);
 
+  // Pyth feed IDs for price streaming
+  const PYTH_FEED_IDS: Record<string, string> = {
+    'SOLUSDT': 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
+    'PUMPUSDT': '7a01fc2c1ed29b88c70e4a30a66c48c6e17c3a93c3b9cb2f0e78c3e0d6c3b9c0',
+  };
 
-  // --- WebSocket & Timer Effect ---
+  // --- Pyth SSE Streaming & Timer Effect ---
   useEffect(() => {
-    // DEBUG: Log duel object ONCE on mount
     console.log('[DuelGameView] Duel loaded:', {
       id: duel.id,
       status: duel.status,
-      marketId: duel.marketId,
-      market_id: (duel as any).market_id,
-      resolvedMarketId: marketId,
-      currency: duel.currency,
+      marketId,
       chart: currencySymbol
     });
 
-    // Start WebSocket and chart for ACTIVE, STARTING, and COUNTDOWN statuses
-    // This eliminates the ~20s delay before chart data appears
+    // Start chart for ACTIVE, STARTING, and COUNTDOWN statuses
     if (duel.status !== 'ACTIVE' && duel.status !== 'STARTING' && duel.status !== 'COUNTDOWN') {
-      console.log('[DuelGameView] Duel not in playable status (status:', duel.status, '), skipping WebSocket/timer setup');
+      console.log('[DuelGameView] Duel not in playable status:', duel.status);
       return;
     }
 
-    // If game already ended (e.g. strict mode re-mount), don't restart logic
     if (isGameEnded) return;
 
-    console.log('[DuelGameView] Starting WebSocket and timer for ACTIVE duel');
+    // Pre-seed chart with entry price for instant display (no empty chart!)
+    const entryP = duel.priceAtStart || duel.chartStartPrice || 0;
+    if (entryP > 0) {
+      const now = Date.now();
+      setCurrentPrice(entryP);
+      setData([
+        { time: now - 2000, price: entryP },
+        { time: now - 1000, price: entryP },
+        { time: now, price: entryP },
+      ]);
+      console.log('[DuelGameView] Pre-seeded chart with entry price:', entryP);
+    }
 
-    // 1. Connect to Binance WebSocket
-    const symbol = currencySymbol.toLowerCase();
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@trade`);
+    // 1. Connect to Pyth Hermes SSE for real-time price streaming
+    const feedId = PYTH_FEED_IDS[currencySymbol] || PYTH_FEED_IDS['SOLUSDT'];
+    const sseUrl = `https://hermes.pyth.network/v2/updates/price/stream?ids[]=${feedId}&parsed=true&allow_unordered=true&benchmarks_only=false`;
 
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      const price = parseFloat(message.p);
-      const time = message.T;
+    console.log('[DuelGameView] Connecting to Pyth Hermes SSE...');
+    const eventSource = new EventSource(sseUrl);
 
-      setCurrentPrice(price);
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.parsed && data.parsed.length > 0) {
+          const priceData = data.parsed[0].price;
+          const priceInt = parseInt(priceData.price);
+          const expo = priceData.expo;
+          const price = priceInt * Math.pow(10, expo);
+          const time = Date.now();
 
-      // Capture start price on first tick if not set
-      setStartPrice((prev) => {
-        if (prev === 0) {
-          // Save to backend for persistence
-          duelService.setChartStartPrice(duel.id, price).catch(err =>
-            console.error('Failed to save chart start price:', err)
-          );
-          return price;
+          if (price > 0) {
+            setCurrentPrice(price);
+
+            // Capture start price on first real tick if not set
+            setStartPrice((prev) => {
+              if (prev === 0) {
+                duelService.setChartStartPrice(duel.id, price).catch(err =>
+                  console.error('Failed to save chart start price:', err)
+                );
+                return price;
+              }
+              return prev;
+            });
+
+            setData((prevData) => {
+              const newData = [...prevData, { time, price }];
+              if (newData.length > 120) return newData.slice(newData.length - 120);
+              return newData;
+            });
+          }
         }
-        return prev;
-      });
-
-      setData((prevData) => {
-        const newData = [...prevData, { time, price }];
-        // Keep last 60 seconds roughly
-        if (newData.length > 60) return newData.slice(newData.length - 60);
-        return newData;
-      });
+      } catch (err) {
+        // Silently ignore parse errors from SSE heartbeats
+      }
     };
 
-    wsRef.current = ws;
+    eventSource.onerror = (err) => {
+      console.warn('[DuelGameView] Pyth SSE error, will auto-reconnect:', err);
+    };
 
-    // 2. Countdown Timer
+    // 2. Countdown Timer (same as before)
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // We call handleGameEnd immediately when time hits 0
-          // but we need to reference the current state inside the closure or use a ref.
-          // Since handleGameEnd depends on currentPrice, we should trigger it via effect or ref.
-          // However, simpler is to let the effect detect 0.
           return 0;
         }
         return prev - 1;
@@ -128,10 +146,10 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     }, 1000);
 
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      eventSource.close();
       clearInterval(timer);
     };
-  }, [currencySymbol, isGameEnded, duel.status]); // Added duel.status dependency
+  }, [currencySymbol, isGameEnded, duel.status]);
 
   // --- Check if duel is already RESOLVED on mount ---
   useEffect(() => {
@@ -169,11 +187,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
     if (isGameEnded) return;
     setIsGameEnded(true);
 
-    // 1. Freeze Chart (Close WS)
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    // 1. Freeze Chart (EventSource closes via cleanup)
 
     setIsResolving(true);
 
