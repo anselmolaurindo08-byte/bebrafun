@@ -19,10 +19,10 @@ func (c *AnchorClient) ResolveDuel(
 	player1Pubkey solana.PublicKey,
 	player2Pubkey solana.PublicKey,
 ) (string, error) {
-	// Get server wallet private key
-	privateKeyStr := os.Getenv("SERVER_WALLET_PRIVATE_KEY")
+	// Get authority wallet private key (same as StartDuel)
+	privateKeyStr := os.Getenv("SOLANA_AUTHORITY_PRIVATE_KEY")
 	if privateKeyStr == "" {
-		return "", fmt.Errorf("SERVER_WALLET_PRIVATE_KEY not set")
+		return "", fmt.Errorf("SOLANA_AUTHORITY_PRIVATE_KEY not set")
 	}
 
 	// Parse private key
