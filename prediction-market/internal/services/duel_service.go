@@ -1187,15 +1187,41 @@ func (ds *DuelService) ClaimWinnings(
 
 	log.Printf("[ClaimWinnings] Player %d claiming winnings for duel %s", playerID, duelID)
 
-	// Note: Status stays RESOLVED - we don't have CLAIMED status
-	// Smart contract already sent payout, this just confirms claim in DB
+	// === CRITICAL: If on-chain resolve hasn't happened yet, do it now ===
+	// This transfers SOL from the escrow PDA to the winner's wallet
+	if duel.ResolutionTxHash == nil || *duel.ResolutionTxHash == "" {
+		log.Printf("[ClaimWinnings] On-chain resolve not done yet for duel %s, triggering now...", duelID)
+		exitPrice := float64(0)
+		if duel.PriceAtEnd != nil {
+			exitPrice = *duel.PriceAtEnd
+		}
+		ds.tryOnChainResolve(ctx, duel, exitPrice)
+
+		// Re-fetch duel to get updated tx hash
+		duel, _ = ds.repo.GetDuelByID(ctx, duelID)
+	}
+
+	// Check if on-chain resolve succeeded
+	if duel.ResolutionTxHash != nil && *duel.ResolutionTxHash != "" {
+		log.Printf("[ClaimWinnings] ✅ On-chain payout tx: %s", *duel.ResolutionTxHash)
+	} else {
+		log.Printf("[ClaimWinnings] ⚠️ On-chain payout may have failed for duel %s", duelID)
+	}
 
 	// Return result
+	entryPrice := float64(0)
+	if duel.PriceAtStart != nil {
+		entryPrice = *duel.PriceAtStart
+	}
+	exitPrice := float64(0)
+	if duel.PriceAtEnd != nil {
+		exitPrice = *duel.PriceAtEnd
+	}
 	result := &models.DuelResult{
 		DuelID:     duelID,
 		WinnerID:   *duel.WinnerID,
-		ExitPrice:  *duel.PriceAtEnd,
-		EntryPrice: *duel.PriceAtStart,
+		ExitPrice:  exitPrice,
+		EntryPrice: entryPrice,
 	}
 
 	return result, nil
