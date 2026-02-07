@@ -349,12 +349,21 @@ func (ds *DuelService) JoinDuel(
 	return duel, nil
 }
 
-// handleDuelCountdown waits 5 seconds then records entry price and starts the duel
+// handleDuelCountdown fetches entry price immediately, waits 5 seconds for UI countdown, then starts the duel
 func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
-	// Wait 5 seconds for WebSocket to connect and get accurate price
-	time.Sleep(5 * time.Second)
-
 	ctx := context.Background()
+
+	// === STEP 1: Fetch entry price IMMEDIATELY from Binance REST API ===
+	// This eliminates the 30s chart delay — price is captured at the moment of join
+	entryPrice, err := ds.priceService.GetPrice(pricePair)
+	if err != nil {
+		log.Printf("ERROR: Failed to get entry price for %s: %v", pricePair, err)
+		// Still continue — will try again or use 0
+	}
+	log.Printf("[handleDuelCountdown] Got entry price for %s: $%.6f", pricePair, entryPrice)
+
+	// === STEP 2: Wait 5 seconds for visual countdown on frontend ===
+	time.Sleep(5 * time.Second)
 
 	// Get fresh duel data
 	duel, err := ds.repo.GetDuelByID(ctx, duelID)
@@ -369,15 +378,7 @@ func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
 		return
 	}
 
-	// Get CURRENT price (WebSocket should be connected by now)
-	entryPrice, err := ds.priceService.GetPrice(pricePair)
-	if err != nil {
-		log.Printf("ERROR: Failed to get entry price for %s after countdown: %v", pricePair, err)
-		// Use fallback or cancel duel
-		// For now, we'll use the fallback price that GetPrice returns
-	}
-
-	// Record entry price and start duel
+	// === STEP 3: Record entry price and start duel ===
 	duel.PriceAtStart = &entryPrice
 	duel.Status = models.DuelStatusActive
 	now := time.Now()
@@ -1154,6 +1155,10 @@ func (ds *DuelService) tryOnChainResolve(ctx context.Context, duel *models.Duel,
 		log.Printf("[tryOnChainResolve] start_duel result: %v (may already be started, continuing...)", startErr)
 	} else {
 		log.Printf("[tryOnChainResolve] ✅ On-chain start_duel tx: %s", startSig)
+		// Wait for start_duel tx to be confirmed before calling resolve_duel
+		// Otherwise resolve_duel reads stale account state and fails
+		log.Printf("[tryOnChainResolve] Waiting 3s for start_duel tx confirmation...")
+		time.Sleep(3 * time.Second)
 	}
 
 	// === STEP 2: Call resolve_duel on-chain ===
