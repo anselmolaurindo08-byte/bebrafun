@@ -568,8 +568,8 @@ class BlockchainService {
         throw new Error('Duel is already resolved. Winnings may have been claimed already.');
       }
 
-      if (statusStr !== 'active') {
-        throw new Error(`Duel status is ${statusStr}, cannot claim. Expected Active status. Please wait for duel to start.`);
+      if (statusStr !== 'active' && statusStr !== 'countdown') {
+        throw new Error(`Duel status is ${statusStr}, cannot claim. Expected Active or Countdown status.`);
       }
 
       // 3. Call claimDuelWinnings which validates player addresses
