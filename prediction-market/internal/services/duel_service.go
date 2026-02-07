@@ -392,6 +392,18 @@ func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
 
 	log.Printf("✅ Duel %s started after countdown with entry price: $%.6f (from %s)",
 		duelID, entryPrice, pricePair)
+
+	// === STEP 4: Call start_duel on-chain ===
+	// CRITICAL: This was missing before — the on-chain state stayed at Countdown forever!
+	entryPriceMicroDollars := uint64(entryPrice * 1000000)
+	log.Printf("[handleDuelCountdown] Calling start_duel on-chain for duel %d with entry price %d micro-dollars",
+		duel.DuelID, entryPriceMicroDollars)
+	startSig, startErr := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceMicroDollars)
+	if startErr != nil {
+		log.Printf("[handleDuelCountdown] ⚠️ WARNING: On-chain start_duel failed: %v", startErr)
+	} else {
+		log.Printf("[handleDuelCountdown] ✅ On-chain start_duel tx: %s", startSig)
+	}
 }
 
 // DepositToDuel deposits tokens to escrow for a duel

@@ -77,10 +77,10 @@ func (c *AnchorClient) ResolveDuel(
 		data,
 	)
 
-	// Get recent blockhash
-	recent, err := c.rpcClient.GetRecentBlockhash(ctx, rpc.CommitmentFinalized)
+	// Get latest blockhash
+	recent, err := c.rpcClient.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
 	if err != nil {
-		return "", fmt.Errorf("failed to get recent blockhash: %w", err)
+		return "", fmt.Errorf("failed to get latest blockhash: %w", err)
 	}
 
 	// Build transaction
