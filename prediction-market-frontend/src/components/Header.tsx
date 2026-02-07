@@ -7,7 +7,7 @@ import AuthModal from './AuthModal';
 
 export default function Header() {
     const { user, token, logout } = useUserStore();
-    const { balance } = useBlockchainWallet();
+    const { balance, disconnectWallet } = useBlockchainWallet();
     const navigate = useNavigate();
     const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -16,6 +16,12 @@ export default function Header() {
     const handleLogout = async () => {
         await apiService.logout();
         logout();
+        // Disconnect wallet so next login asks for fresh wallet connection
+        try {
+            await disconnectWallet();
+        } catch (e) {
+            console.warn('Failed to disconnect wallet:', e);
+        }
         navigate('/');
     };
 
