@@ -54,7 +54,7 @@ export const DuelGameView: React.FC<DuelGameViewProps> = ({ duel, onResolved }) 
   // Pyth feed IDs for price streaming
   const PYTH_FEED_IDS: Record<string, string> = {
     'SOLUSDT': 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
-    'PUMPUSDT': '7a01fc2c1ed29b88c70e4a30a66c48c6e17c3a93c3b9cb2f0e78c3e0d6c3b9c0',
+    'PUMPUSDT': '7a01fca212788bba7c5bf8c9efd576a8a722f070d2c17596ff7bb609b8d5c3b9',
   };
 
   // --- Pyth SSE Streaming & Timer Effect ---
