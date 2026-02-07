@@ -23,13 +23,17 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   // Manual instantiation (PhantomWalletAdapter, etc.) conflicts with auto-detection
   const wallets = useMemo(() => [], []);
 
+  // Only auto-connect if user has an active session (token in localStorage)
+  // This prevents wallet from auto-reconnecting after logout
+  const shouldAutoConnect = useMemo(() => !!localStorage.getItem('token'), []);
+
   const onError = useCallback((error: WalletError) => {
     console.error('[WalletProvider] Wallet error:', error.name, error.message);
   }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect={true} onError={onError}>
+      <WalletProvider wallets={wallets} autoConnect={shouldAutoConnect} onError={onError}>
         <WalletModalProvider>
           {children}
         </WalletModalProvider>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { CheckCircle } from 'lucide-react';
@@ -12,11 +12,27 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-    const { publicKey, signMessage, connected } = useWallet();
+    const { publicKey, signMessage, connected, disconnect } = useWallet();
     const { user, setUser, setToken } = useUserStore();
     const [inviteCode, setInviteCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // When modal opens and user is NOT authenticated, disconnect any existing wallet
+    // so the user gets a fresh wallet selection dialog
+    useEffect(() => {
+        if (isOpen && !user?.wallet_address && connected) {
+            disconnect().catch(console.error);
+        }
+    }, [isOpen, user?.wallet_address, connected, disconnect]);
+
+    const handleChangeWallet = async () => {
+        try {
+            await disconnect();
+        } catch (e) {
+            console.error('Failed to disconnect:', e);
+        }
+    };
 
     const handleWalletAuth = async () => {
         if (!publicKey || !connected) {
@@ -80,18 +96,28 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     {/* Wallet Section */}
                     <div className="space-y-4">
                         {connected && publicKey ? (
-                            <div className="flex items-center gap-3 p-4 bg-pump-black border-2 border-pump-green rounded-md">
-                                <div className="w-10 h-10 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold">
-                                    {publicKey.toString().substring(0, 2).toUpperCase()}
+                            <>
+                                <div className="flex items-center gap-3 p-4 bg-pump-black border-2 border-pump-green rounded-md">
+                                    <div className="w-10 h-10 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold">
+                                        {publicKey.toString().substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-pump-gray-light font-sans">Wallet Address</p>
+                                        <p className="text-sm font-mono text-pump-white truncate">
+                                            {publicKey.toString()}
+                                        </p>
+                                    </div>
+                                    <CheckCircle className="w-6 h-6 text-pump-green flex-shrink-0" />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-pump-gray-light font-sans">Wallet Address</p>
-                                    <p className="text-sm font-mono text-pump-white truncate">
-                                        {publicKey.toString()}
-                                    </p>
-                                </div>
-                                <CheckCircle className="w-6 h-6 text-pump-green flex-shrink-0" />
-                            </div>
+                                {!isAuthenticated && (
+                                    <button
+                                        onClick={handleChangeWallet}
+                                        className="w-full text-sm text-pump-gray-light hover:text-pump-green font-sans underline transition-colors"
+                                    >
+                                        Use a different wallet
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <div className="flex flex-col items-center gap-4">
                                 <p className="text-sm text-pump-gray-light font-sans text-center">
