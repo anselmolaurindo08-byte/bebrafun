@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import type { FC, ReactNode } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { WalletAdapterNetwork, WalletError } from '@solana/wallet-adapter-base';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 
 // Import default styles for wallet modal
@@ -20,18 +19,17 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   // RPC endpoint
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
-  // Wallet adapters
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
-    []
-  );
+  // Wallet adapters - empty array lets Wallet Standard auto-detect installed wallets
+  // Manual instantiation (PhantomWalletAdapter, etc.) conflicts with auto-detection
+  const wallets = useMemo(() => [], []);
+
+  const onError = useCallback((error: WalletError) => {
+    console.error('[WalletProvider] Wallet error:', error.name, error.message);
+  }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect={true}>
+      <WalletProvider wallets={wallets} autoConnect={true} onError={onError}>
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
