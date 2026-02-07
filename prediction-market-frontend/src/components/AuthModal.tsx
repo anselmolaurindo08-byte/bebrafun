@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { CheckCircle } from 'lucide-react';
@@ -17,12 +17,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const [inviteCode, setInviteCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const hasDisconnectedRef = useRef(false);
 
-    // When modal opens and user is NOT authenticated, disconnect any existing wallet
-    // so the user gets a fresh wallet selection dialog
+    // When modal opens and user is NOT authenticated, disconnect any PREVIOUSLY
+    // connected wallet ONCE so the user gets a fresh wallet selection dialog.
+    // Uses a ref to prevent re-disconnecting when the user actively connects.
     useEffect(() => {
-        if (isOpen && !user?.wallet_address && connected) {
+        if (isOpen && !user?.wallet_address && connected && !hasDisconnectedRef.current) {
+            hasDisconnectedRef.current = true;
             disconnect().catch(console.error);
+        }
+        // Reset the ref when modal closes so next open can disconnect again
+        if (!isOpen) {
+            hasDisconnectedRef.current = false;
         }
     }, [isOpen, user?.wallet_address, connected, disconnect]);
 
