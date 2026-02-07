@@ -954,6 +954,36 @@ func (ds *DuelService) AutoResolveDuel(
 	}
 
 	// Check if duel is in correct status (allow both Countdown and Active)
+	// IDEMPOTENT: If already resolved, return existing result (handles race conditions)
+	if duel.Status == models.DuelStatusResolved {
+		log.Printf("[AutoResolveDuel] Duel %s already RESOLVED, returning existing result", duelID)
+
+		// If on-chain resolve wasn't done yet, retry it now
+		if duel.ResolutionTxHash == nil || *duel.ResolutionTxHash == "" {
+			log.Printf("[AutoResolveDuel] On-chain resolve not done yet for %s, retrying...", duelID)
+			ds.tryOnChainResolve(ctx, duel, exitPrice)
+		}
+
+		winnerID := uint(0)
+		if duel.WinnerID != nil {
+			winnerID = *duel.WinnerID
+		}
+		entryPrice := float64(0)
+		if duel.PriceAtStart != nil {
+			entryPrice = *duel.PriceAtStart
+		}
+		exitP := exitPrice
+		if duel.PriceAtEnd != nil {
+			exitP = *duel.PriceAtEnd
+		}
+		return &models.DuelResult{
+			DuelID:     duelID,
+			WinnerID:   winnerID,
+			ExitPrice:  exitP,
+			EntryPrice: entryPrice,
+		}, nil
+	}
+
 	if duel.Status != models.DuelStatusActive && duel.Status != models.DuelStatusCountdown {
 		return nil, fmt.Errorf("duel is not active or countdown (status: %s)", duel.Status)
 	}
@@ -1065,38 +1095,8 @@ func (ds *DuelService) AutoResolveDuel(
 		return nil, fmt.Errorf("failed to update duel: %w", err)
 	}
 
-	// === CRITICAL: Call resolve_duel on-chain to pay out SOL ===
-	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, duel.Player1ID)
-	if err != nil {
-		log.Printf("[AutoResolveDuel] WARNING: Failed to get P1 wallet: %v", err)
-	}
-	var player2Wallet string
-	if duel.Player2ID != nil {
-		player2Wallet, err = ds.repo.GetUserWalletAddress(ctx, *duel.Player2ID)
-		if err != nil {
-			log.Printf("[AutoResolveDuel] WARNING: Failed to get P2 wallet: %v", err)
-		}
-	}
-
-	if player1Wallet != "" && player2Wallet != "" {
-		p1Pubkey, err1 := solana.PublicKeyFromBase58(player1Wallet)
-		p2Pubkey, err2 := solana.PublicKeyFromBase58(player2Wallet)
-		if err1 == nil && err2 == nil {
-			exitPriceMicroDollars := uint64(exitPrice * 1000000)
-			sig, err := ds.anchorClient.ResolveDuel(ctx, uint64(duel.DuelID), exitPriceMicroDollars, p1Pubkey, p2Pubkey)
-			if err != nil {
-				log.Printf("[AutoResolveDuel] WARNING: On-chain resolve failed: %v", err)
-			} else {
-				log.Printf("[AutoResolveDuel] ✅ On-chain resolve tx: %s", sig)
-				duel.ResolutionTxHash = &sig
-				_ = ds.repo.UpdateDuel(ctx, duel) // Update tx hash
-			}
-		} else {
-			log.Printf("[AutoResolveDuel] WARNING: Invalid wallet addresses: P1=%v P2=%v", err1, err2)
-		}
-	} else {
-		log.Printf("[AutoResolveDuel] WARNING: Missing wallet addresses: P1='%s' P2='%s'", player1Wallet, player2Wallet)
-	}
+	// Call on-chain resolve to transfer SOL to winner
+	ds.tryOnChainResolve(ctx, duel, exitPrice)
 
 	// Return minimal result
 	result := &models.DuelResult{
@@ -1107,6 +1107,46 @@ func (ds *DuelService) AutoResolveDuel(
 	}
 
 	return result, nil
+}
+
+// tryOnChainResolve attempts to call resolve_duel on-chain to transfer SOL from PDA to winner.
+// This is a best-effort operation — failure is logged but doesn't block the DB-level resolution.
+func (ds *DuelService) tryOnChainResolve(ctx context.Context, duel *models.Duel, exitPrice float64) {
+	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, duel.Player1ID)
+	if err != nil {
+		log.Printf("[tryOnChainResolve] WARNING: Failed to get P1 wallet: %v", err)
+		return
+	}
+	var player2Wallet string
+	if duel.Player2ID != nil {
+		player2Wallet, err = ds.repo.GetUserWalletAddress(ctx, *duel.Player2ID)
+		if err != nil {
+			log.Printf("[tryOnChainResolve] WARNING: Failed to get P2 wallet: %v", err)
+			return
+		}
+	}
+
+	if player1Wallet == "" || player2Wallet == "" {
+		log.Printf("[tryOnChainResolve] WARNING: Missing wallet addresses: P1='%s' P2='%s'", player1Wallet, player2Wallet)
+		return
+	}
+
+	p1Pubkey, err1 := solana.PublicKeyFromBase58(player1Wallet)
+	p2Pubkey, err2 := solana.PublicKeyFromBase58(player2Wallet)
+	if err1 != nil || err2 != nil {
+		log.Printf("[tryOnChainResolve] WARNING: Invalid wallet addresses: P1=%v P2=%v", err1, err2)
+		return
+	}
+
+	exitPriceMicroDollars := uint64(exitPrice * 1000000)
+	sig, err := ds.anchorClient.ResolveDuel(ctx, uint64(duel.DuelID), exitPriceMicroDollars, p1Pubkey, p2Pubkey)
+	if err != nil {
+		log.Printf("[tryOnChainResolve] WARNING: On-chain resolve failed: %v", err)
+	} else {
+		log.Printf("[tryOnChainResolve] ✅ On-chain resolve tx: %s", sig)
+		duel.ResolutionTxHash = &sig
+		_ = ds.repo.UpdateDuel(ctx, duel)
+	}
 }
 
 // SetChartStartPrice sets the chart start price for a duel
