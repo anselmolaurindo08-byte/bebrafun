@@ -135,6 +135,24 @@ func main() {
 		})
 	})
 
+	// Solana diagnostic endpoint — tests RPC, authority key, PDA derivation
+	router.GET("/health/solana", func(c *gin.Context) {
+		result := anchorClient.RunDiagnostics(c.Request.Context())
+
+		// Also test Binance REST API
+		binancePrice, binanceErr := priceService.GetPrice("SOL/USD")
+		binanceStatus := "ok"
+		if binanceErr != nil {
+			binanceStatus = binanceErr.Error()
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"solana":         result,
+			"binance_price":  binancePrice,
+			"binance_status": binanceStatus,
+		})
+	})
+
 	// Authentication routes (public)
 	authRoutes := router.Group("/auth")
 	{
