@@ -353,7 +353,7 @@ func (ds *DuelService) JoinDuel(
 func (ds *DuelService) handleDuelCountdown(duelID uuid.UUID, pricePair string) {
 	ctx := context.Background()
 
-	// === STEP 1: Fetch entry price IMMEDIATELY from Binance REST API ===
+	// === STEP 1: Fetch entry price IMMEDIATELY from CoinGecko API ===
 	// This eliminates the 30s chart delay — price is captured at the moment of join
 	entryPrice, err := ds.priceService.GetPrice(pricePair)
 	if err != nil {
