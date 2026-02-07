@@ -1111,6 +1111,7 @@ func (ds *DuelService) AutoResolveDuel(
 
 // tryOnChainResolve attempts to call resolve_duel on-chain to transfer SOL from PDA to winner.
 // This is a best-effort operation — failure is logged but doesn't block the DB-level resolution.
+// It also ensures start_duel is called first if not already done (smart contract requires: initialize → start → resolve).
 func (ds *DuelService) tryOnChainResolve(ctx context.Context, duel *models.Duel, exitPrice float64) {
 	player1Wallet, err := ds.repo.GetUserWalletAddress(ctx, duel.Player1ID)
 	if err != nil {
@@ -1138,6 +1139,24 @@ func (ds *DuelService) tryOnChainResolve(ctx context.Context, duel *models.Duel,
 		return
 	}
 
+	// === STEP 1: Ensure start_duel was called on-chain ===
+	// Smart contract requires: initialize_duel → start_duel → resolve_duel
+	// If start_duel wasn't called, resolve_duel will fail with InvalidDuelStatus
+	// We always attempt it — if already started, the contract rejects and we continue
+	log.Printf("[tryOnChainResolve] Calling start_duel on-chain for duel %d...", duel.DuelID)
+	entryPrice := float64(0)
+	if duel.PriceAtStart != nil {
+		entryPrice = *duel.PriceAtStart
+	}
+	entryPriceMicroDollars := uint64(entryPrice * 1000000)
+	startSig, startErr := ds.anchorClient.StartDuel(ctx, uint64(duel.DuelID), entryPriceMicroDollars)
+	if startErr != nil {
+		log.Printf("[tryOnChainResolve] start_duel result: %v (may already be started, continuing...)", startErr)
+	} else {
+		log.Printf("[tryOnChainResolve] ✅ On-chain start_duel tx: %s", startSig)
+	}
+
+	// === STEP 2: Call resolve_duel on-chain ===
 	exitPriceMicroDollars := uint64(exitPrice * 1000000)
 	sig, err := ds.anchorClient.ResolveDuel(ctx, uint64(duel.DuelID), exitPriceMicroDollars, p1Pubkey, p2Pubkey)
 	if err != nil {
