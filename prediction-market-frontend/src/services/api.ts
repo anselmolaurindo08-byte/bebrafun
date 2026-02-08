@@ -181,10 +181,11 @@ class ApiService {
 
     async recordTrade(data: {
         pool_id: string;
+        user_address: string;
         trade_type: number;
-        input_amount: string;
-        output_amount: string;
-        fee_amount: string;
+        input_amount: number;
+        output_amount: number;
+        fee_amount: number;
         transaction_signature: string;
     }): Promise<void> {
         await this.api.post('/api/amm/trades', data);
