@@ -204,10 +204,14 @@ export function useBlockchainTrade(poolId: string) {
               pre_trade_no_reserve: preTradeNoReserve.toNumber(),
               post_trade_yes_reserve: postTradeYesReserve.toNumber(),
               post_trade_no_reserve: postTradeNoReserve.toNumber(),
-              // Send base liquidity for accurate price calculation
-              base_yes_liquidity: poolState.baseYesLiquidity,
-              base_no_liquidity: poolState.baseNoLiquidity,
+              // Send base liquidity for accurate price calculation (from updatedState, not stale poolState!)
+              base_yes_liquidity: updatedState?.baseYesLiquidity ?? poolState.baseYesLiquidity,
+              base_no_liquidity: updatedState?.baseNoLiquidity ?? poolState.baseNoLiquidity,
             };
+            console.log('[Trade] Base liquidity:', {
+              baseYesLiquidity: tradeData.base_yes_liquidity,
+              baseNoLiquidity: tradeData.base_no_liquidity
+            });
             console.log('[Trade] Recording trade in backend:', tradeData);
             await apiService.recordTrade(tradeData);
             console.log('[Trade] Trade recorded successfully!');
