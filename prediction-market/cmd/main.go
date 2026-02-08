@@ -101,9 +101,12 @@ func main() {
 	// Initialize position service
 	positionService := services.NewPositionService(database.GetDB())
 
+	// Initialize admin service
+	adminService := services.NewAdminService(database.GetDB())
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, adminService)
 	marketHandler := handlers.NewMarketHandler(database.GetDB())
 	// tradingHandler := handlers.NewTradingHandler(database.GetDB()) // Commented out - handler not implemented
 	referralHandler := handlers.NewReferralHandler(database.GetDB())

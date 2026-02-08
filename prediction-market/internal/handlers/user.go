@@ -11,13 +11,15 @@ import (
 
 // UserHandler handles user-related endpoints
 type UserHandler struct {
-	userService *services.UserService
+	userService  *services.UserService
+	adminService *services.AdminService
 }
 
 // NewUserHandler creates a new UserHandler
-func NewUserHandler(userService *services.UserService) *UserHandler {
+func NewUserHandler(userService *services.UserService, adminService *services.AdminService) *UserHandler {
 	return &UserHandler{
-		userService: userService,
+		userService:  userService,
+		adminService: adminService,
 	}
 }
 
@@ -35,6 +37,35 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":              user.ID,
+			"wallet_address":  user.WalletAddress,
+			"nickname":        user.Nickname,
+			"x_username":      user.XUsername,
+			"x_id":            user.XID,
+			"followers_count": user.FollowersCount,
+			"created_at":      user.CreatedAt,
+		},
+	})
+
+	// Check if user is admin and add role field
+	if h.adminService != nil && h.adminService.IsAdmin(userID) {
+		c.JSON(http.StatusOK, gin.H{
+			"user": gin.H{
+				"id":              user.ID,
+				"wallet_address":  user.WalletAddress,
+				"nickname":        user.Nickname,
+				"role":            "admin",
+				"x_username":      user.XUsername,
+				"x_id":            user.XID,
+				"followers_count": user.FollowersCount,
+				"created_at":      user.CreatedAt,
+			},
 		})
 		return
 	}
