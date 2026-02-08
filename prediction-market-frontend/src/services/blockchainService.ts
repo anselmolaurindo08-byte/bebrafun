@@ -477,14 +477,27 @@ class BlockchainService {
 
       // Fetch pool state for accurate quoting
       console.log('[calculateTradeQuote] _poolState:', _poolState);
+
+      // Calculate effective reserves (raw + base liquidity) for CPMM formula
       const poolState = _poolState ? {
         yesReserve: typeof _poolState.yesReserve === 'number' ? _poolState.yesReserve : (_poolState.yesReserve?.toNumber?.() / 1e9 || 0),
         noReserve: typeof _poolState.noReserve === 'number' ? _poolState.noReserve : (_poolState.noReserve?.toNumber?.() / 1e9 || 0),
+        baseYesLiquidity: typeof _poolState.baseYesLiquidity === 'number' ? _poolState.baseYesLiquidity : (_poolState.baseYesLiquidity?.toNumber?.() / 1e9 || 0),
+        baseNoLiquidity: typeof _poolState.baseNoLiquidity === 'number' ? _poolState.baseNoLiquidity : (_poolState.baseNoLiquidity?.toNumber?.() / 1e9 || 0),
         feePercentage: _poolState.feePercentage || 30 // 0.3%
       } : undefined;
-      console.log('[calculateTradeQuote] poolState:', poolState);
 
-      const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no', poolState);
+      // Use effective reserves (raw + base) for CPMM calculation
+      const effectivePoolState = poolState ? {
+        yesReserve: poolState.yesReserve + poolState.baseYesLiquidity,
+        noReserve: poolState.noReserve + poolState.baseNoLiquidity,
+        feePercentage: poolState.feePercentage
+      } : undefined;
+
+      console.log('[calculateTradeQuote] poolState:', poolState);
+      console.log('[calculateTradeQuote] effectivePoolState:', effectivePoolState);
+
+      const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no', effectivePoolState);
       console.log('[calculateTradeQuote] quote:', quote);
 
       return {
