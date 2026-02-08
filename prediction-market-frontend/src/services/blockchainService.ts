@@ -246,18 +246,44 @@ class BlockchainService {
   }
 
   /**
-   * Calculate quote for buying shares
-   * Simple estimation: shares ≈ SOL amount (1:1 for now)
+   * Calculate quote for buying shares using CPMM formula
    */
-  getQuote(solAmount: number, _outcome: 'yes' | 'no'): {
+  getQuote(
+    solAmount: number,
+    outcome: 'yes' | 'no',
+    poolState?: { yesReserve: number; noReserve: number; feePercentage: number }
+  ): {
     estimatedShares: number;
     pricePerShare: number;
+    feeAmount: number;
   } {
-    // TODO: Implement proper AMM pricing formula
-    // For now, simple 1:1
+    // If no pool state, fallback to rough estimate
+    if (!poolState) {
+      return {
+        estimatedShares: solAmount * 0.997, // rough 0.3% fee estimate
+        pricePerShare: 1,
+        feeAmount: solAmount * 0.003
+      };
+    }
+
+    // CPMM formula: k = yesReserve × noReserve (constant product)
+    const k = poolState.yesReserve * poolState.noReserve;
+    const feeAmount = solAmount * (poolState.feePercentage / 10000);
+    const netInput = solAmount - feeAmount;
+
+    const inputReserve = outcome === 'yes' ? poolState.noReserve : poolState.yesReserve;
+    const outputReserve = outcome === 'yes' ? poolState.yesReserve : poolState.noReserve;
+
+    const newInputReserve = inputReserve + netInput;
+    const newOutputReserve = k / newInputReserve;
+    const estimatedShares = outputReserve - newOutputReserve;
+
+    const pricePerShare = estimatedShares > 0 ? solAmount / estimatedShares : 1;
+
     return {
-      estimatedShares: solAmount,
-      pricePerShare: 1
+      estimatedShares,
+      pricePerShare,
+      feeAmount
     };
   }
 
@@ -448,12 +474,20 @@ class BlockchainService {
     } else {
       // For buy: inputAmount is SOL, output is shares
       const solAmount = inputAmount.toNumber() / 1e9;
-      const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no');
+
+      // Fetch pool state for accurate quoting
+      const poolState = _poolState ? {
+        yesReserve: _poolState.yesReserve?.toNumber() / 1e9 || 0,
+        noReserve: _poolState.noReserve?.toNumber() / 1e9 || 0,
+        feePercentage: _poolState.feePercentage || 30 // 0.3%
+      } : undefined;
+
+      const quote = this.getQuote(solAmount, tradeType === 0 ? 'yes' : 'no', poolState);
 
       return {
         outputAmount: new BN(quote.estimatedShares * 1e9),
         minimumReceived: new BN(quote.estimatedShares * (1 - slippageTolerance / 100) * 1e9),
-        feeAmount: new BN(quote.estimatedShares * 0.003 * 1e9),
+        feeAmount: new BN(quote.feeAmount * 1e9),
         priceImpact: 0,
         slippageTolerance
       };
