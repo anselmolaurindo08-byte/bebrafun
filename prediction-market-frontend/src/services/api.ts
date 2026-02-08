@@ -186,6 +186,11 @@ class ApiService {
         return response.data.data || [];
     }
 
+    async getPriceHistory(poolId: string, limit = 200): Promise<any> {
+        const response = await this.api.get<any>(`/api/amm/prices/${poolId}?limit=${limit}`);
+        return response.data;
+    }
+
     // Duel endpoints
     async createDuel(data: { duel_id?: number; bet_amount: number; market_id?: number; event_id?: string; predicted_outcome?: string; direction?: number; currency?: string; signature: string }): Promise<any> {
         const response = await this.api.post<ApiResponse<any>>('/api/duels', data);

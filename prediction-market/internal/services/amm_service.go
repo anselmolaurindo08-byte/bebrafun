@@ -144,6 +144,9 @@ func (s *AMMService) CreatePool(ctx context.Context, req *models.CreatePoolReque
 		return nil, fmt.Errorf("failed to create pool: %w", err)
 	}
 
+	// Record initial 50/50 price candle so chart starts with a data point
+	s.RecordPriceCandle(ctx, pool.ID, 0.5, 0.5, 0.5, 0.5, 0)
+
 	return pool, nil
 }
 
@@ -420,8 +423,16 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			return fmt.Errorf("failed to update position: %w", err)
 		}
 
-		// Record price candle (simplified)
-		s.RecordPriceCandle(ctx, poolID, price, price, price, price, req.InputAmount)
+		// Record price candle with YES probability (not trade ratio)
+		// YES price = NoReserve / (YesReserve + NoReserve) — CPMM standard
+		totalReserves := float64(pool.YesReserve + pool.NoReserve)
+		var yesProb float64
+		if totalReserves > 0 {
+			yesProb = float64(pool.NoReserve) / totalReserves
+		} else {
+			yesProb = 0.5
+		}
+		s.RecordPriceCandle(ctx, poolID, yesProb, yesProb, yesProb, yesProb, req.InputAmount)
 
 		return nil
 	})

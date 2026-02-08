@@ -177,7 +177,7 @@ export default function UnifiedTradingPanel({
                 />
                 {mode === 'sell' && (
                     <p className="text-xs text-pump-gray-light font-sans mt-1">
-                        Available: {(availableShares || 0).toFixed(6)} shares
+                        Available: {((availableShares || 0) * 1000).toFixed(0)} shares
                     </p>
                 )}
             </div>
@@ -188,12 +188,12 @@ export default function UnifiedTradingPanel({
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
                     {bnToNumber(userPosition.yesTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {bnToNumber(userPosition.yesTokens).toFixed(6)} YES shares
+                            {(bnToNumber(userPosition.yesTokens) * 1000).toFixed(0)} YES shares
                         </p>
                     )}
                     {bnToNumber(userPosition.noTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {bnToNumber(userPosition.noTokens).toFixed(6)} NO shares
+                            {(bnToNumber(userPosition.noTokens) * 1000).toFixed(0)} NO shares
                         </p>
                     )}
                 </div>
@@ -207,7 +207,10 @@ export default function UnifiedTradingPanel({
                             {mode === 'buy' ? 'You receive' : 'You get'}
                         </span>
                         <span className="text-sm font-mono font-bold text-pump-green">
-                            {formatSOL(quote.outputAmount)} {mode === 'buy' ? 'shares' : 'SOL'}
+                            {mode === 'buy'
+                                ? `${(quote.outputAmount.toNumber() / LAMPORTS_PER_SOL * 1000).toFixed(0)} shares`
+                                : `${formatSOL(quote.outputAmount)} SOL`
+                            }
                         </span>
                     </div>
                     <div className="flex justify-between">
