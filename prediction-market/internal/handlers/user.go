@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -53,8 +54,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	// Check if user is admin and add role field
-	if h.adminService != nil && h.adminService.IsAdmin(userID) {
-		userResponse["role"] = "admin"
+	log.Printf("[GetProfile Debug] userID: %d", userID)
+	log.Printf("[GetProfile Debug] adminService nil?: %v", h.adminService == nil)
+	if h.adminService != nil {
+		isAdmin := h.adminService.IsAdmin(userID)
+		log.Printf("[GetProfile Debug] IsAdmin result: %v", isAdmin)
+		if isAdmin {
+			log.Printf("[GetProfile Debug] Adding role=admin to response")
+			userResponse["role"] = "admin"
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
