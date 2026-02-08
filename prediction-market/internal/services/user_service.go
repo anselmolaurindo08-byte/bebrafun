@@ -79,11 +79,12 @@ func (s *UserService) GetUserVolume(userID uint, walletAddress string) (*UserVol
 	const lamportsPerSol = 1_000_000_000.0
 
 	// Calculate duel volume: sum of bet_amount where user is player1 or player2
+	// Include all non-cancelled duels
 	var duelVolumeLamports int64
 	row := s.db.Table("duels").
 		Select("COALESCE(SUM(bet_amount), 0)").
-		Where("(player_1_id = ? OR player_2_id = ?) AND status IN (?, ?, ?, ?)",
-			userID, userID, "COMPLETED", "RESOLVED", "STARTING", "ACTIVE").
+		Where("(player1_id = ? OR player2_id = ?) AND status != ?",
+			userID, userID, "CANCELLED").
 		Row()
 	if err := row.Scan(&duelVolumeLamports); err != nil {
 		log.Printf("[GetUserVolume] Error scanning duel volume: %v", err)
@@ -94,7 +95,7 @@ func (s *UserService) GetUserVolume(userID uint, walletAddress string) (*UserVol
 	var marketVolumeLamports int64
 	row = s.db.Table("amm_trades").
 		Select("COALESCE(SUM(input_amount), 0)").
-		Where("user_address = ? AND status = ?", walletAddress, "CONFIRMED").
+		Where("user_address = ?", walletAddress).
 		Row()
 	if err := row.Scan(&marketVolumeLamports); err != nil {
 		log.Printf("[GetUserVolume] Error scanning market volume: %v", err)
