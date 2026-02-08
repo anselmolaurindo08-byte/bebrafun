@@ -189,6 +189,7 @@ func main() {
 			// userRoutes.GET("/balance", userHandler.GetBalance) // Method not implemented
 			userRoutes.GET("/invite-codes", userHandler.GetInviteCodes)
 			userRoutes.GET("/referrals", userHandler.GetReferrals)
+			userRoutes.GET("/volume", userHandler.GetUserVolume)
 		}
 
 		// Trading endpoints (protected) - must come before :id routes

@@ -148,3 +148,33 @@ func (h *UserHandler) UpdateNickname(c *gin.Context) {
 		"message": "Nickname updated successfully",
 	})
 }
+
+// GetUserVolume returns the user's trading volume stats
+func (h *UserHandler) GetUserVolume(c *gin.Context) {
+	userID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	// Get user to get wallet address
+	user, err := h.userService.GetUserByID(userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	volume, err := h.userService.GetUserVolume(userID, user.WalletAddress)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to calculate volume",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, volume)
+}

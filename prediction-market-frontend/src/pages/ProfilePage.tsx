@@ -3,6 +3,12 @@ import { useUserStore } from '../store/userStore';
 import { useBlockchainWallet } from '../hooks/useBlockchainWallet';
 import apiService from '../services/api';
 
+interface VolumeStats {
+    duel_volume_sol: number;
+    market_volume_sol: number;
+    total_volume_sol: number;
+}
+
 export default function ProfilePage() {
     const { user, setUser } = useUserStore();
     const { balance } = useBlockchainWallet();
@@ -10,6 +16,8 @@ export default function ProfilePage() {
     const [editingNickname, setEditingNickname] = useState(false);
     const [nickname, setNickname] = useState('');
     const [nicknameError, setNicknameError] = useState('');
+    const [volume, setVolume] = useState<VolumeStats | null>(null);
+    const [volumeLoading, setVolumeLoading] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -30,6 +38,25 @@ export default function ProfilePage() {
             setNickname(user.nickname || '');
         }
     }, [setUser, user]);
+
+    // Fetch volume stats
+    useEffect(() => {
+        const fetchVolume = async () => {
+            setVolumeLoading(true);
+            try {
+                const volumeData = await apiService.getUserVolume();
+                setVolume(volumeData);
+            } catch (error) {
+                console.error('Failed to fetch volume:', error);
+            } finally {
+                setVolumeLoading(false);
+            }
+        };
+
+        if (user) {
+            fetchVolume();
+        }
+    }, [user]);
 
     if (loading) {
         return (
@@ -71,6 +98,12 @@ export default function ProfilePage() {
         }
     };
 
+    const formatVolume = (val: number) => {
+        if (val >= 1000) return val.toFixed(2);
+        if (val >= 1) return val.toFixed(4);
+        return val.toFixed(6);
+    };
+
     return (
         <div className="max-w-2xl mx-auto px-6 py-8">
             <h1 className="text-3xl font-mono font-bold text-pump-white mb-8">User Profile</h1>
@@ -104,7 +137,7 @@ export default function ProfilePage() {
                     )}
                 </div>
 
-                <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 mt-4">
                     <p className="text-pump-gray font-sans text-sm mb-2">Nickname</p>
                     {editingNickname ? (
                         <div>
@@ -150,6 +183,36 @@ export default function ProfilePage() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Volume Statistics */}
+            <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6 mb-6">
+                <h3 className="text-xl font-mono font-bold text-pump-white mb-4">📊 Your Volume</h3>
+                {volumeLoading ? (
+                    <div className="flex justify-center py-4">
+                        <div className="w-8 h-8 border-4 border-pump-gray-dark border-t-pump-green rounded-full animate-spin-glow"></div>
+                    </div>
+                ) : volume ? (
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 text-center">
+                            <p className="text-pump-gray font-sans text-xs mb-1">🎯 Duels</p>
+                            <p className="text-xl font-mono font-bold text-pump-cyan">{formatVolume(volume.duel_volume_sol)}</p>
+                            <p className="text-pump-gray font-sans text-xs">SOL</p>
+                        </div>
+                        <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4 text-center">
+                            <p className="text-pump-gray font-sans text-xs mb-1">📈 Markets</p>
+                            <p className="text-xl font-mono font-bold text-pump-cyan">{formatVolume(volume.market_volume_sol)}</p>
+                            <p className="text-pump-gray font-sans text-xs">SOL</p>
+                        </div>
+                        <div className="bg-pump-black border-2 border-pump-green rounded-lg p-4 text-center">
+                            <p className="text-pump-gray font-sans text-xs mb-1">💰 Total</p>
+                            <p className="text-xl font-mono font-bold text-pump-green">{formatVolume(volume.total_volume_sol)}</p>
+                            <p className="text-pump-gray font-sans text-xs">SOL</p>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-pump-gray font-sans text-sm">Unable to load volume data</p>
+                )}
             </div>
 
             <div className="bg-pump-gray-darker border-2 border-pump-gray-dark rounded-lg p-6">

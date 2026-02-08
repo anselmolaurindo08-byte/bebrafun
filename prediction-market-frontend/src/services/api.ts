@@ -99,6 +99,11 @@ class ApiService {
         await this.api.patch('/api/user/nickname', { nickname });
     }
 
+    async getUserVolume(): Promise<{ duel_volume_sol: number; market_volume_sol: number; total_volume_sol: number }> {
+        const response = await this.api.get<{ duel_volume_sol: number; market_volume_sol: number; total_volume_sol: number }>('/api/user/volume');
+        return response.data;
+    }
+
     // Health check
     async healthCheck(): Promise<boolean> {
         try {

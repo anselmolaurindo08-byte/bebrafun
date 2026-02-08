@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 
 	"gorm.io/gorm"
 
@@ -64,4 +65,48 @@ func (s *UserService) UpdateNickname(userID uint, nickname string) error {
 	}
 
 	return nil
+}
+
+// UserVolumeStats holds user trading volume statistics
+type UserVolumeStats struct {
+	DuelVolumeSol   float64 `json:"duel_volume_sol"`
+	MarketVolumeSol float64 `json:"market_volume_sol"`
+	TotalVolumeSol  float64 `json:"total_volume_sol"`
+}
+
+// GetUserVolume calculates total trading volume for a user across duels and AMM markets
+func (s *UserService) GetUserVolume(userID uint, walletAddress string) (*UserVolumeStats, error) {
+	const lamportsPerSol = 1_000_000_000.0
+
+	// Calculate duel volume: sum of bet_amount where user is player1 or player2
+	var duelVolumeLamports int64
+	row := s.db.Table("duels").
+		Select("COALESCE(SUM(bet_amount), 0)").
+		Where("(player_1_id = ? OR player_2_id = ?) AND status IN (?, ?, ?, ?)",
+			userID, userID, "COMPLETED", "RESOLVED", "STARTING", "ACTIVE").
+		Row()
+	if err := row.Scan(&duelVolumeLamports); err != nil {
+		log.Printf("[GetUserVolume] Error scanning duel volume: %v", err)
+		duelVolumeLamports = 0
+	}
+
+	// Calculate market volume: sum of input_amount for user's AMM trades
+	var marketVolumeLamports int64
+	row = s.db.Table("amm_trades").
+		Select("COALESCE(SUM(input_amount), 0)").
+		Where("user_address = ? AND status = ?", walletAddress, "CONFIRMED").
+		Row()
+	if err := row.Scan(&marketVolumeLamports); err != nil {
+		log.Printf("[GetUserVolume] Error scanning market volume: %v", err)
+		marketVolumeLamports = 0
+	}
+
+	duelSol := float64(duelVolumeLamports) / lamportsPerSol
+	marketSol := float64(marketVolumeLamports) / lamportsPerSol
+
+	return &UserVolumeStats{
+		DuelVolumeSol:   duelSol,
+		MarketVolumeSol: marketSol,
+		TotalVolumeSol:  duelSol + marketSol,
+	}, nil
 }
