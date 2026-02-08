@@ -155,6 +155,12 @@ type RecordTradeRequest struct {
 	OutputAmount         int64  `json:"output_amount" binding:"required,min=1"`
 	FeeAmount            int64  `json:"fee_amount"`
 	TransactionSignature string `json:"transaction_signature" binding:"required"`
+
+	// Optional: Pre-trade reserves for OHLC price calculation (from on-chain state)
+	PreTradeYesReserve  *int64 `json:"pre_trade_yes_reserve"`
+	PreTradeNoReserve   *int64 `json:"pre_trade_no_reserve"`
+	PostTradeYesReserve *int64 `json:"post_trade_yes_reserve"`
+	PostTradeNoReserve  *int64 `json:"post_trade_no_reserve"`
 }
 
 // PoolResponse is the API response for a pool

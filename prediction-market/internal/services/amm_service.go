@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -407,21 +408,29 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			return fmt.Errorf("failed to record trade: %w", err)
 		}
 
-		// Update pool reserves based on trade type (Optimistic update or eventual consistency from chain)
-		switch models.AMMTradeType(req.TradeType) {
-		case models.TradeTypeBuyYes:
-			pool.NoReserve += req.InputAmount - req.FeeAmount
-			pool.YesReserve -= req.OutputAmount
-		case models.TradeTypeBuyNo:
-			pool.YesReserve += req.InputAmount - req.FeeAmount
-			pool.NoReserve -= req.OutputAmount
-		case models.TradeTypeSellYes:
-			pool.YesReserve += req.InputAmount                 // Return full shares to pool
-			pool.NoReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
-		case models.TradeTypeSellNo:
-			pool.NoReserve += req.InputAmount                   // Return full shares to pool
-			pool.YesReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
-		}
+		// ⚠️ DISABLED: Optimistic reserve updates cause reserves to become negative!
+		// Backend cannot fetch on-chain reserves (invalid mint addresses), so these updates
+		// accumulate errors on every trade until reserves go negative and break price calculation.
+		// TODO: Fix by either:
+		//   1. Reading reserves from blockchain after each trade (requires valid mint addresses)
+		//   2. Having frontend send correct reserve deltas
+		//   3. Only storing trades, let frontend read reserves from blockchain
+		/*
+			switch models.AMMTradeType(req.TradeType) {
+			case models.TradeTypeBuyYes:
+				pool.NoReserve += req.InputAmount - req.FeeAmount
+				pool.YesReserve -= req.OutputAmount
+			case models.TradeTypeBuyNo:
+				pool.YesReserve += req.InputAmount - req.FeeAmount
+				pool.NoReserve -= req.OutputAmount
+			case models.TradeTypeSellYes:
+				pool.YesReserve += req.InputAmount                 // Return full shares to pool
+				pool.NoReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
+			case models.TradeTypeSellNo:
+				pool.NoReserve += req.InputAmount                   // Return full shares to pool
+				pool.YesReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
+			}
+		*/
 
 		pool.UpdatedAt = time.Now()
 		if err := tx.Save(pool).Error; err != nil {
@@ -432,29 +441,24 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			return fmt.Errorf("failed to update position: %w", err)
 		}
 
-		// Calculate price BEFORE trade (open) and AFTER trade (close) for proper OHLC candle
-		// Need to reverse the reserve changes to get pre-trade state
-		var preYesReserve, preNoReserve int64
-		switch models.AMMTradeType(req.TradeType) {
-		case models.TradeTypeBuyYes:
-			preNoReserve = pool.NoReserve - (req.InputAmount - req.FeeAmount)
-			preYesReserve = pool.YesReserve + req.OutputAmount
-		case models.TradeTypeBuyNo:
-			preYesReserve = pool.YesReserve - (req.InputAmount - req.FeeAmount)
-			preNoReserve = pool.NoReserve + req.OutputAmount
-		case models.TradeTypeSellYes:
-			preYesReserve = pool.YesReserve - req.InputAmount
-			preNoReserve = pool.NoReserve - (req.OutputAmount + req.FeeAmount) // Pool had MORE SOL before payout
-		case models.TradeTypeSellNo:
-			preNoReserve = pool.NoReserve - req.InputAmount
-			preYesReserve = pool.YesReserve - (req.OutputAmount + req.FeeAmount) // Pool had MORE SOL before payout
-		}
+		// Calculate OHLC prices using on-chain reserves from frontend (if provided)
+		if req.PreTradeYesReserve != nil && req.PreTradeNoReserve != nil &&
+			req.PostTradeYesReserve != nil && req.PostTradeNoReserve != nil {
 
-		openPrice := s.calculateYesPrice(preYesReserve, preNoReserve)
-		closePrice := s.calculateYesPrice(pool.YesReserve, pool.NoReserve)
-		highPrice := math.Max(openPrice, closePrice)
-		lowPrice := math.Min(openPrice, closePrice)
-		s.RecordPriceCandle(ctx, poolID, openPrice, highPrice, lowPrice, closePrice, req.InputAmount)
+			log.Printf("[OHLC] Using on-chain reserves from frontend")
+			log.Printf("[OHLC] PRE-trade: YesReserve=%d, NoReserve=%d", *req.PreTradeYesReserve, *req.PreTradeNoReserve)
+			log.Printf("[OHLC] POST-trade: YesReserve=%d, NoReserve=%d", *req.PostTradeYesReserve, *req.PostTradeNoReserve)
+
+			openPrice := s.calculateYesPrice(*req.PreTradeYesReserve, *req.PreTradeNoReserve)
+			closePrice := s.calculateYesPrice(*req.PostTradeYesReserve, *req.PostTradeNoReserve)
+			log.Printf("[OHLC] Prices: Open=%.6f, Close=%.6f", openPrice, closePrice)
+
+			highPrice := math.Max(openPrice, closePrice)
+			lowPrice := math.Min(openPrice, closePrice)
+			s.RecordPriceCandle(ctx, poolID, openPrice, highPrice, lowPrice, closePrice, req.InputAmount)
+		} else {
+			log.Printf("[OHLC] Skipping OHLC calculation - frontend did not provide on-chain reserves")
+		}
 
 		return nil
 	})

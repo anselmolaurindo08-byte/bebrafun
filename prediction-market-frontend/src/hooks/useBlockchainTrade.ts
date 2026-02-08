@@ -146,6 +146,14 @@ export function useBlockchainTrade(poolId: string) {
       setTxSignature(null);
 
       try {
+        // Capture pre-trade reserves before executing trade
+        const preTradeYesReserve = poolState.yesReserve;
+        const preTradeNoReserve = poolState.noReserve;
+        console.log('[Trade] Pre-trade reserves:', {
+          yesReserve: preTradeYesReserve.toString(),
+          noReserve: preTradeNoReserve.toString()
+        });
+
         const result = await blockchainService.executeTrade(
           {
             poolId: poolState.poolId,
@@ -165,9 +173,18 @@ export function useBlockchainTrade(poolId: string) {
         setConfirmations(result.confirmations);
 
         if (result.status === 'confirmed') {
+          // Fetch updated pool state to get post-trade reserves
           await fetchPoolState();
 
-          // Record trade in backend for volume tracking
+          // Capture post-trade reserves (poolState is now updated)
+          const postTradeYesReserve = poolState.yesReserve;
+          const postTradeNoReserve = poolState.noReserve;
+          console.log('[Trade] Post-trade reserves:', {
+            yesReserve: postTradeYesReserve.toString(),
+            noReserve: postTradeNoReserve.toString()
+          });
+
+          // Record trade in backend for volume tracking and OHLC
           try {
             const { default: apiService } = await import('../services/api');
             console.log('[Trade] poolState.poolId RAW:', poolState.poolId, 'TYPE:', typeof poolState.poolId);
@@ -182,6 +199,11 @@ export function useBlockchainTrade(poolId: string) {
               output_amount: quote.outputAmount.toNumber(),
               fee_amount: quote.feeAmount.toNumber(),
               transaction_signature: result.signature,
+              // Send pre/post-trade reserves for OHLC calculation
+              pre_trade_yes_reserve: preTradeYesReserve.toNumber(),
+              pre_trade_no_reserve: preTradeNoReserve.toNumber(),
+              post_trade_yes_reserve: postTradeYesReserve.toNumber(),
+              post_trade_no_reserve: postTradeNoReserve.toNumber(),
             };
             console.log('[Trade] Recording trade in backend:', tradeData);
             await apiService.recordTrade(tradeData);
