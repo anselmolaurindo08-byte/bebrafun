@@ -42,10 +42,11 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
 			"id":              user.ID,
+			"wallet_address":  user.WalletAddress,
+			"nickname":        user.Nickname,
 			"x_username":      user.XUsername,
 			"x_id":            user.XID,
 			"followers_count": user.FollowersCount,
-			"wallet_address":  user.WalletAddress,
 			"created_at":      user.CreatedAt,
 		},
 	})
@@ -94,5 +95,38 @@ func (h *UserHandler) GetReferrals(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"referrals": referrals,
+	})
+}
+
+// UpdateNickname updates the current user's nickname
+func (h *UserHandler) UpdateNickname(c *gin.Context) {
+	userID, exists := auth.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not authenticated",
+		})
+		return
+	}
+
+	var req struct {
+		Nickname string `json:"nickname" binding:"required,min=3,max=50"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.userService.UpdateNickname(userID, req.Nickname); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Nickname updated successfully",
 	})
 }

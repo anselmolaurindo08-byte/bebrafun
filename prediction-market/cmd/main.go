@@ -182,6 +182,7 @@ func main() {
 		userRoutes := api.Group("/user")
 		{
 			userRoutes.GET("/profile", userHandler.GetProfile)
+			userRoutes.PATCH("/nickname", userHandler.UpdateNickname)
 			// userRoutes.GET("/balance", userHandler.GetBalance) // Method not implemented
 			userRoutes.GET("/invite-codes", userHandler.GetInviteCodes)
 			userRoutes.GET("/referrals", userHandler.GetReferrals)

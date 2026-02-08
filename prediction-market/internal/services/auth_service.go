@@ -30,8 +30,24 @@ func (s *AuthService) ProcessWalletLogin(walletAddress string, inviteCode string
 
 	if result.Error == gorm.ErrRecordNotFound {
 		// New user — create account
+		// Generate unique nickname
+		var nickname string
+		for {
+			var err error
+			nickname, err = generateNickname()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate nickname: %w", err)
+			}
+			// Check if nickname is unique
+			var existingUser models.User
+			if err := s.db.Where("nickname = ?", nickname).First(&existingUser).Error; err == gorm.ErrRecordNotFound {
+				break // Nickname is unique
+			}
+		}
+
 		user = models.User{
-			WalletAddress:  walletAddress,
+			WalletAddress: walletAddress,
+			Nickname:      nickname,
 		}
 
 		// Handle referral if invite code provided

@@ -7,6 +7,9 @@ export default function ProfilePage() {
     const { user, setUser } = useUserStore();
     const { balance } = useBlockchainWallet();
     const [loading, setLoading] = useState(false);
+    const [editingNickname, setEditingNickname] = useState(false);
+    const [nickname, setNickname] = useState('');
+    const [nicknameError, setNicknameError] = useState('');
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -23,6 +26,8 @@ export default function ProfilePage() {
 
         if (!user) {
             fetchProfile();
+        } else {
+            setNickname(user.nickname || '');
         }
     }, [setUser, user]);
 
@@ -44,6 +49,27 @@ export default function ProfilePage() {
             </div>
         );
     }
+
+    const handleNicknameUpdate = async () => {
+        if (!nickname || nickname.length < 3 || nickname.length > 50) {
+            setNicknameError('Nickname must be between 3 and 50 characters');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await apiService.updateNickname(nickname);
+            // Refresh profile to get updated nickname
+            const updatedProfile = await apiService.getProfile();
+            setUser(updatedProfile);
+            setEditingNickname(false);
+            setNicknameError('');
+        } catch (error: any) {
+            setNicknameError(error.response?.data?.error || 'Failed to update nickname');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="max-w-2xl mx-auto px-6 py-8">
@@ -74,6 +100,53 @@ export default function ProfilePage() {
                             {user.followers_count !== undefined && (
                                 <p className="text-xs text-pump-gray font-sans mt-1">{user.followers_count.toLocaleString()} followers</p>
                             )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-pump-black border-2 border-pump-gray-dark rounded-lg p-4">
+                    <p className="text-pump-gray font-sans text-sm mb-2">Nickname</p>
+                    {editingNickname ? (
+                        <div>
+                            <input
+                                type="text"
+                                value={nickname}
+                                onChange={(e) => setNickname(e.target.value)}
+                                className="w-full bg-pump-gray-darker border-2 border-pump-gray-dark rounded px-3 py-2 text-pump-white font-mono mb-2"
+                                placeholder="Enter nickname"
+                            />
+                            {nicknameError && (
+                                <p className="text-pump-red text-xs font-sans mb-2">{nicknameError}</p>
+                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleNicknameUpdate}
+                                    disabled={loading}
+                                    className="bg-pump-green text-pump-black px-4 py-2 rounded font-sans font-semibold text-sm hover:bg-opacity-80 disabled:opacity-50"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingNickname(false);
+                                        setNickname(user.nickname || '');
+                                        setNicknameError('');
+                                    }}
+                                    className="bg-pump-gray-dark text-pump-white px-4 py-2 rounded font-sans font-semibold text-sm hover:bg-opacity-80"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <p className="text-lg font-mono font-bold text-pump-green">{user.nickname || 'No nickname'}</p>
+                            <button
+                                onClick={() => setEditingNickname(true)}
+                                className="text-pump-green text-sm font-sans hover:underline"
+                            >
+                                Edit
+                            </button>
                         </div>
                     )}
                 </div>

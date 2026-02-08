@@ -1,6 +1,7 @@
 export interface User {
     id: number;
     wallet_address: string;
+    nickname: string;
     x_username?: string;
     x_id?: string;
     x_avatar_url?: string;

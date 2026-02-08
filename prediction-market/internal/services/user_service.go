@@ -30,7 +30,6 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	return &user, nil
 }
 
-
 // GetUserInviteCodes retrieves all invite codes for a user
 func (s *UserService) GetUserInviteCodes(userID uint) ([]models.InviteCode, error) {
 	var inviteCodes []models.InviteCode
@@ -47,4 +46,22 @@ func (s *UserService) GetUserReferrals(userID uint) ([]models.Referral, error) {
 		return nil, err
 	}
 	return referrals, nil
+}
+
+// UpdateNickname updates a user's nickname
+func (s *UserService) UpdateNickname(userID uint, nickname string) error {
+	// Check if nickname is already taken by another user
+	var existingUser models.User
+	if err := s.db.Where("nickname = ? AND id != ?", nickname, userID).First(&existingUser).Error; err == nil {
+		return fmt.Errorf("nickname already taken")
+	} else if err != gorm.ErrRecordNotFound {
+		return err
+	}
+
+	// Update the user's nickname
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Update("nickname", nickname).Error; err != nil {
+		return fmt.Errorf("failed to update nickname: %w", err)
+	}
+
+	return nil
 }

@@ -95,6 +95,10 @@ class ApiService {
         }
     }
 
+    async updateNickname(nickname: string): Promise<void> {
+        await this.api.patch('/api/user/nickname', { nickname });
+    }
+
     // Health check
     async healthCheck(): Promise<boolean> {
         try {
