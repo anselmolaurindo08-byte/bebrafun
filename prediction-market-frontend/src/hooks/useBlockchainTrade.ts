@@ -171,7 +171,7 @@ export function useBlockchainTrade(poolId: string) {
           try {
             const { default: apiService } = await import('../services/api');
             const tradeData = {
-              pool_id: poolState.poolId,
+              pool_id: parseInt(poolState.poolId, 10),  // Convert to blockchain numeric ID
               user_address: publicKey.toBase58(),
               trade_type: tradeType,
               input_amount: inputAmount.toNumber(),

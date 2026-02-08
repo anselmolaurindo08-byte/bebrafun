@@ -180,7 +180,7 @@ class ApiService {
     }
 
     async recordTrade(data: {
-        pool_id: string;
+        pool_id: number;  // Blockchain pool ID (numeric)
         user_address: string;
         trade_type: number;
         input_amount: number;

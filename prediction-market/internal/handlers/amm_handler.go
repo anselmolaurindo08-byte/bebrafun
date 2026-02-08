@@ -175,7 +175,7 @@ func (h *AMMHandler) GetTradeQuote(c *gin.Context) {
 // POST /api/amm/trades
 func (h *AMMHandler) RecordTrade(c *gin.Context) {
 	var req struct {
-		PoolID               string `json:"pool_id" binding:"required"`
+		OnchainPoolID        uint64 `json:"pool_id" binding:"required"` // Blockchain pool ID
 		UserAddress          string `json:"user_address" binding:"required"`
 		TradeType            int16  `json:"trade_type" binding:"min=0,max=3"`
 		InputAmount          int64  `json:"input_amount" binding:"required,min=1"`
@@ -189,8 +189,15 @@ func (h *AMMHandler) RecordTrade(c *gin.Context) {
 		return
 	}
 
+	// Look up pool by blockchain ID to get database UUID
+	pool, err := h.ammService.GetPoolByOnchainID(c.Request.Context(), req.OnchainPoolID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pool not found for blockchain ID"})
+		return
+	}
+
 	tradeReq := &models.RecordTradeRequest{
-		PoolID:               req.PoolID,
+		PoolID:               pool.ID.String(), // Use database UUID
 		TradeType:            req.TradeType,
 		InputAmount:          req.InputAmount,
 		OutputAmount:         req.OutputAmount,
