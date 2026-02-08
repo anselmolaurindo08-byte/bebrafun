@@ -18,13 +18,26 @@ import { DuelsPage } from './pages/duels/DuelsPage';
 import { CreateDuelPage } from './pages/duels/CreateDuelPage';
 import { ActiveDuelPage } from './pages/duels/ActiveDuelPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import apiService from './services/api';
 
 function App() {
-  const { loadFromStorage, isAuthenticated } = useUserStore();
+  const { loadFromStorage, isAuthenticated, setUser } = useUserStore();
 
   useEffect(() => {
     loadFromStorage();
   }, [loadFromStorage]);
+
+  // Fetch fresh profile from backend to get role and other updated fields
+  useEffect(() => {
+    if (isAuthenticated) {
+      apiService.getProfile().then((profile) => {
+        console.log('[App] Fetched profile with role:', profile);
+        setUser(profile);
+      }).catch((err) => {
+        console.error('[App] Failed to fetch profile:', err);
+      });
+    }
+  }, [isAuthenticated, setUser]);
 
   console.log('App component rendering', { isAuthenticated });
 
