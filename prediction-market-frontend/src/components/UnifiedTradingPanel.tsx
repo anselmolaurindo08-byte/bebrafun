@@ -188,12 +188,12 @@ export default function UnifiedTradingPanel({
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
                     {bnToNumber(userPosition.yesTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {(bnToNumber(userPosition.yesTokens) * 1000).toFixed(0)} YES shares
+                            {bnToNumber(userPosition.yesTokens).toFixed(6)} YES shares
                         </p>
                     )}
                     {bnToNumber(userPosition.noTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {(bnToNumber(userPosition.noTokens) * 1000).toFixed(0)} NO shares
+                            {bnToNumber(userPosition.noTokens).toFixed(6)} NO shares
                         </p>
                     )}
                 </div>
