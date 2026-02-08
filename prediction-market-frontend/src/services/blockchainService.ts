@@ -462,12 +462,49 @@ class BlockchainService {
     if (isSell) {
       // For sell: inputAmount is shares, output is SOL
       const sharesAmount = inputAmount.toNumber() / 1e9;
-      const solReceived = sharesAmount; // 1:1 for now
+
+      // Calculate effective reserves (raw + base liquidity) for CPMM formula
+      const poolState = _poolState ? {
+        yesReserve: typeof _poolState.yesReserve === 'number' ? _poolState.yesReserve : (_poolState.yesReserve?.toNumber?.() / 1e9 || 0),
+        noReserve: typeof _poolState.noReserve === 'number' ? _poolState.noReserve : (_poolState.noReserve?.toNumber?.() / 1e9 || 0),
+        baseYesLiquidity: typeof _poolState.baseYesLiquidity === 'number' ? _poolState.baseYesLiquidity : (_poolState.baseYesLiquidity?.toNumber?.() / 1e9 || 0),
+        baseNoLiquidity: typeof _poolState.baseNoLiquidity === 'number' ? _poolState.baseNoLiquidity : (_poolState.baseNoLiquidity?.toNumber?.() / 1e9 || 0),
+        feePercentage: _poolState.feePercentage || 30
+      } : undefined;
+
+      if (!poolState) {
+        // Fallback to simple estimate if no pool state
+        return {
+          outputAmount: new BN(sharesAmount * 0.997 * 1e9),
+          minimumReceived: new BN(sharesAmount * (1 - slippageTolerance / 100) * 0.997 * 1e9),
+          feeAmount: new BN(0),
+          priceImpact: 0,
+          slippageTolerance
+        };
+      }
+
+      // Use effective reserves
+      const effectiveYes = poolState.yesReserve + poolState.baseYesLiquidity;
+      const effectiveNo = poolState.noReserve + poolState.baseNoLiquidity;
+
+      // CPMM formula for sell: inputReserve increases by shares, outputReserve decreases
+      const k = effectiveYes * effectiveNo;
+      const isSellYes = tradeType === 2;
+
+      const inputReserve = isSellYes ? effectiveYes : effectiveNo;
+      const outputReserve = isSellYes ? effectiveNo : effectiveYes;
+
+      const newInputReserve = inputReserve + sharesAmount;
+      const newOutputReserve = k / newInputReserve;
+      const solReceived = outputReserve - newOutputReserve;
+
+      const feeAmount = solReceived * (poolState.feePercentage / 10000);
+      const netSolReceived = solReceived - feeAmount;
 
       return {
-        outputAmount: new BN(solReceived * 1e9), // SOL received
-        minimumReceived: new BN(solReceived * (1 - slippageTolerance / 100) * 1e9),
-        feeAmount: new BN(0), // No fee deduction for sell (fee taken from output)
+        outputAmount: new BN(netSolReceived * 1e9),
+        minimumReceived: new BN(netSolReceived * (1 - slippageTolerance / 100) * 1e9),
+        feeAmount: new BN(feeAmount * 1e9),
         priceImpact: 0,
         slippageTolerance
       };
