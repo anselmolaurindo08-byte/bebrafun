@@ -177,7 +177,7 @@ export default function UnifiedTradingPanel({
                 />
                 {mode === 'sell' && (
                     <p className="text-xs text-pump-gray-light font-sans mt-1">
-                        Available: {((availableShares || 0) * 1000).toFixed(0)} shares
+                        Available: {(availableShares || 0).toFixed(6)} shares
                     </p>
                 )}
             </div>
@@ -209,7 +209,7 @@ export default function UnifiedTradingPanel({
                         <span className="text-sm font-mono font-bold text-pump-green">
                             {mode === 'buy'
                                 ? `${(quote.outputAmount.toNumber() / LAMPORTS_PER_SOL * 1000).toFixed(0)} shares`
-                                : `${formatSOL(quote.outputAmount)} SOL`
+                                : `${(quote.outputAmount.toNumber() / LAMPORTS_PER_SOL).toFixed(6)} SOL`
                             }
                         </span>
                     </div>
