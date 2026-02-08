@@ -249,11 +249,14 @@ func (s *AMMService) ToPoolResponse(pool *models.AMMPool) *models.PoolResponse {
 	}
 }
 
-// calculateYesPrice calculates YES token probability from reserves
-func (s *AMMService) calculateYesPrice(yesReserve, noReserve int64) float64 {
-	totalReserves := float64(yesReserve + noReserve)
+// calculateYesPrice calculates YES token probability from reserves + base liquidity
+func (s *AMMService) calculateYesPrice(yesReserve, noReserve, baseYesLiquidity, baseNoLiquidity int64) float64 {
+	effectiveYes := float64(yesReserve + baseYesLiquidity)
+	effectiveNo := float64(noReserve + baseNoLiquidity)
+	totalReserves := effectiveYes + effectiveNo
 	if totalReserves > 0 {
-		return float64(noReserve) / totalReserves
+		// In CPMM: yesPrice = effective NO reserve / total (matches frontend formula)
+		return effectiveNo / totalReserves
 	}
 	return 0.5
 }
@@ -449,8 +452,17 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			log.Printf("[OHLC] PRE-trade: YesReserve=%d, NoReserve=%d", *req.PreTradeYesReserve, *req.PreTradeNoReserve)
 			log.Printf("[OHLC] POST-trade: YesReserve=%d, NoReserve=%d", *req.PostTradeYesReserve, *req.PostTradeNoReserve)
 
-			openPrice := s.calculateYesPrice(*req.PreTradeYesReserve, *req.PreTradeNoReserve)
-			closePrice := s.calculateYesPrice(*req.PostTradeYesReserve, *req.PostTradeNoReserve)
+			baseYes := int64(0)
+			baseNo := int64(0)
+			if req.BaseYesLiquidity != nil {
+				baseYes = *req.BaseYesLiquidity
+			}
+			if req.BaseNoLiquidity != nil {
+				baseNo = *req.BaseNoLiquidity
+			}
+
+			openPrice := s.calculateYesPrice(*req.PreTradeYesReserve, *req.PreTradeNoReserve, baseYes, baseNo)
+			closePrice := s.calculateYesPrice(*req.PostTradeYesReserve, *req.PostTradeNoReserve, baseYes, baseNo)
 			log.Printf("[OHLC] Prices: Open=%.6f, Close=%.6f", openPrice, closePrice)
 
 			highPrice := math.Max(openPrice, closePrice)

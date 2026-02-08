@@ -192,6 +192,9 @@ class ApiService {
         pre_trade_no_reserve?: number;
         post_trade_yes_reserve?: number;
         post_trade_no_reserve?: number;
+        // Optional: base liquidity for accurate price calculation
+        base_yes_liquidity?: number;
+        base_no_liquidity?: number;
     }): Promise<void> {
         await this.api.post('/api/amm/trades', data);
     }

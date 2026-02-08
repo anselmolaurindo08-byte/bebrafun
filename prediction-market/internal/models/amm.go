@@ -161,6 +161,10 @@ type RecordTradeRequest struct {
 	PreTradeNoReserve   *int64 `json:"pre_trade_no_reserve"`
 	PostTradeYesReserve *int64 `json:"post_trade_yes_reserve"`
 	PostTradeNoReserve  *int64 `json:"post_trade_no_reserve"`
+
+	// Optional: Base liquidity for accurate price calculation (virtual liquidity)
+	BaseYesLiquidity *int64 `json:"base_yes_liquidity"`
+	BaseNoLiquidity  *int64 `json:"base_no_liquidity"`
 }
 
 // PoolResponse is the API response for a pool

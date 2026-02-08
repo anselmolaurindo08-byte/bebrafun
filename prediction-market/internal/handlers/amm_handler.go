@@ -187,6 +187,9 @@ func (h *AMMHandler) RecordTrade(c *gin.Context) {
 		PreTradeNoReserve   *int64 `json:"pre_trade_no_reserve"`
 		PostTradeYesReserve *int64 `json:"post_trade_yes_reserve"`
 		PostTradeNoReserve  *int64 `json:"post_trade_no_reserve"`
+		// Optional: base liquidity for accurate price calculation
+		BaseYesLiquidity *int64 `json:"base_yes_liquidity"`
+		BaseNoLiquidity  *int64 `json:"base_no_liquidity"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -212,6 +215,8 @@ func (h *AMMHandler) RecordTrade(c *gin.Context) {
 		PreTradeNoReserve:    req.PreTradeNoReserve,
 		PostTradeYesReserve:  req.PostTradeYesReserve,
 		PostTradeNoReserve:   req.PostTradeNoReserve,
+		BaseYesLiquidity:     req.BaseYesLiquidity,
+		BaseNoLiquidity:      req.BaseNoLiquidity,
 	}
 
 	trade, err := h.ammService.RecordTrade(c.Request.Context(), req.UserAddress, tradeReq)
