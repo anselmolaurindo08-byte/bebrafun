@@ -134,13 +134,14 @@ export default function MarketDetailPage() {
                             baseNoLiquidity
                         });
 
-                        // Calculate prices from reserves + base liquidity (AMM formula)
-                        // Base liquidity provides price stability without being tradeable
+                        // Calculate effective reserves (real + virtual base liquidity)
                         const effectiveYesReserve = yesReserve + baseYesLiquidity;
                         const effectiveNoReserve = noReserve + baseNoLiquidity;
                         const totalReserve = effectiveYesReserve + effectiveNoReserve;
-                        const yesPrice = totalReserve > 0 ? effectiveYesReserve / totalReserve : 0.5;
-                        const noPrice = totalReserve > 0 ? effectiveNoReserve / totalReserve : 0.5;
+                        // In CPMM: yesPrice = NO_reserve / total (more NO in pool = YES is more expensive)
+                        // When someone buys YES, NO_reserve grows → yesPrice goes UP (correct!)
+                        const yesPrice = totalReserve > 0 ? effectiveNoReserve / totalReserve : 0.5;
+                        const noPrice = totalReserve > 0 ? effectiveYesReserve / totalReserve : 0.5;
 
                         console.log('[fetchAmmPool] Calculated prices:', {
                             effectiveYesReserve,
