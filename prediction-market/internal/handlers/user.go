@@ -41,45 +41,24 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":              user.ID,
-			"wallet_address":  user.WalletAddress,
-			"nickname":        user.Nickname,
-			"x_username":      user.XUsername,
-			"x_id":            user.XID,
-			"followers_count": user.FollowersCount,
-			"created_at":      user.CreatedAt,
-		},
-	})
+	// Build user response
+	userResponse := gin.H{
+		"id":              user.ID,
+		"wallet_address":  user.WalletAddress,
+		"nickname":        user.Nickname,
+		"x_username":      user.XUsername,
+		"x_id":            user.XID,
+		"followers_count": user.FollowersCount,
+		"created_at":      user.CreatedAt,
+	}
 
 	// Check if user is admin and add role field
 	if h.adminService != nil && h.adminService.IsAdmin(userID) {
-		c.JSON(http.StatusOK, gin.H{
-			"user": gin.H{
-				"id":              user.ID,
-				"wallet_address":  user.WalletAddress,
-				"nickname":        user.Nickname,
-				"role":            "admin",
-				"x_username":      user.XUsername,
-				"x_id":            user.XID,
-				"followers_count": user.FollowersCount,
-				"created_at":      user.CreatedAt,
-			},
-		})
-		return
+		userResponse["role"] = "admin"
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":              user.ID,
-			"wallet_address":  user.WalletAddress,
-			"nickname":        user.Nickname,
-			"x_username":      user.XUsername,
-			"x_id":            user.XID,
-			"followers_count": user.FollowersCount,
-			"created_at":      user.CreatedAt,
-		},
+		"user": userResponse,
 	})
 }
 
