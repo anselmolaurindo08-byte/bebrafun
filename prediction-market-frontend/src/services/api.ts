@@ -187,6 +187,11 @@ class ApiService {
         output_amount: number;
         fee_amount: number;
         transaction_signature: string;
+        // Optional: on-chain reserves for OHLC price calculation
+        pre_trade_yes_reserve?: number;
+        pre_trade_no_reserve?: number;
+        post_trade_yes_reserve?: number;
+        post_trade_no_reserve?: number;
     }): Promise<void> {
         await this.api.post('/api/amm/trades', data);
     }

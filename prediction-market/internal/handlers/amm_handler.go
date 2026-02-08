@@ -182,6 +182,11 @@ func (h *AMMHandler) RecordTrade(c *gin.Context) {
 		OutputAmount         int64  `json:"output_amount" binding:"required,min=1"`
 		FeeAmount            int64  `json:"fee_amount"`
 		TransactionSignature string `json:"transaction_signature" binding:"required"`
+		// Optional: on-chain reserves for OHLC price calculation
+		PreTradeYesReserve  *int64 `json:"pre_trade_yes_reserve"`
+		PreTradeNoReserve   *int64 `json:"pre_trade_no_reserve"`
+		PostTradeYesReserve *int64 `json:"post_trade_yes_reserve"`
+		PostTradeNoReserve  *int64 `json:"post_trade_no_reserve"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,6 +208,10 @@ func (h *AMMHandler) RecordTrade(c *gin.Context) {
 		OutputAmount:         req.OutputAmount,
 		FeeAmount:            req.FeeAmount,
 		TransactionSignature: req.TransactionSignature,
+		PreTradeYesReserve:   req.PreTradeYesReserve,
+		PreTradeNoReserve:    req.PreTradeNoReserve,
+		PostTradeYesReserve:  req.PostTradeYesReserve,
+		PostTradeNoReserve:   req.PostTradeNoReserve,
 	}
 
 	trade, err := h.ammService.RecordTrade(c.Request.Context(), req.UserAddress, tradeReq)
