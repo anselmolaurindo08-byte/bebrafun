@@ -478,8 +478,8 @@ class BlockchainService {
       // Fetch pool state for accurate quoting
       console.log('[calculateTradeQuote] _poolState:', _poolState);
       const poolState = _poolState ? {
-        yesReserve: _poolState.yesReserve?.toNumber() / 1e9 || 0,
-        noReserve: _poolState.noReserve?.toNumber() / 1e9 || 0,
+        yesReserve: typeof _poolState.yesReserve === 'number' ? _poolState.yesReserve : (_poolState.yesReserve?.toNumber?.() / 1e9 || 0),
+        noReserve: typeof _poolState.noReserve === 'number' ? _poolState.noReserve : (_poolState.noReserve?.toNumber?.() / 1e9 || 0),
         feePercentage: _poolState.feePercentage || 30 // 0.3%
       } : undefined;
       console.log('[calculateTradeQuote] poolState:', poolState);
