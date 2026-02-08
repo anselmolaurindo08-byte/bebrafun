@@ -170,8 +170,12 @@ export function useBlockchainTrade(poolId: string) {
           // Record trade in backend for volume tracking
           try {
             const { default: apiService } = await import('../services/api');
+            console.log('[Trade] poolState.poolId RAW:', poolState.poolId, 'TYPE:', typeof poolState.poolId);
+            const numericPoolId = parseInt(poolState.poolId, 10);
+            console.log('[Trade] numericPoolId AFTER parseInt:', numericPoolId, 'TYPE:', typeof numericPoolId);
+
             const tradeData = {
-              pool_id: parseInt(poolState.poolId, 10),  // Convert to blockchain numeric ID
+              pool_id: numericPoolId,
               user_address: publicKey.toBase58(),
               trade_type: tradeType,
               input_amount: inputAmount.toNumber(),
