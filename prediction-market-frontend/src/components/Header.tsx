@@ -13,11 +13,6 @@ export default function Header() {
 
     const isAuthenticated = !!token && !!user?.wallet_address;
 
-    // Debug: Check user role
-    console.log('[Header Debug] User object:', user);
-    console.log('[Header Debug] User role:', user?.role);
-    console.log('[Header Debug] Is admin?', user?.role === 'admin');
-
     const handleLogout = async () => {
         await apiService.logout();
         logout();

@@ -170,7 +170,7 @@ export function useBlockchainTrade(poolId: string) {
           // Record trade in backend for volume tracking
           try {
             const { default: apiService } = await import('../services/api');
-            await apiService.recordTrade({
+            const tradeData = {
               pool_id: poolState.poolId,
               user_address: publicKey.toBase58(),
               trade_type: tradeType,
@@ -178,7 +178,10 @@ export function useBlockchainTrade(poolId: string) {
               output_amount: quote.outputAmount.toNumber(),
               fee_amount: quote.feeAmount.toNumber(),
               transaction_signature: result.signature,
-            });
+            };
+            console.log('[Trade] Recording trade in backend:', tradeData);
+            await apiService.recordTrade(tradeData);
+            console.log('[Trade] Trade recorded successfully!');
           } catch (recordErr) {
             console.warn('[Trade] Failed to record trade in backend:', recordErr);
             // Don't fail the trade — on-chain is already confirmed
