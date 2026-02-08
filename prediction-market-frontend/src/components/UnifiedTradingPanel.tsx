@@ -45,14 +45,14 @@ export default function UnifiedTradingPanel({
         return () => clearInterval(interval);
     }, [fetchPoolState]);
 
-    // Calculate quote when inputs change
     useEffect(() => {
         const parsed = parseFloat(amount);
         if (!amount || isNaN(parsed) || parsed <= 0 || !poolState) {
             return;
         }
-        // Both buy (SOL) and sell (shares) use same conversion to lamports
-        const lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
+        // For sell: user sees shares ×1000, so divide by 1000 to get real amount
+        const realAmount = mode === 'sell' ? parsed / 1000 : parsed;
+        const lamports = new BN(Math.floor(realAmount * LAMPORTS_PER_SOL));
         const tradeType = mode === 'buy'
             ? (outcome === 'yes' ? TradeType.BUY_YES : TradeType.BUY_NO)
             : (outcome === 'yes' ? TradeType.SELL_YES : TradeType.SELL_NO);
@@ -68,9 +68,9 @@ export default function UnifiedTradingPanel({
             // For buy: amount is SOL, convert to lamports
             lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
         } else {
-            // For sell: amount is shares (already in lamports format on-chain)
-            // User enters human-readable shares, we convert to lamports
-            lamports = new BN(Math.floor(parsed * LAMPORTS_PER_SOL));
+            // For sell: user sees shares ×1000, divide by 1000 to get real amount
+            const realAmount = parsed / 1000;
+            lamports = new BN(Math.floor(realAmount * LAMPORTS_PER_SOL));
         }
 
         const tradeType = mode === 'buy'
@@ -177,7 +177,7 @@ export default function UnifiedTradingPanel({
                 />
                 {mode === 'sell' && (
                     <p className="text-xs text-pump-gray-light font-sans mt-1">
-                        Available: {(availableShares || 0).toFixed(6)} shares
+                        Available: {((availableShares || 0) * 1000).toFixed(0)} shares
                     </p>
                 )}
             </div>
@@ -188,12 +188,12 @@ export default function UnifiedTradingPanel({
                     <p className="text-xs text-pump-gray-light font-sans mb-2">Your Position</p>
                     {bnToNumber(userPosition.yesTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-green">
-                            {bnToNumber(userPosition.yesTokens).toFixed(6)} YES shares
+                            {(bnToNumber(userPosition.yesTokens) * 1000).toFixed(0)} YES shares
                         </p>
                     )}
                     {bnToNumber(userPosition.noTokens) > 0 && (
                         <p className="text-sm font-mono text-pump-red">
-                            {bnToNumber(userPosition.noTokens).toFixed(6)} NO shares
+                            {(bnToNumber(userPosition.noTokens) * 1000).toFixed(0)} NO shares
                         </p>
                     )}
                 </div>
@@ -209,7 +209,7 @@ export default function UnifiedTradingPanel({
                         <span className="text-sm font-mono font-bold text-pump-green">
                             {mode === 'buy'
                                 ? `${(quote.outputAmount.toNumber() / LAMPORTS_PER_SOL * 1000).toFixed(0)} shares`
-                                : `${(quote.outputAmount.toNumber() / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+                                : `${formatSOL(quote.outputAmount)} SOL`
                             }
                         </span>
                     </div>
