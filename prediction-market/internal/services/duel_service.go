@@ -306,7 +306,7 @@ func (ds *DuelService) JoinDuel(
 	var player2 models.User
 	err = ds.repo.GetDB().WithContext(ctx).Select("nickname").Where("id = ?", playerID).First(&player2).Error
 	if err == nil && player2.Nickname != "" {
-		duel.Player2Username = player2.Nickname
+		duel.Player2Username = &player2.Nickname // Player2Username is *string
 	}
 
 	// Save to database with COUNTDOWN status first
