@@ -444,10 +444,10 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			preNoReserve = pool.NoReserve + req.OutputAmount
 		case models.TradeTypeSellYes:
 			preYesReserve = pool.YesReserve - req.InputAmount
-			preNoReserve = pool.NoReserve + req.OutputAmount + req.FeeAmount
+			preNoReserve = pool.NoReserve - (req.OutputAmount + req.FeeAmount) // Pool had MORE SOL before payout
 		case models.TradeTypeSellNo:
 			preNoReserve = pool.NoReserve - req.InputAmount
-			preYesReserve = pool.YesReserve + req.OutputAmount + req.FeeAmount
+			preYesReserve = pool.YesReserve - (req.OutputAmount + req.FeeAmount) // Pool had MORE SOL before payout
 		}
 
 		openPrice := s.calculateYesPrice(preYesReserve, preNoReserve)
