@@ -248,6 +248,15 @@ func (s *AMMService) ToPoolResponse(pool *models.AMMPool) *models.PoolResponse {
 	}
 }
 
+// calculateYesPrice calculates YES token probability from reserves
+func (s *AMMService) calculateYesPrice(yesReserve, noReserve int64) float64 {
+	totalReserves := float64(yesReserve + noReserve)
+	if totalReserves > 0 {
+		return float64(noReserve) / totalReserves
+	}
+	return 0.5
+}
+
 // updatePoolReserves fetches real-time reserves from blockchain and updates DB
 func (s *AMMService) updatePoolReserves(ctx context.Context, poolID uuid.UUID, authority, yesMint, noMint string) {
 	// Create a timeout context to prevent hanging
@@ -407,11 +416,11 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			pool.YesReserve += req.InputAmount - req.FeeAmount
 			pool.NoReserve -= req.OutputAmount
 		case models.TradeTypeSellYes:
-			pool.YesReserve += req.InputAmount - req.FeeAmount
-			pool.NoReserve -= req.OutputAmount
+			pool.YesReserve += req.InputAmount                 // Return full shares to pool
+			pool.NoReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
 		case models.TradeTypeSellNo:
-			pool.NoReserve += req.InputAmount - req.FeeAmount
-			pool.YesReserve -= req.OutputAmount
+			pool.NoReserve += req.InputAmount                   // Return full shares to pool
+			pool.YesReserve -= req.OutputAmount + req.FeeAmount // Deduct SOL + fee
 		}
 
 		pool.UpdatedAt = time.Now()
@@ -423,16 +432,29 @@ func (s *AMMService) RecordTrade(ctx context.Context, userAddress string, req *m
 			return fmt.Errorf("failed to update position: %w", err)
 		}
 
-		// Record price candle with YES probability (not trade ratio)
-		// YES price = NoReserve / (YesReserve + NoReserve) — CPMM standard
-		totalReserves := float64(pool.YesReserve + pool.NoReserve)
-		var yesProb float64
-		if totalReserves > 0 {
-			yesProb = float64(pool.NoReserve) / totalReserves
-		} else {
-			yesProb = 0.5
+		// Calculate price BEFORE trade (open) and AFTER trade (close) for proper OHLC candle
+		// Need to reverse the reserve changes to get pre-trade state
+		var preYesReserve, preNoReserve int64
+		switch models.AMMTradeType(req.TradeType) {
+		case models.TradeTypeBuyYes:
+			preNoReserve = pool.NoReserve - (req.InputAmount - req.FeeAmount)
+			preYesReserve = pool.YesReserve + req.OutputAmount
+		case models.TradeTypeBuyNo:
+			preYesReserve = pool.YesReserve - (req.InputAmount - req.FeeAmount)
+			preNoReserve = pool.NoReserve + req.OutputAmount
+		case models.TradeTypeSellYes:
+			preYesReserve = pool.YesReserve - req.InputAmount
+			preNoReserve = pool.NoReserve + req.OutputAmount + req.FeeAmount
+		case models.TradeTypeSellNo:
+			preNoReserve = pool.NoReserve - req.InputAmount
+			preYesReserve = pool.YesReserve + req.OutputAmount + req.FeeAmount
 		}
-		s.RecordPriceCandle(ctx, poolID, yesProb, yesProb, yesProb, yesProb, req.InputAmount)
+
+		openPrice := s.calculateYesPrice(preYesReserve, preNoReserve)
+		closePrice := s.calculateYesPrice(pool.YesReserve, pool.NoReserve)
+		highPrice := math.Max(openPrice, closePrice)
+		lowPrice := math.Min(openPrice, closePrice)
+		s.RecordPriceCandle(ctx, poolID, openPrice, highPrice, lowPrice, closePrice, req.InputAmount)
 
 		return nil
 	})
