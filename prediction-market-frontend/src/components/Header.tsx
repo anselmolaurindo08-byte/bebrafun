@@ -110,24 +110,14 @@ export default function Header() {
                                         >
                                             Referral System
                                         </Link>
-                                        <Link
-                                            to="/duels/wallet"
-                                            className="block px-4 py-3 text-sm font-sans text-pump-yellow hover:bg-pump-gray-dark transition-colors"
-                                        >
-                                            Duels Wallet
-                                        </Link>
-                                        <Link
-                                            to="/settings"
-                                            className="block px-4 py-3 text-sm font-sans text-pump-white hover:bg-pump-gray-dark hover:text-pump-green transition-colors"
-                                        >
-                                            Settings
-                                        </Link>
-                                        <Link
-                                            to="/admin"
-                                            className="block px-4 py-3 text-sm font-sans text-pump-cyan hover:bg-pump-gray-dark transition-colors"
-                                        >
-                                            Admin Panel
-                                        </Link>
+                                        {user?.role === 'admin' && (
+                                            <Link
+                                                to="/admin"
+                                                className="block px-4 py-3 text-sm font-sans text-pump-cyan hover:bg-pump-gray-dark transition-colors"
+                                            >
+                                                Admin Panel
+                                            </Link>
+                                        )}
                                         <button
                                             onClick={handleLogout}
                                             className="w-full text-left px-4 py-3 text-sm font-sans text-pump-red hover:bg-pump-gray-dark rounded-b-md transition-colors"
