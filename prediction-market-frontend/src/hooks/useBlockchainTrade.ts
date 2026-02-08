@@ -37,6 +37,7 @@ export function useBlockchainTrade(poolId: string) {
     try {
       const state = await blockchainService.getPoolState(poolId);
       setPoolState(state);
+      return state;
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to fetch pool state';
@@ -173,12 +174,11 @@ export function useBlockchainTrade(poolId: string) {
         setConfirmations(result.confirmations);
 
         if (result.status === 'confirmed') {
-          // Fetch updated pool state to get post-trade reserves
-          await fetchPoolState();
-
-          // Capture post-trade reserves (poolState is now updated)
-          const postTradeYesReserve = poolState.yesReserve;
-          const postTradeNoReserve = poolState.noReserve;
+          // Fetch updated pool state and capture post-trade reserves directly
+          // (can't use poolState - React state doesn't update within same callback)
+          const updatedState = await fetchPoolState();
+          const postTradeYesReserve = updatedState?.yesReserve ?? preTradeYesReserve;
+          const postTradeNoReserve = updatedState?.noReserve ?? preTradeNoReserve;
           console.log('[Trade] Post-trade reserves:', {
             yesReserve: postTradeYesReserve.toString(),
             noReserve: postTradeNoReserve.toString()
