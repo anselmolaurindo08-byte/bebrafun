@@ -62,6 +62,8 @@ export interface PoolState {
   noMint: PublicKey;
   yesReserve: BN; // In lamports
   noReserve: BN; // In lamports
+  baseYesLiquidity: number; // Virtual YES liquidity for price calculation
+  baseNoLiquidity: number; // Virtual NO liquidity for price calculation
   totalLiquidity: BN;
   feePercentage: number; // 0.5 = 0.5%
   bump: number;
