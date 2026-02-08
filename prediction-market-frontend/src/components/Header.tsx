@@ -89,10 +89,10 @@ export default function Header() {
                                 <div className="relative group">
                                     <button className="flex items-center gap-2 bg-pump-gray-darker border-2 border-pump-gray-dark hover:border-pump-green px-3 py-2 rounded-md transition-all duration-200">
                                         <div className="w-8 h-8 bg-pump-green rounded-full flex items-center justify-center text-pump-black font-bold text-sm">
-                                            {user?.wallet_address?.substring(0, 2).toUpperCase()}
+                                            {user?.nickname?.substring(0, 2).toUpperCase() || user?.wallet_address?.substring(0, 2).toUpperCase()}
                                         </div>
                                         <span className="text-sm font-mono text-pump-white">
-                                            {user?.wallet_address?.substring(0, 4)}...{user?.wallet_address?.substring(user.wallet_address.length - 4)}
+                                            {user?.nickname || `${user?.wallet_address?.substring(0, 4)}...${user?.wallet_address?.substring(user.wallet_address.length - 4)}`}
                                         </span>
                                     </button>
 

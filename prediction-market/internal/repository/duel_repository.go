@@ -18,6 +18,11 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
+// GetDB returns the underlying database instance
+func (r *Repository) GetDB() *gorm.DB {
+	return r.db
+}
+
 // CreateDuel creates a new duel
 func (r *Repository) CreateDuel(ctx context.Context, duel *models.Duel) error {
 	return r.db.WithContext(ctx).Create(duel).Error

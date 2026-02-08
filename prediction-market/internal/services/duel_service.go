@@ -147,6 +147,13 @@ func (ds *DuelService) CreateDuel(
 		ExpiresAt:        timePtr(time.Now().Add(5 * time.Minute)), // 5 min expiry
 	}
 
+	// Fetch player nickname from users table
+	var player1 models.User
+	err = ds.repo.GetDB().WithContext(ctx).Select("nickname").Where("id = ?", playerID).First(&player1).Error
+	if err == nil && player1.Nickname != "" {
+		duel.Player1Username = player1.Nickname
+	}
+
 	// Save to database
 	err = ds.repo.CreateDuel(ctx, duel)
 	if err != nil {
@@ -294,6 +301,13 @@ func (ds *DuelService) JoinDuel(
 	duel.Player2ID = &playerID
 	duel.Player2Amount = &duel.BetAmount
 	duel.Player2Direction = direction // Save Player 2's prediction
+
+	// Fetch player2 nickname from users table
+	var player2 models.User
+	err = ds.repo.GetDB().WithContext(ctx).Select("nickname").Where("id = ?", playerID).First(&player2).Error
+	if err == nil && player2.Nickname != "" {
+		duel.Player2Username = player2.Nickname
+	}
 
 	// Save to database with COUNTDOWN status first
 	if err := ds.repo.UpdateDuel(ctx, duel); err != nil {
